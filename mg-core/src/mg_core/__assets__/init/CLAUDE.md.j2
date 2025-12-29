@@ -1,0 +1,80 @@
+{# Template for CLAUDE.md created by mg init #}
+# Mindgames Project
+
+This is an mg-managed repository for parallel AI collaboration.
+
+## Architecture
+
+**You are on mg-state** - the control plane (orphan branch). This is where coordination happens. Code branches live in `worktrees/`.
+
+```
+./                       # YOU ARE HERE (mg-state branch)
+├── CLAUDE.md            # this file
+├── pyproject.toml       # project-level Python dependencies
+├── .venv/               # project-level virtual environment
+├── src/mg_project/      # project commands, resolvers, helpers
+│   └── __assets__/      # non-code assets for project
+├── users/
+│   └── {user}/
+│       ├── pyproject.toml   # user-level dependencies
+│       ├── .venv/           # user-level virtual environment
+│       ├── src/mg_user/     # user commands and customizations
+│       └── state/
+│           └── minds/       # instantiated minds
+└── worktrees/           # code branches (isolated workspaces)
+    ├── main/            # worktree folder = branch name
+    └── feature-x/
+```
+
+**Key principles:**
+- Worktree folder name = branch name (always)
+- mg-state never pollutes code branches - they stay clean
+- Multiple minds can work in the same worktree
+- State lives on the orphan branch, syncs via git push/pull
+
+## Package Management
+
+**mg is a Python-based automation framework using uv.** However, your actual project code (in worktrees) can use any language or tooling.
+
+- **uv** manages all Python dependencies for mg
+- Each level has its own `.venv/` (project and per-user)
+- uv's hardlink cache makes multiple venvs virtually free on disk
+- Run `uv sync` to install dependencies at any level
+
+## Commands
+
+mg commands are **dynamic prompt generators** - they produce text that guides agent behavior. They're designed for agents to run, not humans directly.
+
+```bash
+mg <command>           # run a command
+```
+
+**Resolution order:** mg_core → mg_project → mg_user (each level can extend/override)
+
+**File-based routing:**
+- `commands/wake.py` → `mg wake`
+- `commands/_mind_/status.py` → `mg forge status` (param capture)
+- Literals take precedence over params at each level
+
+**Slash commands** (like `/wake`) are for humans - static prompts in `.claude/commands/`. mg commands are for agents - dynamic, hot-reloadable.
+
+## Development
+
+**TDD is strongly encouraged.** The `mg.test` module provides progressive testing:
+- `routes_to()` - verify file structure (file can be empty)
+- `parse()` - verify command definition (needs `define()`)
+- `execute()` - unit test command logic (needs `define()` and `execute()`)
+
+**Assets** live in `__assets__/` within each module. Access via `ctx.templates`.
+
+## Philosophy
+
+mg optimizes for the bottleneck: **expert human attention**. Agents work autonomously; humans engage when needed.
+
+**Educate, don't obscure** - mg wraps tools like git, but shows what's happening underneath. Use `--quiet` for automation.
+
+---
+
+## Getting Started
+
+<!-- TODO: Add project-specific getting started instructions -->
