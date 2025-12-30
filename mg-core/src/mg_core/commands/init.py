@@ -25,15 +25,15 @@ def execute(ctx: cmd.Ctx) -> None:
     quiet = ctx.args.has("quiet")
     force = ctx.args.has("force")
     empty = ctx.args.has("empty")
-    branch = ctx.args.get_one("branch", default_value="main")
+    branch = ctx.args.get_one("branch", default_value=None)
 
     # Detect mode: are we in a git repo?
-    in_repo = _find_git_root(ctx.paths.root) is not None
+    git_root = _find_git_root(ctx.paths.root)
 
-    if in_repo:
-        _init_peer_mode(ctx, quiet=quiet, force=force, branch=branch)
+    if git_root:
+        _init_peer_mode(ctx, git_root=git_root, quiet=quiet, force=force, branch=branch)
     else:
-        _init_fresh_mode(ctx, quiet=quiet, force=force, empty=empty, branch=branch)
+        _init_fresh_mode(ctx, quiet=quiet, force=force, empty=empty, branch=branch or "main")
 
 
 # =============================================================================
@@ -185,10 +185,102 @@ def _init_fresh_nonempty(
 def _init_peer_mode(
     ctx: cmd.Ctx,
     *,
+    git_root: Path,
     quiet: bool,
     force: bool,
-    branch: str,
+    branch: str | None,
 ) -> None:
     """Initialize mg as a peer to an existing git repo."""
-    # TODO: Implement peer mode
-    raise CommandError("Peer mode not yet implemented")
+    source_git = Git(git_root, quiet=True)  # Quiet for prerequisite checks
+
+    # Check prerequisites
+    remote_url = _get_remote_url(source_git)
+    if remote_url is None:
+        raise CommandError(
+            "No remote configured.\n\n"
+            "Peer mode requires a remote to clone from. Add one with:\n"
+            "  git remote add origin <url>"
+        )
+
+    if not _is_clean_working_tree(source_git):
+        if force:
+            if not quiet:
+                ctx.print("Warning: uncommitted changes will not be in the clone.")
+        else:
+            raise CommandError(
+                "Working tree has uncommitted changes.\n\n"
+                "Commit or stash changes first, or use --force to proceed anyway.\n"
+                "(Uncommitted changes won't be in the clone.)"
+            )
+
+    # Determine peer directory location
+    peer_dir = git_root.parent / f"{git_root.name}-mg"
+
+    if peer_dir.exists():
+        raise CommandError(f"Peer directory already exists: {peer_dir}")
+
+    # Get branch to create worktree for (current branch if not specified)
+    target_branch = branch or source_git.branch_current()
+
+    # Verify target branch exists on remote (before cloning)
+    if not _remote_has_branch(source_git, remote_url, target_branch):
+        raise CommandError(
+            f"Branch '{target_branch}' does not exist on remote.\n\n"
+            f"Available branches can be listed with: git ls-remote --heads origin"
+        )
+
+    # Clone from remote (--no-checkout to skip checking out files)
+    if not quiet:
+        ctx.print(f"Cloning from {remote_url}...")
+    Git(git_root, quiet=quiet).run(
+        f'clone --no-checkout "{remote_url}" "{peer_dir}"',
+        intent="clone repository",
+    )
+
+    # Set up mg structure in peer directory
+    git = Git(peer_dir, quiet=quiet)
+
+    # Create mg-state orphan branch (working tree is already empty)
+    git.run("checkout --orphan mg-state", intent="create mg-state orphan branch")
+
+    # Create CLAUDE.md and initial commit
+    ctx.templates.write("init/CLAUDE.md.j2", peer_dir / "CLAUDE.md")
+    git.run("add CLAUDE.md", intent="stage CLAUDE.md")
+    git.run('commit -m "Initialize mg"', intent="create initial commit on mg-state")
+
+    # Create worktrees directory
+    (peer_dir / "worktrees").mkdir()
+
+    # Create worktree for target branch
+    git.run(
+        f"worktree add worktrees/{target_branch} {target_branch}",
+        intent=f"create worktree for {target_branch}",
+    )
+
+    _print_next_steps(ctx, branch=target_branch, quiet=quiet)
+
+
+def _get_remote_url(git: Git) -> str | None:
+    """Get the URL of the 'origin' remote, or None if not configured."""
+    try:
+        return git.run("remote get-url origin", intent="get remote URL").strip()
+    except Exception:
+        return None
+
+
+def _is_clean_working_tree(git: Git) -> bool:
+    """Check if working tree is clean (no staged, unstaged, or untracked files)."""
+    status = git.run("status --porcelain", intent="check working tree status").strip()
+    return status == ""
+
+
+def _remote_has_branch(git: Git, remote_url: str, branch: str) -> bool:
+    """Check if a branch exists on the remote."""
+    try:
+        output = git.run(
+            f'ls-remote --heads "{remote_url}" {branch}',
+            intent=f"check if branch '{branch}' exists on remote",
+        )
+        return bool(output.strip())
+    except Exception:
+        return False

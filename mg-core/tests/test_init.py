@@ -283,6 +283,12 @@ class TestInitPeerBasic:
         assert (in_repo.peer_dir / "worktrees" / "main").is_dir()
 
     def test_branch_flag_overrides_current_branch(self, in_repo):
+        # Create develop branch on remote first
+        git = Git(in_repo.paths.root, quiet=True)
+        git.run("checkout -b develop")
+        git.run("push -u origin develop")
+        git.run("checkout main")
+
         in_repo.init("--branch develop")
 
         assert (in_repo.peer_dir / "worktrees" / "develop").is_dir()
@@ -374,6 +380,14 @@ class TestInitPeerPrerequisites:
 
 class TestInitPeerEdgeCases:
     """Peer mode edge cases."""
+
+    def test_nonexistent_branch_fails(self, in_repo):
+        with pytest.raises(CommandError) as exc_info:
+            in_repo.init("--branch nonexistent")
+
+        assert "nonexistent" in str(exc_info.value).lower()
+        # Peer dir should not be created
+        assert not in_repo.peer_dir.exists()
 
     def test_works_from_subdirectory(self, in_repo):
         subdir = in_repo.paths.root / "src"
