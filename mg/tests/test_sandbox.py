@@ -63,15 +63,15 @@ class TestSandboxCtx:
 
     def test_ctx_has_called_from(self):
         sandbox = create_sandbox()
-        assert sandbox.ctx.called_from is not None
-        assert sandbox.ctx.called_from == sandbox._root
+        assert sandbox.ctx.paths.called_from is not None
+        assert sandbox.ctx.paths.called_from == sandbox._root
 
     def test_ctx_called_from_reflects_cd(self):
         sandbox = create_sandbox()
         subdir = sandbox._root / "subdir"
         subdir.mkdir()
         sandbox.cd("subdir")
-        assert sandbox.ctx.called_from == subdir
+        assert sandbox.ctx.paths.called_from == subdir
 
 
 class TestSandboxCd:
@@ -133,7 +133,7 @@ class TestSandboxRun:
     def test_run_ctx_has_called_from(self, commands):
         sandbox = create_sandbox()
         ctx = sandbox.run("simple", commands)
-        assert ctx.called_from == sandbox._root
+        assert ctx.paths.called_from == sandbox._root
 
     def test_run_ctx_called_from_reflects_cd(self, commands):
         sandbox = create_sandbox()
@@ -141,7 +141,7 @@ class TestSandboxRun:
         subdir.mkdir()
         sandbox.cd("subdir")
         ctx = sandbox.run("simple", commands)
-        assert ctx.called_from == subdir
+        assert ctx.paths.called_from == subdir
 
 
 class TestSandboxCleanup:

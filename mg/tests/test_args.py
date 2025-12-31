@@ -1,12 +1,16 @@
 """Tests for mg.args module."""
 
 import pytest
+from pathlib import Path
 from unittest.mock import Mock
 
 from mg import cmd
 from mg.args import build_ctx
 from mg.routing import RouteMatch, ParamCapture
 from mg.loader import Command
+
+# Mock pkg_root for tests
+MOCK_PKG_ROOT = Path("/fake/pkg")
 
 
 def make_command(flags: list[cmd.Flag] | None = None) -> Command:
@@ -24,7 +28,7 @@ class TestBuildCtxBasic:
 
     def test_returns_ctx(self):
         """Returns a Ctx instance."""
-        route = RouteMatch(file=Mock())
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT)
         command = make_command()
 
         ctx = build_ctx(route, command)
@@ -34,24 +38,24 @@ class TestBuildCtxBasic:
 
     def test_rest_populated(self):
         """Rest args are populated from route."""
-        route = RouteMatch(file=Mock(), rest=["a", "b", "c"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, rest=["a", "b", "c"])
         command = make_command()
 
         ctx = build_ctx(route, command)
 
         assert ctx.args.rest == ["a", "b", "c"]
 
-    def test_called_from_set_to_cwd(self):
-        """called_from is set to current working directory."""
+    def test_paths_called_from_set_to_cwd(self):
+        """paths.called_from is set to current working directory."""
         import os
         from pathlib import Path
 
-        route = RouteMatch(file=Mock())
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT)
         command = make_command()
 
         ctx = build_ctx(route, command)
 
-        assert ctx.called_from == Path(os.getcwd())
+        assert ctx.paths.called_from == Path(os.getcwd())
 
 
 class TestBuildCtxParams:
@@ -61,6 +65,7 @@ class TestBuildCtxParams:
         """Route params are added to args values."""
         route = RouteMatch(
             file=Mock(),
+            pkg_root=MOCK_PKG_ROOT,
             params={"name": ParamCapture(value="alice", resolver="name", explicit_resolver=False)},
         )
         command = make_command()
@@ -73,6 +78,7 @@ class TestBuildCtxParams:
         """Params are resolved via resolve callback."""
         route = RouteMatch(
             file=Mock(),
+            pkg_root=MOCK_PKG_ROOT,
             params={"mind": ParamCapture(value="forge", resolver="mind", explicit_resolver=False)},
         )
         command = make_command()
@@ -93,6 +99,7 @@ class TestBuildCtxParams:
         """Multiple params are all resolved."""
         route = RouteMatch(
             file=Mock(),
+            pkg_root=MOCK_PKG_ROOT,
             params={
                 "mind": ParamCapture(value="forge", resolver="mind", explicit_resolver=False),
                 "target": ParamCapture(value="specs", resolver="mind", explicit_resolver=True),
@@ -120,7 +127,7 @@ class TestBuildCtxBooleanFlags:
 
     def test_boolean_flag_present(self):
         """Boolean flag present sets True."""
-        route = RouteMatch(file=Mock(), raw_flags=["--verbose"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--verbose"])
         command = make_command(flags=[cmd.Flag("verbose", type=bool)])
 
         ctx = build_ctx(route, command)
@@ -130,7 +137,7 @@ class TestBuildCtxBooleanFlags:
 
     def test_boolean_flag_absent(self):
         """Boolean flag absent means not in args."""
-        route = RouteMatch(file=Mock(), raw_flags=[])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=[])
         command = make_command(flags=[cmd.Flag("verbose", type=bool)])
 
         ctx = build_ctx(route, command)
@@ -143,7 +150,7 @@ class TestBuildCtxValueFlags:
 
     def test_single_value_flag(self):
         """Flag with single value."""
-        route = RouteMatch(file=Mock(), raw_flags=["--file", "path.txt"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--file", "path.txt"])
         command = make_command(flags=[cmd.Flag("file")])
 
         ctx = build_ctx(route, command)
@@ -152,7 +159,7 @@ class TestBuildCtxValueFlags:
 
     def test_flag_with_equals_syntax(self):
         """Flag with --flag=value syntax."""
-        route = RouteMatch(file=Mock(), raw_flags=["--file=path.txt"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--file=path.txt"])
         command = make_command(flags=[cmd.Flag("file")])
 
         ctx = build_ctx(route, command)
@@ -161,7 +168,7 @@ class TestBuildCtxValueFlags:
 
     def test_multi_value_flag(self):
         """Flag accepting multiple values."""
-        route = RouteMatch(file=Mock(), raw_flags=["--include", "a", "b", "c"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--include", "a", "b", "c"])
         command = make_command(flags=[cmd.Flag("include", max_args=None)])
 
         ctx = build_ctx(route, command)
@@ -171,7 +178,7 @@ class TestBuildCtxValueFlags:
     def test_multi_value_stops_at_next_flag(self):
         """Multi-value flag stops consuming at next flag."""
         route = RouteMatch(
-            file=Mock(), raw_flags=["--include", "a", "b", "--verbose"]
+            file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--include", "a", "b", "--verbose"]
         )
         command = make_command(
             flags=[
@@ -187,7 +194,7 @@ class TestBuildCtxValueFlags:
 
     def test_flag_with_resolver(self):
         """Flag values are resolved when resolver specified."""
-        route = RouteMatch(file=Mock(), raw_flags=["--reply-to", "msg-123"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--reply-to", "msg-123"])
         command = make_command(flags=[cmd.Flag("reply-to", resolver="message")])
 
         resolved_msg = Mock(name="Message")
@@ -208,7 +215,7 @@ class TestBuildCtxFlagErrors:
 
     def test_unknown_flag_raises(self):
         """Unknown flag raises error."""
-        route = RouteMatch(file=Mock(), raw_flags=["--unknown"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--unknown"])
         command = make_command(flags=[])
 
         with pytest.raises(ValueError, match="Unknown flag.*unknown"):
@@ -216,7 +223,7 @@ class TestBuildCtxFlagErrors:
 
     def test_missing_required_value_raises(self):
         """Flag missing required value raises error."""
-        route = RouteMatch(file=Mock(), raw_flags=["--file"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--file"])
         command = make_command(flags=[cmd.Flag("file")])  # min_args=1 by default
 
         with pytest.raises(ValueError, match="requires.*value"):
@@ -224,7 +231,7 @@ class TestBuildCtxFlagErrors:
 
     def test_too_many_values_raises(self):
         """Flag with too many values raises error."""
-        route = RouteMatch(file=Mock(), raw_flags=["--file", "a", "b"])
+        route = RouteMatch(file=Mock(), pkg_root=MOCK_PKG_ROOT, raw_flags=["--file", "a", "b"])
         command = make_command(flags=[cmd.Flag("file")])  # max_args=1 by default
 
         with pytest.raises(ValueError, match="too many values"):

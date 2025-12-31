@@ -126,7 +126,10 @@ def routes_to(
             raise AssertionError(
                 f"Expected no route for '{command_string}', but found {result.file}"
             )
-        return RouteMatch(file=None, params={}, rest=[], raw_flags=[])
+        # Return RouteMatch with file=None for negative tests
+        commands_dir = Path(commands.__file__).parent
+        pkg_root = commands_dir.parent
+        return RouteMatch(file=None, pkg_root=pkg_root, params={}, rest=[], raw_flags=[])
 
 
 def parse(
@@ -255,19 +258,22 @@ class Sandbox:
         self._config = config
         self._cwd = self._root
 
-        # Discover or use provided pkg
+        # Discover or use provided pkg_root
         if config.pkg_root is not None:
-            pkg = PkgPaths(root=config.pkg_root)
+            pkg_root = config.pkg_root
         else:
-            pkg = _find_pkg_paths()
+            pkg_root = _find_pkg_paths().root
 
-        # Create initial context with paths and called_from
+        # Create initial context with paths
         container = config.container or Container()
         self._ctx = cmd.Ctx(
             args=cmd.Args(),
+            paths=Paths(
+                _called_from=self._cwd,
+                _pkg_root=pkg_root,
+                _mg_root=self._root,
+            ),
             container=container,
-            called_from=self._cwd,
-            paths=Paths(root=self._root, pkg=pkg),
         )
 
         # Automatic cleanup when Sandbox is garbage collected
@@ -307,8 +313,9 @@ class Sandbox:
         ctx = parse(command, commands)
         loaded_command = ctx.container.resolve(Command)
         ctx.container = self._ctx.container
-        ctx.paths = self._ctx.paths
-        ctx.called_from = self._cwd
+        # Update paths with sandbox values
+        ctx.paths._mg_root = self._ctx.paths._mg_root
+        ctx.paths._called_from = self._cwd
 
         if setup:
             loaded_command.setup(ctx)
@@ -328,7 +335,7 @@ class Sandbox:
             self._cwd = path
         else:
             self._cwd = (self._cwd / path).resolve()
-        self._ctx.called_from = self._cwd
+        self._ctx.paths._called_from = self._cwd
 
 
 def create_sandbox(config: SandboxConfig | None = None) -> Sandbox:

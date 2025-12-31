@@ -109,32 +109,22 @@ class Ctx:
 
     Attributes:
         args: Parsed command arguments and flags.
+        paths: Paths object with called_from, pkg, root, etc.
+            - paths.called_from: Always available.
+            - paths.pkg: Always available (from command's module location).
+            - paths.root, paths.project: Require `mg start`.
         container: Dependency injection container.
-        called_from: Directory where the command was invoked.
-            Always available. Use this for commands that operate on the
-            caller's directory (like `init`).
-        paths: Paths within an mg project.
-            - paths.pkg: Set dynamically based on the command's location.
-              Works without `mg start` for core commands.
-            - paths.root, paths.project, paths.user: Require `mg start`.
-
-    TODO: Refactor so that `paths` is computed from explicit base fields (root, pkg_root).
-    All base fields should be required parameters (even if set to None) to make
-    construction explicit. Currently paths is set directly which is error-prone.
     """
 
     args: Args
+    paths: "Paths"
     container: Container = field(default_factory=Container)
-    called_from: "Path | None" = None
-    paths: "Paths | None" = None
 
     @property
     def git(self) -> "Git":
         """Get a Git instance for the project root."""
         from mg.git import Git
 
-        if self.paths is None:
-            raise RuntimeError("Cannot access git: paths not set")
         return Git(self.paths.root)
 
     @property
@@ -142,8 +132,6 @@ class Ctx:
         """Get a TemplateRenderer for the current package's assets."""
         from mg.templates import TemplateRenderer
 
-        if self.paths is None:
-            raise RuntimeError("Cannot access templates: paths not set")
         return TemplateRenderer(self.paths.pkg.assets)
 
     def print(self, text: str = "") -> None:

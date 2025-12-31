@@ -5,6 +5,16 @@ from pathlib import Path
 
 from mg.loader import load_command, Command
 from mg import cmd
+from mg.paths import Paths
+
+
+def make_paths() -> Paths:
+    """Create a minimal Paths for testing."""
+    return Paths(
+        _called_from=Path("/test/cwd"),
+        _pkg_root=Path("/test/pkg"),
+        _mg_root=None,
+    )
 
 
 class TestLoadCommand:
@@ -102,7 +112,7 @@ def execute(ctx):
     pass
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         command.setup(ctx)
         assert command._module.setup_called is True
@@ -120,7 +130,7 @@ def execute(ctx):
     pass
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         # Should not raise
         command.setup(ctx)
@@ -144,7 +154,7 @@ def teardown(ctx):
     teardown_called = True
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         command.teardown(ctx)
         assert command._module.teardown_called is True
@@ -162,7 +172,7 @@ def execute(ctx):
     pass
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         # Should not raise
         command.teardown(ctx)
@@ -188,7 +198,7 @@ def teardown(ctx):
     calls.append("teardown")
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         command.setup(ctx)
         command.execute(ctx)
@@ -222,7 +232,7 @@ def define():
     return cmd.Def(description="No execute")
 """)
         command = load_command(cmd_file)
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         with pytest.raises(AttributeError):
             command.execute(ctx)

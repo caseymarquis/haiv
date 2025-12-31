@@ -52,9 +52,12 @@ class RouteMatch:
 
     At the routing layer, flags are not parsed - they're collected raw.
     Flag parsing happens in the parse() layer.
+
+    file is None when no route was found (exists=False tests).
     """
 
-    file: Path
+    file: Path | None
+    pkg_root: Path
     params: dict[str, ParamCapture] = field(default_factory=dict)
     rest: list[str] = field(default_factory=list)
     raw_flags: list[str] = field(default_factory=list)
@@ -70,14 +73,16 @@ def find_route(command_string: str, commands: ModuleType) -> RouteMatch | None:
     Returns:
         RouteMatch with file path and captured params, or None if not found.
     """
+    commands_dir = Path(commands.__file__).parent
+    pkg_root = commands_dir.parent
+
     paths = paths_from_module(commands)
-    result = find_route_in_paths(command_string, paths)
+    result = find_route_in_paths(command_string, paths, pkg_root=pkg_root)
 
     if result is None:
         return None
 
     # Convert relative path to absolute
-    commands_dir = Path(commands.__file__).parent
     result.file = commands_dir / result.file
     return result
 
@@ -97,7 +102,13 @@ def paths_from_module(commands: ModuleType) -> list[Path]:
     return paths
 
 
-def find_route_in_paths(command_string: str, paths: list[Path]) -> RouteMatch | None:
+def find_route_in_paths(
+    command_string: str,
+    paths: list[Path],
+    *,
+    # Default allows tests to call without pkg_root; find_route always provides it
+    pkg_root: Path = Path(),
+) -> RouteMatch | None:
     """Find matching route from a list of paths.
 
     This is the core routing logic, operating on path lists for testability.
@@ -105,6 +116,7 @@ def find_route_in_paths(command_string: str, paths: list[Path]) -> RouteMatch | 
     Args:
         command_string: Space-separated command
         paths: List of relative paths to .py files
+        pkg_root: Root of the package containing commands (set by find_route)
 
     Returns:
         RouteMatch or None if no match found.
@@ -133,6 +145,7 @@ def find_route_in_paths(command_string: str, paths: list[Path]) -> RouteMatch | 
         file_path, params, rest = literal_matches[0]
         return RouteMatch(
             file=file_path,
+            pkg_root=pkg_root,
             params=params,
             rest=rest,
             raw_flags=raw_flags,
@@ -153,6 +166,7 @@ def find_route_in_paths(command_string: str, paths: list[Path]) -> RouteMatch | 
     file_path, params, rest = matches[0]
     return RouteMatch(
         file=file_path,
+        pkg_root=pkg_root,
         params=params,
         rest=rest,
         raw_flags=raw_flags,

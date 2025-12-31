@@ -29,16 +29,48 @@ class PkgPaths:
 
 @dataclass
 class Paths:
-    """Standard paths for an mg project."""
+    """Standard paths for an mg project.
 
-    root: Path
-    pkg: PkgPaths
+    Constructed with base paths; properties throw clear errors if the
+    required base path wasn't provided. All parameters are required but
+    can be None.
+
+    Args:
+        _called_from: Directory where the command was invoked.
+        _pkg_root: Root of the package containing the command (e.g., mg_core/).
+        _mg_root: Root of the mg project (e.g., some-project-mg/).
+    """
+
+    _called_from: Path | None
+    _pkg_root: Path | None
+    _mg_root: Path | None
 
     # TODO: Add user: PkgPaths after user identification is implemented
     # user will point to users/{current_user}/src/mg_user/
 
     # TODO: Add state: Path after user identification is implemented
     # state will point to users/{current_user}/src/mg_user/state/
+
+    @property
+    def called_from(self) -> Path:
+        """Directory where the command was invoked."""
+        if self._called_from is None:
+            raise RuntimeError("called_from not set. This is a bug in mg.")
+        return self._called_from
+
+    @property
+    def pkg(self) -> PkgPaths:
+        """Package paths for the command's package."""
+        if self._pkg_root is None:
+            raise RuntimeError("Package root not set. This is a bug in mg.")
+        return PkgPaths(root=self._pkg_root)
+
+    @property
+    def root(self) -> Path:
+        """The mg project root directory."""
+        if self._mg_root is None:
+            raise RuntimeError("mg project root not set. Run 'mg start' first.")
+        return self._mg_root
 
     @property
     def project(self) -> PkgPaths:

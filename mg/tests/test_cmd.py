@@ -1,7 +1,19 @@
 """Tests for cmd module - Args, Ctx, Def."""
 
+from pathlib import Path
+
 import pytest
 from mg import cmd
+from mg.paths import Paths
+
+
+def make_paths() -> Paths:
+    """Create a minimal Paths for testing."""
+    return Paths(
+        _called_from=Path("/test/cwd"),
+        _pkg_root=Path("/test/pkg"),
+        _mg_root=None,
+    )
 
 
 class TestArgs:
@@ -102,19 +114,19 @@ class TestCtx:
     def test_ctx_has_args(self):
         """Ctx has args property."""
         args = cmd.Args()
-        ctx = cmd.Ctx(args=args)
+        ctx = cmd.Ctx(args=args, paths=make_paths())
         assert ctx.args is args
 
     def test_ctx_has_container(self):
         """Ctx has container for dependency injection."""
         from punq import Container
 
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
         assert isinstance(ctx.container, Container)
 
     def test_ctx_container_can_register_and_resolve(self):
         """Container supports register/resolve."""
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
 
         class MockDB:
             pass
@@ -125,7 +137,7 @@ class TestCtx:
 
     def test_ctx_print_outputs(self, capsys):
         """Ctx.print() outputs text."""
-        ctx = cmd.Ctx(args=cmd.Args())
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
         ctx.print("hello")
         captured = capsys.readouterr()
         assert captured.out == "hello\n"
