@@ -33,9 +33,9 @@ def _handle_error(exc: Exception) -> None:
     log_path = _log_exception(exc)
 
     if isinstance(exc, CommandError):
-        print(str(exc), file=sys.stderr)
+        print(f"---\n{exc}", file=sys.stderr)
     else:
-        print(f"An unexpected error occurred: {exc}", file=sys.stderr)
+        print(f"---\nAn unexpected error occurred: {exc}", file=sys.stderr)
 
     if log_path:
         print(f"\n---\nDetails: {log_path}", file=sys.stderr)
