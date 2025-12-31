@@ -240,8 +240,8 @@ def _init_peer_mode(
     # Set up mg structure in peer directory
     git = Git(peer_dir, quiet=quiet)
 
-    # Create mg-state orphan branch (working tree is already empty)
-    git.run("checkout --orphan mg-state", intent="create mg-state orphan branch")
+    # Create mg-state orphan branch (switch --orphan clears index and working tree)
+    git.run("switch --orphan mg-state", intent="create mg-state orphan branch")
 
     # Create CLAUDE.md and initial commit
     ctx.templates.write("init/CLAUDE.md.j2", peer_dir / "CLAUDE.md")
