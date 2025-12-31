@@ -229,6 +229,19 @@ def _init_peer_mode(
             f"Available branches can be listed with: git ls-remote --heads origin"
         )
 
+    # Check if local branch is ahead of remote (unpushed commits)
+    ahead_count = _commits_ahead_of_remote(source_git, target_branch)
+    if ahead_count > 0:
+        if force:
+            if not quiet:
+                ctx.print(f"Warning: {ahead_count} unpushed commit(s) will not be in the clone.")
+        else:
+            raise CommandError(
+                f"Branch '{target_branch}' is {ahead_count} commit(s) ahead of remote.\n\n"
+                f"Push your changes first, or use --force to proceed anyway.\n"
+                f"(Unpushed commits won't be in the clone.)"
+            )
+
     # Clone from remote (--no-checkout to skip checking out files)
     if not quiet:
         ctx.print(f"Cloning from {remote_url}...")
@@ -284,3 +297,15 @@ def _remote_has_branch(git: Git, remote_url: str, branch: str) -> bool:
         return bool(output.strip())
     except Exception:
         return False
+
+
+def _commits_ahead_of_remote(git: Git, branch: str) -> int:
+    """Count how many commits the local branch is ahead of origin."""
+    try:
+        output = git.run(
+            f"rev-list --count origin/{branch}..{branch}",
+            intent=f"check if '{branch}' is ahead of remote",
+        )
+        return int(output.strip())
+    except Exception:
+        return 0

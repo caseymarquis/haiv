@@ -373,6 +373,29 @@ class TestInitPeerPrerequisites:
 
         assert in_repo.peer_dir.is_dir()
 
+    def test_fails_when_branch_ahead_of_remote(self, in_repo):
+        # Create a local commit that isn't pushed
+        git = Git(in_repo.paths.root, quiet=True)
+        (in_repo.paths.root / "local.txt").write_text("local only")
+        git.run("add local.txt")
+        git.run("commit -m 'Local commit'")
+
+        with pytest.raises(CommandError) as exc_info:
+            in_repo.init()
+
+        assert "ahead" in str(exc_info.value).lower() or "push" in str(exc_info.value).lower()
+
+    def test_force_bypasses_branch_ahead_check(self, in_repo):
+        # Create a local commit that isn't pushed
+        git = Git(in_repo.paths.root, quiet=True)
+        (in_repo.paths.root / "local.txt").write_text("local only")
+        git.run("add local.txt")
+        git.run("commit -m 'Local commit'")
+
+        in_repo.init("--force")
+
+        assert in_repo.peer_dir.is_dir()
+
 
 # =============================================================================
 # Peer Mode: Edge Cases
