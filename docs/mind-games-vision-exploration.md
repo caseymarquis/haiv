@@ -560,6 +560,19 @@ External mg packages are Python dependencies using our file-structure convention
 - uv hardlink cache means shared packages = shared disk space
 - Project and user code have isolated dependency sets
 
+### XDG Base Directory Specification
+
+On Linux, mg follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/) for user-level files outside of project repos:
+
+| Purpose | Environment Variable | Default |
+|---------|---------------------|---------|
+| Config | `$XDG_CONFIG_HOME` | `~/.config/mg/` |
+| Data | `$XDG_DATA_HOME` | `~/.local/share/mg/` |
+| Cache | `$XDG_CACHE_HOME` | `~/.cache/mg/` |
+| Logs/state | `$XDG_STATE_HOME` | `~/.local/state/mg/` |
+
+**TODO:** Audit code that writes to user directories for XDG compliance.
+
 ---
 
 ## Collaboration Model

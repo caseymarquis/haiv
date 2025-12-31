@@ -28,7 +28,7 @@ def execute(ctx: cmd.Ctx) -> None:
     branch = ctx.args.get_one("branch", default_value=None)
 
     # Detect mode: are we in a git repo?
-    git_root = _find_git_root(ctx.paths.root)
+    git_root = _find_git_root(ctx.called_from)
 
     if git_root:
         _init_peer_mode(ctx, git_root=git_root, quiet=quiet, force=force, branch=branch)
@@ -101,7 +101,7 @@ def _init_fresh_mode(
     branch: str,
 ) -> None:
     """Initialize mg in a directory that's not in a git repo."""
-    root = ctx.paths.root
+    root = ctx.called_from
 
     # Check if directory is non-empty
     if _is_empty_dir(root):
@@ -123,7 +123,7 @@ def _init_fresh_empty(
     branch: str,
 ) -> None:
     """Initialize mg in an empty directory."""
-    root = ctx.paths.root
+    root = ctx.called_from
     git = Git(root, quiet=quiet)
 
     _init_mg_structure(git, ctx)
@@ -153,7 +153,7 @@ def _init_fresh_nonempty(
     branch: str,
 ) -> None:
     """Initialize mg in a non-empty directory (--force required)."""
-    root = ctx.paths.root
+    root = ctx.called_from
     git = Git(root, quiet=quiet)
 
     # Collect existing files before creating structure

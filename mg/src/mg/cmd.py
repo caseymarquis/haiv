@@ -105,10 +105,27 @@ class Args:
 
 @dataclass
 class Ctx:
-    """Command context passed to execute()."""
+    """Command context passed to execute().
+
+    Attributes:
+        args: Parsed command arguments and flags.
+        container: Dependency injection container.
+        called_from: Directory where the command was invoked.
+            Always available. Use this for commands that operate on the
+            caller's directory (like `init`).
+        paths: Paths within an mg project.
+            - paths.pkg: Set dynamically based on the command's location.
+              Works without `mg start` for core commands.
+            - paths.root, paths.project, paths.user: Require `mg start`.
+
+    TODO: Refactor so that `paths` is computed from explicit base fields (root, pkg_root).
+    All base fields should be required parameters (even if set to None) to make
+    construction explicit. Currently paths is set directly which is error-prone.
+    """
 
     args: Args
     container: Container = field(default_factory=Container)
+    called_from: "Path | None" = None
     paths: "Paths | None" = None
 
     @property

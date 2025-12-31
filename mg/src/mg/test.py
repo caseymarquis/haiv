@@ -261,11 +261,12 @@ class Sandbox:
         else:
             pkg = _find_pkg_paths()
 
-        # Create initial context with paths
+        # Create initial context with paths and called_from
         container = config.container or Container()
         self._ctx = cmd.Ctx(
             args=cmd.Args(),
             container=container,
+            called_from=self._cwd,
             paths=Paths(root=self._root, pkg=pkg),
         )
 
@@ -307,6 +308,7 @@ class Sandbox:
         loaded_command = ctx.container.resolve(Command)
         ctx.container = self._ctx.container
         ctx.paths = self._ctx.paths
+        ctx.called_from = self._cwd
 
         if setup:
             loaded_command.setup(ctx)
@@ -326,6 +328,7 @@ class Sandbox:
             self._cwd = path
         else:
             self._cwd = (self._cwd / path).resolve()
+        self._ctx.called_from = self._cwd
 
 
 def create_sandbox(config: SandboxConfig | None = None) -> Sandbox:

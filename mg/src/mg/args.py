@@ -3,7 +3,9 @@
 Converts route matches + flag definitions into a populated Ctx.
 """
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 from mg import cmd
@@ -75,7 +77,7 @@ def build_ctx(
     flag_defs = {f.name: f for f in definition.flags}
     _parse_flags(route.raw_flags, flag_defs, args, resolve)
 
-    return cmd.Ctx(args=args)
+    return cmd.Ctx(args=args, called_from=Path(os.getcwd()))
 
 
 def _parse_flags(

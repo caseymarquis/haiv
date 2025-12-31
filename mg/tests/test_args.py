@@ -41,6 +41,18 @@ class TestBuildCtxBasic:
 
         assert ctx.args.rest == ["a", "b", "c"]
 
+    def test_called_from_set_to_cwd(self):
+        """called_from is set to current working directory."""
+        import os
+        from pathlib import Path
+
+        route = RouteMatch(file=Mock())
+        command = make_command()
+
+        ctx = build_ctx(route, command)
+
+        assert ctx.called_from == Path(os.getcwd())
+
 
 class TestBuildCtxParams:
     """Tests for parameter resolution."""
