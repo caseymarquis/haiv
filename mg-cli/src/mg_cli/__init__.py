@@ -5,6 +5,9 @@ import sys
 import traceback
 from pathlib import Path
 
+from mg import env
+from mg.paths import get_mg_root
+
 __version__ = "0.1.0"
 
 
@@ -80,8 +83,11 @@ def main():
         sys.exit(1)
 
     try:
+        mg_root = get_mg_root(cwd=Path.cwd())
+        os.environ[env.MG_ROOT] = str(mg_root)
+
         command = load_command(route.file)
-        ctx = build_ctx(route, command)
+        ctx = build_ctx(route, command, mg_root=mg_root)
         run_command(command, ctx)
     except Exception as exc:
         _handle_error(exc)

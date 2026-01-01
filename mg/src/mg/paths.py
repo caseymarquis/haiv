@@ -2,8 +2,73 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
+
+from mg import env
+
+
+def _is_valid_mg_root(path: Path) -> bool:
+    """Check if a directory is a valid mg root.
+
+    A valid mg root has both a .git folder and a worktrees folder.
+    """
+    return (path / ".git").is_dir() and (path / "worktrees").is_dir()
+
+
+def get_mg_root(cwd: Path) -> Path:
+    """Get mg root from environment variable or by searching upward from cwd.
+
+    Resolution order:
+    1. If MG_ROOT env var is set, validate and return it
+    2. Otherwise, walk up from cwd looking for a valid mg root
+
+    Args:
+        cwd: Current working directory to search from if env var not set
+
+    Returns:
+        Path to the mg root directory
+
+    Raises:
+        ValueError: If MG_ROOT is set but invalid, or if no mg root can be found.
+    """
+    value = os.environ.get(env.MG_ROOT, "")
+
+    if value:
+        path = Path(value)
+        if not path.is_absolute():
+            raise ValueError(
+                f"{env.MG_ROOT} must be an absolute path, got: {value}\n"
+                "Run 'mg start' in your mg-managed repository root to set this correctly."
+            )
+        if not path.exists():
+            raise ValueError(
+                f"{env.MG_ROOT} path does not exist: {value}\n"
+                "Run 'mg start' in your mg-managed repository root to set this correctly."
+            )
+        if not _is_valid_mg_root(path):
+            raise ValueError(
+                f"{env.MG_ROOT} is not a valid mg root (missing .git or worktrees): {value}\n"
+                "Run 'mg start' in your mg-managed repository root to set this correctly."
+            )
+        return path
+
+    # Walk up from cwd looking for mg root
+    current = cwd.resolve()
+    while current != current.parent:
+        if _is_valid_mg_root(current):
+            return current
+        current = current.parent
+
+    # Check root as well
+    if _is_valid_mg_root(current):
+        return current
+
+    raise ValueError(
+        "Could not find mg root.\n"
+        "Run 'mg start' in your mg-managed repository root, or set MG_ROOT."
+    )
 
 
 @dataclass

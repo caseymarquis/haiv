@@ -93,3 +93,124 @@ class TestPaths:
 
 # TODO: Add paths.user after user identification is implemented
 # paths.user will point to users/{current_user}/src/mg_user/
+
+
+class TestIsValidMgRoot:
+    """Tests for _is_valid_mg_root helper."""
+
+    def test_valid_when_has_git_and_worktrees(self, tmp_path):
+        """Valid mg root has .git and worktrees directories."""
+        from mg.paths import _is_valid_mg_root
+
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "worktrees").mkdir()
+        assert _is_valid_mg_root(tmp_path) is True
+
+    def test_invalid_when_missing_git(self, tmp_path):
+        """Invalid if .git is missing."""
+        from mg.paths import _is_valid_mg_root
+
+        (tmp_path / "worktrees").mkdir()
+        assert _is_valid_mg_root(tmp_path) is False
+
+    def test_invalid_when_missing_worktrees(self, tmp_path):
+        """Invalid if worktrees is missing."""
+        from mg.paths import _is_valid_mg_root
+
+        (tmp_path / ".git").mkdir()
+        assert _is_valid_mg_root(tmp_path) is False
+
+    def test_invalid_when_empty(self, tmp_path):
+        """Invalid if directory is empty."""
+        from mg.paths import _is_valid_mg_root
+
+        assert _is_valid_mg_root(tmp_path) is False
+
+
+class TestGetMgRoot:
+    """Tests for get_mg_root function."""
+
+    @pytest.fixture
+    def valid_mg_root(self, tmp_path):
+        """Create a valid mg root directory."""
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "worktrees").mkdir()
+        return tmp_path
+
+    # --- Environment variable tests ---
+
+    def test_returns_env_var_when_valid(self, valid_mg_root, monkeypatch):
+        """Returns MG_ROOT env var when set and valid."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.setenv(env.MG_ROOT, str(valid_mg_root))
+        assert get_mg_root(cwd=Path("/some/other/path")) == valid_mg_root
+
+    def test_raises_if_env_not_absolute(self, tmp_path, monkeypatch):
+        """Raises if MG_ROOT is not absolute."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.setenv(env.MG_ROOT, "relative/path")
+        with pytest.raises(ValueError, match="must be an absolute path"):
+            get_mg_root(cwd=tmp_path)
+
+    def test_raises_if_env_path_missing(self, tmp_path, monkeypatch):
+        """Raises if MG_ROOT path doesn't exist."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.setenv(env.MG_ROOT, "/nonexistent/path")
+        with pytest.raises(ValueError, match="path does not exist"):
+            get_mg_root(cwd=tmp_path)
+
+    def test_raises_if_env_not_valid_mg_root(self, tmp_path, monkeypatch):
+        """Raises if MG_ROOT exists but is not a valid mg root."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.setenv(env.MG_ROOT, str(tmp_path))
+        with pytest.raises(ValueError, match="not a valid mg root"):
+            get_mg_root(cwd=tmp_path)
+
+    # --- Walking upward tests ---
+
+    def test_finds_mg_root_in_cwd(self, valid_mg_root, monkeypatch):
+        """Finds mg root when cwd is the root."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.delenv(env.MG_ROOT, raising=False)
+        assert get_mg_root(cwd=valid_mg_root) == valid_mg_root
+
+    def test_finds_mg_root_in_parent(self, valid_mg_root, monkeypatch):
+        """Finds mg root by walking up from subdirectory."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        subdir = valid_mg_root / "some" / "nested" / "dir"
+        subdir.mkdir(parents=True)
+
+        monkeypatch.delenv(env.MG_ROOT, raising=False)
+        assert get_mg_root(cwd=subdir) == valid_mg_root
+
+    def test_raises_when_no_mg_root_found(self, tmp_path, monkeypatch):
+        """Raises when no mg root can be found walking up."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.delenv(env.MG_ROOT, raising=False)
+        with pytest.raises(ValueError, match="Could not find mg root"):
+            get_mg_root(cwd=tmp_path)
+
+    # --- Error message tests ---
+
+    def test_error_suggests_mg_start(self, tmp_path, monkeypatch):
+        """Error messages guide user to run mg start."""
+        from mg import env
+        from mg.paths import get_mg_root
+
+        monkeypatch.delenv(env.MG_ROOT, raising=False)
+        with pytest.raises(ValueError, match="mg start"):
+            get_mg_root(cwd=tmp_path)

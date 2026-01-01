@@ -41,6 +41,7 @@ def build_ctx(
     route: RouteMatch,
     command: Command,
     *,
+    mg_root: Path | None = None,
     resolve: Callable[[ResolveRequest], Any] | None = None,
 ) -> cmd.Ctx:
     """Build a Ctx from a route match and command definition.
@@ -48,6 +49,7 @@ def build_ctx(
     Args:
         route: The matched route with params, rest, and raw_flags
         command: The loaded command (for flag definitions)
+        mg_root: Root of the mg-managed repo, if known
         resolve: Optional callback to resolve param/flag values to objects
 
     Returns:
@@ -81,7 +83,7 @@ def build_ctx(
     paths = Paths(
         _called_from=Path(os.getcwd()),
         _pkg_root=route.pkg_root,
-        _mg_root=None,
+        _mg_root=mg_root,
     )
     return cmd.Ctx(args=args, paths=paths)
 
