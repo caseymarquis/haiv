@@ -3,12 +3,49 @@
 import os
 import sys
 import traceback
+from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
+from typing import cast
 
 from mg import env
-from mg.paths import get_mg_root
+from mg.paths import get_mg_root, Paths
+from mg.routing import find_route, RouteMatch
+from mg.loader import load_command, load_commands_module
+from mg.args import build_ctx
+from mg.runner import run_command
 
 __version__ = "0.1.0"
+
+# Cached mg_root lookup
+_mg_root: Path | None = None
+_mg_root_error: Exception | None = None
+
+
+def _get_mg_root_cached() -> Path:
+    """Get mg_root, caching the result (success or failure)."""
+    global _mg_root, _mg_root_error
+
+    if _mg_root is None and _mg_root_error is None:
+        try:
+            _mg_root = get_mg_root(cwd=Path.cwd())
+        except Exception as e:
+            _mg_root_error = e
+
+    if _mg_root_error is not None:
+        raise _mg_root_error
+
+    return cast(Path, _mg_root)
+
+
+@dataclass
+class CommandSource:
+    """Tracks a command source and whether it was checked."""
+
+    name: str
+    path: str
+    checked: bool
+    error: str | None = None
 
 
 def _log_exception(exc: Exception) -> Path | None:
@@ -48,25 +85,102 @@ def _handle_error(exc: Exception) -> None:
     sys.exit(1)
 
 
+def _try_source(
+    command_string: str,
+    name: str,
+    path: str,
+    get_commands: callable,
+) -> tuple[RouteMatch | None, CommandSource]:
+    """Try to find a command in a single source.
+
+    Args:
+        command_string: The command to find
+        name: Source name for error reporting
+        path: Source path for error reporting
+        get_commands: Callable that returns the commands module
+
+    Returns:
+        (route, source) - route is None if not found or source unavailable
+    """
+    try:
+        commands = get_commands()
+        route = find_route(command_string, commands)
+        return route, CommandSource(name, path, checked=True)
+    except Exception as e:
+        return None, CommandSource(name, path, checked=False, error=str(e))
+
+
+def _get_project_commands() -> ModuleType:
+    """Load mg_project commands module."""
+    mg_root = _get_mg_root_cached()
+    os.environ[env.MG_ROOT] = str(mg_root)
+
+    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root)
+    return load_commands_module(paths.project.commands / "__init__.py")
+
+
+def _find_command(
+    command_string: str,
+) -> tuple[RouteMatch | None, Path | None, list[CommandSource]]:
+    """Try to find a command across all sources.
+
+    Returns:
+        (route, mg_root, sources) - route is None if not found
+    """
+    sources: list[CommandSource] = []
+
+    # Try mg_project first (higher precedence)
+    route, source = _try_source(
+        command_string,
+        "mg_project",
+        "src/mg_project/commands/",
+        _get_project_commands,
+    )
+    sources.append(source)
+    if route is not None:
+        return route, _mg_root, sources
+
+    # Fall back to mg_core (always available)
+    from mg_core import commands as core_commands
+    route, source = _try_source(
+        command_string,
+        "mg_core",
+        "(installed)",
+        lambda: core_commands,
+    )
+    sources.append(source)
+
+    return route, _mg_root, sources
+
+
+def _print_not_found(command_string: str, sources: list[CommandSource]) -> None:
+    """Print helpful error when command not found."""
+    print(f"Unknown command: {command_string}", file=sys.stderr)
+
+    checked = [s for s in sources if s.checked]
+    not_checked = [s for s in sources if not s.checked]
+
+    if checked:
+        print("\nChecked:", file=sys.stderr)
+        for s in checked:
+            print(f"  ✓ {s.name} {s.path}", file=sys.stderr)
+
+    if not_checked:
+        print("\nCould not check:", file=sys.stderr)
+        for s in not_checked:
+            print(f"  ✗ {s.name} {s.path}", file=sys.stderr)
+            if s.error:
+                print(f"    {s.error}", file=sys.stderr)
+
+
 def main():
     """Entry point for mg CLI.
 
-    TODO: This is a bootstrap implementation that only uses mg_core commands.
-    The real implementation needs to discover and merge commands from multiple
-    sources. Load order (later takes precedence over earlier):
-
-    1. Core package (mg_core)
-    2. Installed project packages (via entry points)
-    3. Project package (mg-state/src/mg_project)
-    4. Installed user packages (via entry points)
-    5. User package (mg-state/users/{user}/src/mg_user)
+    Load order (later takes precedence over earlier):
+    1. Core package (mg_core) - always available
+    2. Project package (mg_project) - if in mg-managed repo
+    3. User package (mg_user) - deferred until user identity exists
     """
-    from mg_core import commands
-    from mg.routing import find_route
-    from mg.loader import load_command
-    from mg.args import build_ctx
-    from mg.runner import run_command
-
     prog = Path(sys.argv[0]).name
     args = sys.argv[1:]
 
@@ -77,15 +191,13 @@ def main():
 
     command_string = " ".join(args)
 
-    route = find_route(command_string, commands)
+    route, mg_root, sources = _find_command(command_string)
+
     if route is None:
-        print(f"Unknown command: {command_string}")
+        _print_not_found(command_string, sources)
         sys.exit(1)
 
     try:
-        mg_root = get_mg_root(cwd=Path.cwd())
-        os.environ[env.MG_ROOT] = str(mg_root)
-
         command = load_command(route.file)
         ctx = build_ctx(route, command, mg_root=mg_root)
         run_command(command, ctx)

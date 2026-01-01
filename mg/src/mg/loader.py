@@ -46,6 +46,36 @@ class Command:
             self._module.teardown(ctx)
 
 
+def load_commands_module(init_file: Path) -> ModuleType:
+    """Load a commands package from its __init__.py file.
+
+    This enables loading commands from directories not on sys.path,
+    such as mg_project/commands/ in an mg-managed repo.
+
+    Args:
+        init_file: Path to commands/__init__.py
+
+    Returns:
+        Module with __file__ pointing to init_file
+
+    Raises:
+        FileNotFoundError: If init_file doesn't exist
+        SyntaxError: If file contains invalid Python
+        ImportError: If module can't be loaded
+    """
+    if not init_file.exists():
+        raise FileNotFoundError(f"Commands module not found: {init_file}")
+
+    spec = importlib.util.spec_from_file_location("mg_commands", init_file)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load commands module from {init_file}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+
 def load_command(file: Path) -> Command:
     """Load a command module from a .py file.
 

@@ -68,6 +68,9 @@ def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
     mg_project = root / "src" / "mg_project"
     ctx.templates.write("init/src/mg_project/__init__.py.j2", mg_project / "__init__.py")
 
+    commands = mg_project / "commands"
+    ctx.templates.write("init/src/mg_project/commands/__init__.py.j2", commands / "__init__.py")
+
     tests = root / "tests"
     ctx.templates.write("init/tests/__init__.py.j2", tests / "__init__.py")
     ctx.templates.write("init/tests/test_example.py.j2", tests / "test_example.py")

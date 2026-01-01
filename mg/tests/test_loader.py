@@ -2,8 +2,9 @@
 
 import pytest
 from pathlib import Path
+from types import ModuleType
 
-from mg.loader import load_command, Command
+from mg.loader import load_command, load_commands_module, Command
 from mg import cmd
 from mg.paths import Paths
 
@@ -236,3 +237,65 @@ def define():
 
         with pytest.raises(AttributeError):
             command.execute(ctx)
+
+
+class TestLoadCommandsModule:
+    """Tests for load_commands_module() - loading a commands package."""
+
+    def test_raises_if_file_missing(self, tmp_path):
+        """Raises FileNotFoundError when __init__.py doesn't exist."""
+        missing = tmp_path / "commands" / "__init__.py"
+        with pytest.raises(FileNotFoundError):
+            load_commands_module(missing)
+
+    def test_returns_module_when_exists(self, tmp_path):
+        """Returns a ModuleType when file exists."""
+        commands_dir = tmp_path / "commands"
+        commands_dir.mkdir()
+        init_file = commands_dir / "__init__.py"
+        init_file.write_text("# commands package")
+
+        result = load_commands_module(init_file)
+        assert isinstance(result, ModuleType)
+
+    def test_module_has_correct_file_attr(self, tmp_path):
+        """Module's __file__ points to the init file."""
+        commands_dir = tmp_path / "commands"
+        commands_dir.mkdir()
+        init_file = commands_dir / "__init__.py"
+        init_file.write_text("# commands package")
+
+        result = load_commands_module(init_file)
+        assert result.__file__ == str(init_file)
+
+    def test_raises_on_syntax_error(self, tmp_path):
+        """Raises SyntaxError for invalid Python."""
+        commands_dir = tmp_path / "commands"
+        commands_dir.mkdir()
+        init_file = commands_dir / "__init__.py"
+        init_file.write_text("this is not valid python {{{{")
+
+        with pytest.raises(SyntaxError):
+            load_commands_module(init_file)
+
+    def test_works_with_find_route(self, tmp_path):
+        """Loaded module can be used with find_route."""
+        from mg.routing import find_route
+
+        # Create commands structure
+        commands_dir = tmp_path / "commands"
+        commands_dir.mkdir()
+        (commands_dir / "__init__.py").write_text("# commands")
+        (commands_dir / "hello.py").write_text("""
+from mg import cmd
+def define():
+    return cmd.Def(description="Say hello")
+def execute(ctx):
+    pass
+""")
+
+        module = load_commands_module(commands_dir / "__init__.py")
+        route = find_route("hello", module)
+
+        assert route is not None
+        assert route.file.name == "hello.py"
