@@ -56,24 +56,29 @@ def _is_empty_dir(path: Path) -> bool:
     return not any(path.iterdir())
 
 
+def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
+    """Write all mg-state files to root directory."""
+    ctx.templates.write("init/CLAUDE.md.j2", root / "CLAUDE.md")
+    ctx.templates.write("init/.gitignore.j2", root / ".gitignore")
+    (root / "worktrees").mkdir()
+    ctx.templates.write("init/worktrees/.gitignore.j2", root / "worktrees" / ".gitignore")
+
+
 def _init_mg_structure(git: Git, ctx: cmd.Ctx) -> None:
     """Create base mg structure: git init, orphan branch, initial commit, worktrees dir."""
     git.run("init", intent="create git repository")
     git.run("checkout --orphan mg-state", intent="create mg-state orphan branch")
 
-    # Create CLAUDE.md from template and commit (required before creating branches)
-    ctx.templates.write("init/CLAUDE.md.j2", git.path / "CLAUDE.md")
-    git.run("add CLAUDE.md", intent="stage CLAUDE.md")
+    _write_mg_state_files(git.path, ctx)
+
+    git.run("add .", intent="stage mg-state files")
     git.run('commit -m "Initialize mg"', intent="create initial commit")
 
-    (git.path / "worktrees").mkdir()
 
-
-def _create_worktree(git: Git, branch: str) -> Path:
-    """Create branch and worktree, return worktree path."""
-    git.run(f"branch {branch}", intent=f"create {branch} branch")
+def _create_orphan_worktree(git: Git, branch: str) -> Path:
+    """Create orphan branch and worktree for fresh mode."""
     git.run(
-        f"worktree add worktrees/{branch} {branch}",
+        f"worktree add --orphan -b {branch} worktrees/{branch}",
         intent=f"create worktree for {branch}",
     )
     return git.path / "worktrees" / branch
@@ -128,7 +133,7 @@ def _init_fresh_empty(
 
     _init_mg_structure(git, ctx)
 
-    worktree_path = _create_worktree(git, branch)
+    worktree_path = _create_orphan_worktree(git, branch)
     worktree_git = Git(worktree_path, quiet=quiet)
 
     if empty:
@@ -160,7 +165,7 @@ def _init_fresh_nonempty(
     existing_files = list(root.iterdir())
 
     _init_mg_structure(git, ctx)
-    worktree_path = _create_worktree(git, branch)
+    worktree_path = _create_orphan_worktree(git, branch)
 
     # Move existing files into worktree
     for item in existing_files:
@@ -256,13 +261,10 @@ def _init_peer_mode(
     # Create mg-state orphan branch (switch --orphan clears index and working tree)
     git.run("switch --orphan mg-state", intent="create mg-state orphan branch")
 
-    # Create CLAUDE.md and initial commit
-    ctx.templates.write("init/CLAUDE.md.j2", peer_dir / "CLAUDE.md")
-    git.run("add CLAUDE.md", intent="stage CLAUDE.md")
+    # Create mg-state structure and commit
+    _write_mg_state_files(peer_dir, ctx)
+    git.run("add .", intent="stage mg-state files")
     git.run('commit -m "Initialize mg"', intent="create initial commit on mg-state")
-
-    # Create worktrees directory
-    (peer_dir / "worktrees").mkdir()
 
     # Create worktree for target branch
     git.run(
