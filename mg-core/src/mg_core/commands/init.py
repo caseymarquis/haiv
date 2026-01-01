@@ -60,8 +60,23 @@ def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
     """Write all mg-state files to root directory."""
     ctx.templates.write("init/CLAUDE.md.j2", root / "CLAUDE.md")
     ctx.templates.write("init/.gitignore.j2", root / ".gitignore")
-    (root / "worktrees").mkdir()
-    ctx.templates.write("init/worktrees/.gitignore.j2", root / "worktrees" / ".gitignore")
+    ctx.templates.write("init/pyproject.toml.j2", root / "pyproject.toml")
+
+    claude_dir = root / ".claude"
+    ctx.templates.write("init/.claude/.gitkeep.j2", claude_dir / ".gitkeep")
+
+    mg_project = root / "src" / "mg_project"
+    ctx.templates.write("init/src/mg_project/__init__.py.j2", mg_project / "__init__.py")
+
+    tests = root / "tests"
+    ctx.templates.write("init/tests/__init__.py.j2", tests / "__init__.py")
+    ctx.templates.write("init/tests/test_example.py.j2", tests / "test_example.py")
+
+    users = root / "users"
+    ctx.templates.write("init/users/.gitkeep.j2", users / ".gitkeep")
+
+    worktrees = root / "worktrees"
+    ctx.templates.write("init/worktrees/.gitignore.j2", worktrees / ".gitignore")
 
 
 def _init_mg_structure(git: Git, ctx: cmd.Ctx) -> None:

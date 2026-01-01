@@ -1,0 +1,18 @@
+{# Template for project-level pyproject.toml created by mg init #}
+[project]
+name = "mg-project"
+version = "0.1.0"
+description = "Project-level mg commands and configuration"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mg_project"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

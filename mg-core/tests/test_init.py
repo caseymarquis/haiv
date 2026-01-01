@@ -147,6 +147,26 @@ class TestInitFreshEmpty:
     def test_creates_worktrees_directory(self, fresh_init):
         assert fresh_init.paths.worktrees.is_dir()
 
+    def test_creates_claude_md(self, fresh_init):
+        assert (fresh_init.paths.root / "CLAUDE.md").exists()
+
+    def test_creates_pyproject_toml(self, fresh_init):
+        assert (fresh_init.paths.root / "pyproject.toml").exists()
+
+    def test_creates_claude_dir(self, fresh_init):
+        assert (fresh_init.paths.root / ".claude").is_dir()
+
+    def test_creates_mg_project_package(self, fresh_init):
+        mg_project = fresh_init.paths.root / "src" / "mg_project"
+        assert mg_project.is_dir()
+        assert (mg_project / "__init__.py").exists()
+
+    def test_creates_tests_dir(self, fresh_init):
+        assert (fresh_init.paths.root / "tests").is_dir()
+
+    def test_creates_users_dir(self, fresh_init):
+        assert (fresh_init.paths.root / "users").is_dir()
+
     def test_creates_mg_state_orphan_branch(self, fresh_init):
         assert fresh_init.git.branch_current() == "mg-state"
 

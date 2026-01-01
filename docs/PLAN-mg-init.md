@@ -1,96 +1,42 @@
-# Plan: mg init and Infrastructure
+# Plan: mg init Structure
 
-**Created:** 2024-12-28
-**Updated:** 2024-12-29
-**Status:** Monorepo complete, peer mode next
+**Date:** 2024-12-31
 
 ---
 
-## Summary
+## Questions to Resolve
 
-Fresh mode of `mg init` is working. Monorepo migration complete. Next: peer mode implementation.
+### 1. .claude/ directory
+Simple folder creation. **Add to init.**
 
----
+### 2. pyproject.toml + src/mg_project/ + tests/
+- Init creates working package structure?
+- Or scaffolding that another command guides through?
+- Need template supporting easy command → package extraction
 
-## Completed Work
+### 3. Scope documentation
+- src/mg_project/ and tests/ shared across all users
+- CLAUDE.md needs "common commands" section
+- Comments in pyproject.toml and tests/ explaining scope
 
-### Monorepo Migration ✅
-- [x] Consolidated mg, mg-core, mg-cli into uv workspace
-- [x] Root conftest.py prevents running tests from workspace root
-- [x] `pyclean` installed as uv tool for cache cleanup
-- [x] Vision document updated for monorepo structure
-- [x] Initial commit: `195184b`
+### 4. Example test
+- Provide passing test demonstrating TDD pattern
+- Sets expectations for command development
 
-### Template System
-- [x] jinja2 moved to `mg` package
-- [x] `TemplateRenderer` class with `render()` and `write()` methods
-- [x] `ctx.templates` lazy property accessing `pkg.assets`
-- [x] `ctx.git` lazy property for Git operations at project root
+### 5. Command scaffolding (separate command?)
+- `mg command new --user/--project`
+- Strongly encourage TDD - scaffold includes test
+- Not part of init
 
-### Package Paths
-- [x] `PkgPaths` dataclass with `root`, `assets`, `commands` properties
-- [x] Auto-discovery of calling package in tests via `_find_pkg_paths()`
-- [x] `_find_commands_module()` for test auto-discovery
+### 6. Command promotion (user → project → package)
+- Watch for friction
+- Manifest file consideration?
 
-### Test Infrastructure
-- [x] `test.routes_to("init")` works without explicit commands import
-- [x] `test.parse()` and `test.execute()` also support auto-discovery
-- [x] `Sandbox.run()` supports auto-discovery
-
-### mg init Fresh Mode
-- [x] `_init_mg_structure()` creates CLAUDE.md and commits before branches
-- [x] CLAUDE.md.j2 template with reference-level architecture overview
-- [x] `--empty`, `--force`, `--branch`, `--quiet` flags
+### 7. users/ folder
+- Init creates `users/`
+- `mg start` detects/creates first user
 
 ---
 
-## Current Test Status
+## Discussion
 
-```bash
-# Run from each package directory
-cd mg && uv run pytest        # 170 passed
-cd mg-core && uv run pytest   # 39 passed, 15 failed (peer mode)
-cd mg-cli && uv run pytest    # 4 passed
-```
-
----
-
-## Next Steps
-
-### 1. Peer Mode
-
-- Creates `project-mg/` alongside existing checkout
-- Requires remote configured
-- Requires clean working tree (unless `--force`)
-- 15 tests already written, waiting for implementation
-
-### 2. `mg start` Command (Deferred)
-
-Session context for production use. Design in vision doc.
-
----
-
-## Monorepo Structure
-
-```
-mind-games/
-├── mg/           # API (170 tests)
-├── mg-core/      # Commands (54 tests, 15 peer mode pending)
-├── mg-cli/       # CLI entry point (4 tests)
-├── docs/         # Working documents
-├── conftest.py   # Prevents root-level pytest
-└── pyproject.toml
-```
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `mg/src/mg/paths.py` | Paths and PkgPaths dataclasses |
-| `mg/src/mg/templates.py` | TemplateRenderer |
-| `mg/src/mg/cmd.py` | Ctx class with templates/git properties |
-| `mg/src/mg/test.py` | Test infrastructure with auto-discovery |
-| `mg-core/src/mg_core/commands/init.py` | init command |
-| `mg-core/src/mg_core/__assets__/init/CLAUDE.md.j2` | CLAUDE.md template |
