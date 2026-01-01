@@ -47,16 +47,16 @@ exec uv run --project {{ project_root }}/worktrees/{{ branch }}/mg-cli mg "$@"
 **Chicken-and-egg problem:**
 Can't run project commands until `mg start` sets up context, but we need the alias first.
 
-**Solution:** `MG_PROJECT_ROOT` environment variable
-- CLI checks for this env var before searching for mg-state
-- If set, use that path directly
-- `mg start` can set this, or pass manually: `mg start --project-root '/path/to/root'`
-- Allows running project commands before full mg start is implemented
+**Solution:** `MG_ROOT` environment variable ✓
+- [x] CLI checks for `MG_ROOT` env var first
+- [x] If not set, walks up from cwd looking for valid mg root (.git + worktrees)
+- [x] CLI sets `MG_ROOT` after discovery for child processes
+- [x] Validates: must be absolute, must exist, must be valid mg root
 
 **Implementation order:**
-1. Add `MG_PROJECT_ROOT` env var check to CLI
-2. Create `mg dev install` as project command (in src/mg_project/commands/)
-3. Test by running from control plane with manual env var
+1. [x] Add `MG_ROOT` env var and root discovery to CLI
+2. [ ] Create `mg dev install` as project command (in src/mg_project/commands/)
+3. [ ] Test by running from control plane
 
 ---
 
