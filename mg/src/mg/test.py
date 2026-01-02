@@ -132,6 +132,29 @@ def routes_to(
         return RouteMatch(file=None, pkg_root=pkg_root, params={}, rest=[], raw_flags=[])
 
 
+# Prevent temp directory cleanup until module exit
+_test_root_guards: list[object] = []
+
+
+def _create_test_root() -> Path:
+    """Create a temp directory structure for test mg_root.
+
+    Returns the nested mg_root path. Cleanup happens at module exit.
+    """
+    temp_dir = Path(tempfile.mkdtemp(prefix="mg-test-"))
+    root = temp_dir / "grandparent" / "parent" / "root"
+    root.mkdir(parents=True)
+
+    # Guard prevents cleanup until module unloads
+    class Guard:
+        pass
+    guard = Guard()
+    _test_root_guards.append(guard)
+    weakref.finalize(guard, shutil.rmtree, temp_dir, True)
+
+    return root
+
+
 def parse(
     command_string: str,
     commands: ModuleType | None = None,
@@ -144,8 +167,6 @@ def parse(
     if commands is None:
         commands = _find_commands_module()
 
-    from mg.loader import Command
-
     route = find_route(command_string, commands)
     if route is None:
         commands_dir = Path(commands.__file__).parent
@@ -154,7 +175,8 @@ def parse(
         )
 
     command = load_command(route.file)
-    ctx = build_ctx(route, command, resolve=resolve)
+    mg_root = _create_test_root()
+    ctx = build_ctx(route, command, mg_root=mg_root, resolve=resolve)
 
     # Register command for run_command to retrieve
     ctx.container.register(Command, instance=command)
@@ -168,6 +190,7 @@ def execute(
     *,
     container: Container | None = None,
     resolve: Callable[[ResolveRequest], Any] | None = None,
+    setup: Callable[[cmd.Ctx], None] | None = None,
 ) -> ExecuteResult:
     """
     Execute a command for unit testing.
@@ -175,6 +198,13 @@ def execute(
     Skips setup() and teardown() - only runs execute().
     This is intentional: real dependencies aren't registered,
     so tests must explicitly provide mocks via the container parameter.
+
+    Args:
+        command_string: The command to execute (e.g., "dev install --force")
+        commands: Commands module to route against. Auto-discovered if None.
+        container: Optional DI container with mock dependencies.
+        resolve: Optional callback to resolve param/flag values to objects.
+        setup: Optional callback to modify ctx before execution.
 
     Use pytest's capsys fixture to capture output if needed.
     """
@@ -186,6 +216,9 @@ def execute(
 
     if container is not None:
         ctx.container = container
+
+    if setup is not None:
+        setup(ctx)
 
     command.execute(ctx)
 
