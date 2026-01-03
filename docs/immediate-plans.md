@@ -90,7 +90,16 @@ Extended `mg/paths.py`:
 - [x] `paths.user` - PkgPaths for user's package (throws if no user)
 - [x] `paths.state` - user's state directory (throws if no user)
 
-### 3.4: mg users new Command
+### 3.4: Context Integration ✓
+
+Extended `mg/args.py` and test utilities:
+- [x] `build_ctx()` accepts `mg_username` parameter
+- [x] CLI passes detected username to `build_ctx`
+- [x] `mg/test.py` uses `TEST_USERNAME = "testinius"` as default
+- [x] Test utilities auto-create `users/testinius/state/` folder
+- [x] `Sandbox` respects `explicit` mode (no auto-creation when True)
+
+### 3.5: mg users new Command
 
 - [ ] Create `mg_core/commands/users/new.py`
 - [ ] Templates in `mg_core/__assets__/users/`
