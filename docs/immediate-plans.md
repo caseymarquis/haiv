@@ -1,6 +1,6 @@
 # Immediate Plans
 
-**Date:** 2025-01-01
+**Date:** 2025-01-02
 **Goal:** Bootstrap mg development using mg itself
 
 ---
@@ -59,15 +59,42 @@ Enhanced `mg.test` module for better unit testing:
 
 ---
 
-## Phase 3: mg start
+## Phase 3: User Identity Detection ✓
 
-Properly initialize a session:
-- Detect mg-state root (walk up from cwd, or use MG_PROJECT_ROOT)
-- Scan users/ for identity.toml matches
-- Create user folder if no match (prompt for name)
-- Set session context (could set MG_PROJECT_ROOT for subprocesses)
+### 3.1: Core Identity Module ✓
 
-This enables project-level and user-level commands without manual env vars.
+Implemented `mg/identity.py`:
+- [x] `CurrentEnv` dataclass - source of truth for match field names
+- [x] `Identity` dataclass - detected user result
+- [x] `detect_user(users_dir)` - scan for matching identity.toml
+- [x] `matches()` - case-insensitive matching using `casefold()`
+- [x] `load_match_config()` - parse identity.toml [match] section
+- [x] `get_current_env()` - gather git config + $USER
+- [x] `AmbiguousIdentityError` - raised when multiple users match
+- [x] 32 tests in `mg/tests/test_identity.py`
+
+### 3.2: CLI Integration ✓
+
+Updated `mg_cli/__init__.py`:
+- [x] `_detect_user_cached()` - cached user detection with error handling
+- [x] `_get_user_commands()` - load mg_user commands module
+- [x] Updated `_find_command()` - precedence: mg_user → mg_project → mg_core
+- [x] No user found raises error (shown as unchecked source)
+- [x] 4 new integration tests in `mg-cli/tests/test_command_sources.py`
+
+### 3.3: Paths Extension ✓
+
+Extended `mg/paths.py`:
+- [x] `_user_name` field on Paths dataclass
+- [x] `paths.users` - the users/ directory
+- [x] `paths.user` - PkgPaths for user's package (throws if no user)
+- [x] `paths.state` - user's state directory (throws if no user)
+
+### 3.4: mg users new Command
+
+- [ ] Create `mg_core/commands/users/new.py`
+- [ ] Templates in `mg_core/__assets__/users/`
+- [ ] Tests for user creation
 
 ---
 
@@ -87,8 +114,19 @@ Start running multiple Claude sessions:
 
 ---
 
+## Test Coverage
+
+| Package | Tests |
+|---------|-------|
+| mg | 228 |
+| mg-core | 63 |
+| mg-cli | 13 |
+| **Total** | **304** |
+
+---
+
 ## Open Questions
 
 - Does the shell script approach work with uv's caching?
 - How should mg dev install interact with `uv tool install mind-games`?
-- How do we handle user identity across parallel sessions?
+- MG_SESSION design - what additional data should be cached?

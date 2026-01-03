@@ -638,9 +638,11 @@ On Linux, mg follows the [XDG Base Directory Specification](https://specificatio
 ```
 Phase 0: Core Infrastructure
    0.0 ✅ Command API & routing (mg, mg-core, mg-cli packages)
-   0.1 → `mg init` creates mg-managed repos (current)
-   0.2   Worktree management (add/remove/list)
-   0.3   User identity detection & setup
+   0.1 ✅ `mg init` creates mg-managed repos
+   0.2 ✅ Multi-source commands (mg_user → mg_project → mg_core)
+   0.3 ✅ User identity detection (mg/identity.py, CLI integration)
+   0.4 → `mg users new` command (current)
+   0.5   Worktree management (add/remove/list)
 
 Phase 1: Parallel Execution (the multiplier)
    └── tmux MCP server integration
@@ -652,7 +654,7 @@ Phase 2 (enabled by Phase 1, done in parallel):
    └── Migrate existing commands to package system
 ```
 
-Phase 0.1 is current focus. Once `mg init` can create repos, we can use mg to manage its own development. Phase 1 is the force multiplier - everything after can happen in parallel.
+Phase 0.4 is current focus. User identity detection is implemented; just need `mg users new` to create user directories. Phase 1 is the force multiplier - everything after can happen in parallel.
 
 ### Phase 0.1 Implementation Plan
 
