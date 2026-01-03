@@ -248,7 +248,8 @@ def main():
 
     try:
         command = load_command(route.file)
-        ctx = build_ctx(route, command, mg_root=mg_root)
+        mg_username = _user.name if _user else None
+        ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username)
         run_command(command, ctx)
     except Exception as exc:
         _handle_error(exc)

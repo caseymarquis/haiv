@@ -50,6 +50,9 @@ from mg.loader import Command, load_command
 from mg.paths import Paths, PkgPaths
 from mg.routing import RouteMatch, find_route
 
+# Default username for test contexts
+TEST_USERNAME = "testinius"
+
 
 class CommandsNotFoundError(Exception):
     """Raised when auto-discovery cannot find a commands module."""
@@ -139,11 +142,18 @@ _test_root_guards: list[object] = []
 def _create_test_root() -> Path:
     """Create a temp directory structure for test mg_root.
 
+    Creates the mg_root with a default test user folder structure
+    including the user's state directory.
+
     Returns the nested mg_root path. Cleanup happens at module exit.
     """
     temp_dir = Path(tempfile.mkdtemp(prefix="mg-test-"))
     root = temp_dir / "grandparent" / "parent" / "root"
     root.mkdir(parents=True)
+
+    # Create test user folder structure using Paths
+    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=root, _user_name=TEST_USERNAME)
+    paths.state.mkdir(parents=True)
 
     # Guard prevents cleanup until module unloads
     class Guard:
@@ -176,7 +186,7 @@ def parse(
 
     command = load_command(route.file)
     mg_root = _create_test_root()
-    ctx = build_ctx(route, command, mg_root=mg_root, resolve=resolve)
+    ctx = build_ctx(route, command, mg_root=mg_root, mg_username=TEST_USERNAME, resolve=resolve)
 
     # Register command for run_command to retrieve
     ctx.container.register(Command, instance=command)
@@ -298,14 +308,21 @@ class Sandbox:
             pkg_root = _find_pkg_paths().root
 
         # Create initial context with paths
+        paths = Paths(
+            _called_from=self._cwd,
+            _pkg_root=pkg_root,
+            _mg_root=self._root,
+            _user_name=TEST_USERNAME,
+        )
+
+        # Create default user folder structure unless explicit mode
+        if not config.explicit:
+            paths.state.mkdir(parents=True)
+
         container = config.container or Container()
         self._ctx = cmd.Ctx(
             args=cmd.Args(),
-            paths=Paths(
-                _called_from=self._cwd,
-                _pkg_root=pkg_root,
-                _mg_root=self._root,
-            ),
+            paths=paths,
             container=container,
         )
 
