@@ -104,17 +104,13 @@ class Paths:
         _called_from: Directory where the command was invoked.
         _pkg_root: Root of the package containing the command (e.g., mg_core/).
         _mg_root: Root of the mg project (e.g., some-project-mg/).
+        _user_name: Name of the current user (folder name in users/).
     """
 
     _called_from: Path | None
     _pkg_root: Path | None
     _mg_root: Path | None
-
-    # TODO: Add user: PkgPaths after user identification is implemented
-    # user will point to users/{current_user}/src/mg_user/
-
-    # TODO: Add state: Path after user identification is implemented
-    # state will point to users/{current_user}/src/mg_user/state/
+    _user_name: str | None = None
 
     @property
     def called_from(self) -> Path:
@@ -151,3 +147,28 @@ class Paths:
     def worktrees(self) -> Path:
         """The worktrees directory."""
         return self.root / "worktrees"
+
+    @property
+    def users(self) -> Path:
+        """The users directory."""
+        return self.root / "users"
+
+    @property
+    def user(self) -> PkgPaths:
+        """User package paths (users/{name}/src/mg_user/)."""
+        if self._user_name is None:
+            raise RuntimeError(
+                "No user identity found.\n"
+                "Run 'mg users new --name <name>' to create one."
+            )
+        return PkgPaths(root=self.users / self._user_name / "src" / "mg_user")
+
+    @property
+    def state(self) -> Path:
+        """User state directory (users/{name}/state/)."""
+        if self._user_name is None:
+            raise RuntimeError(
+                "No user identity found.\n"
+                "Run 'mg users new --name <name>' to create one."
+            )
+        return self.users / self._user_name / "state"

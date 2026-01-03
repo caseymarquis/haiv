@@ -81,3 +81,10 @@ class Git:
         """Get the number of commits on the current branch."""
         output = self.run("rev-list --count HEAD", intent=intent).strip()
         return int(output)
+
+    def config(self, key: str) -> str | None:
+        """Get a git config value, or None if not set."""
+        try:
+            return self.run(f"config {key}").strip() or None
+        except Exception:
+            return None

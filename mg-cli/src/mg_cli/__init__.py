@@ -14,12 +14,17 @@ from mg.routing import find_route, RouteMatch
 from mg.loader import load_command, load_commands_module
 from mg.args import build_ctx
 from mg.runner import run_command
+from mg.identity import detect_user, Identity
 
 __version__ = "0.1.0"
 
 # Cached mg_root lookup
 _mg_root: Path | None = None
 _mg_root_error: Exception | None = None
+
+# Cached user detection
+_user: Identity | None = None
+_user_error: Exception | None = None
 
 
 def _get_mg_root_cached() -> Path:
@@ -36,6 +41,29 @@ def _get_mg_root_cached() -> Path:
         raise _mg_root_error
 
     return cast(Path, _mg_root)
+
+
+def _detect_user_cached() -> Identity:
+    """Detect user, caching the result (success or failure)."""
+    global _user, _user_error
+
+    if _user is None and _user_error is None:
+        try:
+            mg_root = _get_mg_root_cached()
+            paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root)
+            _user = detect_user(paths.users)
+            if _user is None:
+                raise Exception(
+                    "No user identity found.\n"
+                    "Run 'mg users new --name <name>' to create one."
+                )
+        except Exception as e:
+            _user_error = e
+
+    if _user_error is not None:
+        raise _user_error
+
+    return cast(Identity, _user)
 
 
 @dataclass
@@ -119,6 +147,15 @@ def _get_project_commands() -> ModuleType:
     return load_commands_module(paths.project.commands / "__init__.py")
 
 
+def _get_user_commands() -> ModuleType:
+    """Load mg_user commands module."""
+    mg_root = _get_mg_root_cached()
+    user = _detect_user_cached()
+
+    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name)
+    return load_commands_module(paths.user.commands / "__init__.py")
+
+
 def _find_command(
     command_string: str,
 ) -> tuple[RouteMatch | None, Path | None, list[CommandSource]]:
@@ -129,7 +166,18 @@ def _find_command(
     """
     sources: list[CommandSource] = []
 
-    # Try mg_project first (higher precedence)
+    # Try mg_user first (highest precedence)
+    route, source = _try_source(
+        command_string,
+        "mg_user",
+        "users/{user}/src/mg_user/commands/",
+        _get_user_commands,
+    )
+    sources.append(source)
+    if route is not None:
+        return route, _mg_root, sources
+
+    # Try mg_project next
     route, source = _try_source(
         command_string,
         "mg_project",
@@ -181,7 +229,8 @@ def main():
     2. Project package (mg_project) - if in mg-managed repo
     3. User package (mg_user) - deferred until user identity exists
     """
-    prog = Path(sys.argv[0]).name
+    # MG_PROG allows the wrapper script to pass its name (e.g., when using python -c)
+    prog = os.environ.get(env.MG_PROG) or Path(sys.argv[0]).name
     args = sys.argv[1:]
 
     if not args:
