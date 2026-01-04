@@ -11,3 +11,7 @@ MG_ROOT = "MG_ROOT"
 # Program name override for CLI display.
 # Used by wrapper scripts that invoke mg.
 MG_PROG = "MG_PROG"
+
+# Current mind name, set by `mg start {mind}`.
+# Used by commands that need to know which mind is running.
+MG_MIND = "MG_MIND"
