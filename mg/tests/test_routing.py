@@ -66,6 +66,116 @@ class TestFindRouteInPathsBasic:
         assert result is None
 
 
+class TestParamFileCapture:
+    """Tests for parameter file capture (_name_.py at leaf level)."""
+
+    def test_basic_param_file(self):
+        """'wake wren' matches wake/_mind_.py where _mind_.py captures param."""
+        paths = [Path("wake/_mind_.py")]
+        result = find_route_in_paths("wake wren", paths)
+        assert result is not None
+        assert result.file == Path("wake/_mind_.py")
+        assert "mind" in result.params
+        assert result.params["mind"].value == "wren"
+        assert result.params["mind"].resolver == "mind"
+        assert result.params["mind"].explicit_resolver is False
+
+    def test_param_file_explicit_resolver(self):
+        """'wake specs' with _target_as_mind_.py captures with explicit resolver."""
+        paths = [Path("wake/_target_as_mind_.py")]
+        result = find_route_in_paths("wake specs", paths)
+        assert result is not None
+        assert result.file == Path("wake/_target_as_mind_.py")
+        assert "target" in result.params
+        assert result.params["target"].value == "specs"
+        assert result.params["target"].resolver == "mind"
+        assert result.params["target"].explicit_resolver is True
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/status.py"), Path("wake/_mind_.py")],
+        [Path("wake/_mind_.py"), Path("wake/status.py")],
+    ])
+    def test_literal_file_over_param_file(self, paths):
+        """Literal file preferred over param file at same level."""
+        result = find_route_in_paths("wake status", paths)
+        assert result is not None
+        assert result.file == Path("wake/status.py")
+        assert result.params == {}
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_mind_.py"), Path("wake/_mind_/action.py")],
+        [Path("wake/_mind_/action.py"), Path("wake/_mind_.py")],
+    ])
+    def test_param_file_vs_param_dir_single_arg(self, paths):
+        """'wake wren' matches param file, not incomplete param dir route."""
+        result = find_route_in_paths("wake wren", paths)
+        assert result is not None
+        assert result.file == Path("wake/_mind_.py")
+        assert result.params["mind"].value == "wren"
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_mind_.py"), Path("wake/_mind_/action.py")],
+        [Path("wake/_mind_/action.py"), Path("wake/_mind_.py")],
+    ])
+    def test_param_file_vs_param_dir_with_subcommand(self, paths):
+        """'wake wren action' matches param dir path, not param file."""
+        result = find_route_in_paths("wake wren action", paths)
+        assert result is not None
+        assert result.file == Path("wake/_mind_/action.py")
+        assert result.params["mind"].value == "wren"
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_name_.py"), Path("wake/_id_.py")],
+        [Path("wake/_id_.py"), Path("wake/_name_.py")],
+    ])
+    def test_ambiguous_param_files_raises(self, paths):
+        """Two param files at same level raises AmbiguousRouteError."""
+        with pytest.raises(AmbiguousRouteError):
+            find_route_in_paths("wake foo", paths)
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_name_.py"), Path("wake/_id_.py"), Path("wake/status.py")],
+        [Path("wake/status.py"), Path("wake/_name_.py"), Path("wake/_id_.py")],
+    ])
+    def test_literal_resolves_param_file_ambiguity(self, paths):
+        """Literal file resolves ambiguity between param files."""
+        result = find_route_in_paths("wake status", paths)
+        assert result is not None
+        assert result.file == Path("wake/status.py")
+        assert result.params == {}
+
+    def test_param_file_with_flags(self):
+        """Param file captures param, flags go to raw_flags."""
+        paths = [Path("wake/_mind_.py")]
+        result = find_route_in_paths("wake wren --verbose --debug", paths)
+        assert result is not None
+        assert result.params["mind"].value == "wren"
+        assert result.raw_flags == ["--verbose", "--debug"]
+
+    def test_nested_param_file(self):
+        """Param file after param directory."""
+        paths = [Path("_user_/settings/_option_.py")]
+        result = find_route_in_paths("bob settings theme", paths)
+        assert result is not None
+        assert result.file == Path("_user_/settings/_option_.py")
+        assert result.params["user"].value == "bob"
+        assert result.params["option"].value == "theme"
+
+    def test_param_file_after_literal_dir(self):
+        """Param file after literal directory."""
+        paths = [Path("admin/users/_id_.py")]
+        result = find_route_in_paths("admin users 123", paths)
+        assert result is not None
+        assert result.file == Path("admin/users/_id_.py")
+        assert result.params["id"].value == "123"
+
+    def test_dunder_file_not_param(self):
+        """__init__.py is not treated as a param file."""
+        paths = [Path("wake/__init__.py")]
+        result = find_route_in_paths("wake foo", paths)
+        assert result is None
+
+
 class TestParamCapture:
     """Tests for parameter directory capture."""
 
@@ -132,6 +242,68 @@ class TestParamCapture:
         assert result.params["source"].resolver == "mind"
         assert result.params["dest"].value == "specs"
         assert result.params["dest"].resolver == "mind"
+
+
+class TestRestFileAsLeaf:
+    """Tests for _rest_.py as a leaf file and its interactions."""
+
+    def test_rest_only_valid_as_file(self):
+        """_rest_ as directory name doesn't capture - only _rest_.py works."""
+        # _rest_/foo.py should NOT work - _rest_ is only valid as a file
+        paths = [Path("echo/_rest_/foo.py")]
+        result = find_route_in_paths("echo hello foo", paths)
+        # This should NOT match because _rest_ directories aren't supported
+        assert result is None
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_rest_.py"), Path("wake/_mind_.py")],
+        [Path("wake/_mind_.py"), Path("wake/_rest_.py")],
+    ])
+    def test_param_file_with_rest_peer_is_ambiguous(self, paths):
+        """Param file at same level as _rest_.py is always ambiguous."""
+        # _rest_.py captures everything, param file captures specific thing
+        # These conflict - should raise even with single arg
+        with pytest.raises(AmbiguousRouteError):
+            find_route_in_paths("wake foo", paths)
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_rest_.py"), Path("wake/_mind_.py")],
+        [Path("wake/_mind_.py"), Path("wake/_rest_.py")],
+    ])
+    def test_param_file_with_rest_peer_ambiguous_multiple_args(self, paths):
+        """Param file + rest peer is ambiguous even when only rest could match."""
+        # Even though param file can't match 2 args, the file structure is ambiguous
+        with pytest.raises(AmbiguousRouteError):
+            find_route_in_paths("wake foo bar", paths)
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_rest_.py"), Path("wake/_mind_/status.py")],
+        [Path("wake/_mind_/status.py"), Path("wake/_rest_.py")],
+    ])
+    def test_param_dir_with_rest_peer_is_ambiguous(self, paths):
+        """Param directory at same level as _rest_.py is always ambiguous."""
+        with pytest.raises(AmbiguousRouteError):
+            find_route_in_paths("wake foo status", paths)
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_rest_.py"), Path("wake/status.py")],
+        [Path("wake/status.py"), Path("wake/_rest_.py")],
+    ])
+    def test_literal_over_rest(self, paths):
+        """Literal file beats _rest_.py."""
+        result = find_route_in_paths("wake status", paths)
+        assert result is not None
+        assert result.file == Path("wake/status.py")
+
+    @pytest.mark.parametrize("paths", [
+        [Path("wake/_rest_.py"), Path("wake/_mind_.py"), Path("wake/status.py")],
+        [Path("wake/status.py"), Path("wake/_rest_.py"), Path("wake/_mind_.py")],
+    ])
+    def test_literal_resolves_rest_and_param_ambiguity(self, paths):
+        """Literal file resolves ambiguity between rest and param file."""
+        result = find_route_in_paths("wake status", paths)
+        assert result is not None
+        assert result.file == Path("wake/status.py")
 
 
 class TestRestCapture:

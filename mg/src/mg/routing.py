@@ -248,18 +248,47 @@ def _find_matches(
         sub_matches = _find_matches(tree[part], rest_parts, params.copy(), rest.copy())
         matches.extend(sub_matches)
 
+    # If we have literal matches, return early - no need to check rest/params
+    if matches:
+        return matches
+
+    # Check for ambiguity: _rest_.py cannot coexist with param files/dirs
+    has_rest = "_rest_.py" in tree and "_file_" in tree["_rest_.py"]
+    has_params = _has_param_entries(tree)
+
+    if has_rest and has_params:
+        raise AmbiguousRouteError(
+            f"_rest_.py cannot coexist with param files/directories at the same level"
+        )
+
     # Try _rest_.py at current level (consumes all remaining)
-    if "_rest_.py" in tree and "_file_" in tree["_rest_.py"]:
+    if has_rest:
         new_rest = rest.copy() + remaining
         matches.append((tree["_rest_.py"]["_file_"], params.copy(), new_rest))
 
-    # Try param directories (lower precedence than literal)
-    param_matches = []
+    # Try param files and directories
     for key in tree:
         if not key.startswith("_") or key.startswith("__"):
             continue
         if key == "_rest_.py":
             continue
+
+        # Try param files (_name_.py) - must be leaf (no more parts)
+        if key.endswith("_.py") and not rest_parts:
+            param_info = _parse_param_file(key)
+            if param_info is not None:
+                param_name, resolver, explicit = param_info
+                if "_file_" in tree[key]:
+                    new_params = params.copy()
+                    new_params[param_name] = ParamCapture(
+                        value=part,
+                        resolver=resolver,
+                        explicit_resolver=explicit,
+                    )
+                    matches.append((tree[key]["_file_"], new_params, []))
+            continue
+
+        # Try param directories (_name_/)
         if not key.endswith("_"):
             continue
 
@@ -278,17 +307,25 @@ def _find_matches(
         )
 
         sub_matches = _find_matches(tree[key], rest_parts, new_params, rest.copy())
-        param_matches.extend(sub_matches)
-
-    # Only add param matches if no literal matches found
-    if not matches:
-        matches.extend(param_matches)
-    elif param_matches:
-        # We have both literal and param matches
-        # Literal wins, but if they lead to same endpoint, that's ok
-        pass
+        matches.extend(sub_matches)
 
     return matches
+
+
+def _has_param_entries(tree: dict) -> bool:
+    """Check if tree has any param files or param directories."""
+    for key in tree:
+        if not key.startswith("_") or key.startswith("__"):
+            continue
+        if key == "_rest_.py":
+            continue
+        # Check for param file (_name_.py)
+        if key.endswith("_.py") and _parse_param_file(key) is not None:
+            return True
+        # Check for param directory (_name_/)
+        if key.endswith("_") and _parse_param_dir(key) is not None:
+            return True
+    return False
 
 
 def _parse_param_dir(name: str) -> tuple[str, str, bool] | None:
@@ -310,4 +347,27 @@ def _parse_param_dir(name: str) -> tuple[str, str, bool] | None:
         return (parts[0], parts[1], True)
     else:
         # Implicit resolver: _mind_/ means param="mind", resolver="mind"
+        return (inner, inner, False)
+
+
+def _parse_param_file(name: str) -> tuple[str, str, bool] | None:
+    """Parse a param file name like _name_.py or _target_as_mind_.py.
+
+    Returns (param_name, resolver_name, explicit_resolver) or None if not a param file.
+    """
+    if not name.startswith("_") or not name.endswith("_.py"):
+        return None
+    if name.startswith("__"):
+        return None
+    if name == "_rest_.py":
+        return None
+
+    # Remove leading _ and trailing _.py
+    inner = name[1:-4]
+
+    if "_as_" in inner:
+        parts = inner.split("_as_", 1)
+        return (parts[0], parts[1], True)
+    else:
+        # Implicit resolver: _mind_.py means param="mind", resolver="mind"
         return (inner, inner, False)
