@@ -15,6 +15,7 @@ from mg.loader import load_command, load_commands_module
 from mg.args import build_ctx
 from mg.runner import run_command
 from mg.identity import detect_user, Identity
+from mg.resolvers import make_resolver
 
 __version__ = "0.1.0"
 
@@ -249,7 +250,30 @@ def main():
     try:
         command = load_command(route.file)
         mg_username = _user.name if _user else None
-        ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username)
+
+        # Build resolver callback from discovered resolvers
+        # Order: mg_core, mg_project, mg_user (later overrides earlier)
+        pkg_roots: list[Path] = []
+
+        # mg_core (already imported by _find_command)
+        import mg_core
+        pkg_roots.append(Path(mg_core.__file__).parent)
+
+        # mg_project and mg_user via Paths
+        if mg_root is not None:
+            paths = Paths(
+                _called_from=None,
+                _pkg_root=None,
+                _mg_root=mg_root,
+                _user_name=mg_username,
+            )
+            if paths.project.root.exists():
+                pkg_roots.append(paths.project.root)
+            if mg_username is not None and paths.user.root.exists():
+                pkg_roots.append(paths.user.root)
+
+        resolve = make_resolver(pkg_roots, paths=None, has_user=mg_username is not None)
+        ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username, resolve=resolve)
         run_command(command, ctx)
     except Exception as exc:
         _handle_error(exc)

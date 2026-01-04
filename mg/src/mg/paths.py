@@ -91,6 +91,11 @@ class PkgPaths:
         """The commands directory."""
         return self.root / "commands"
 
+    @property
+    def resolvers(self) -> Path:
+        """The resolvers directory."""
+        return self.root / "resolvers"
+
 
 @dataclass
 class Paths:

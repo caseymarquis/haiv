@@ -244,3 +244,159 @@ def execute(ctx: cmd.Ctx) -> None:
         assert len(user_sources) == 1
         assert user_sources[0].checked is False
         assert "No user identity found" in user_sources[0].error
+
+
+class TestResolverIntegration:
+    """Integration tests for resolver wiring in mg_cli."""
+
+    def test_implicit_resolver_without_file_returns_raw_value(self, mg_project_with_user):
+        """Implicit resolver (_name_/) without resolver file returns raw string."""
+        from mg_cli import _find_command, main
+        from mg.loader import load_command
+        from mg.args import build_ctx
+        from mg.resolvers import make_resolver
+
+        # Create command with implicit param resolver
+        commands_dir = mg_project_with_user / "src" / "mg_project" / "commands" / "_name_"
+        commands_dir.mkdir(parents=True)
+        (commands_dir.parent / "__init__.py").touch()
+        (commands_dir / "greet.py").write_text('''
+from mg import cmd
+
+def define() -> cmd.Def:
+    return cmd.Def(description="Greet by name")
+
+def execute(ctx: cmd.Ctx) -> None:
+    name = ctx.args.get_one("name")
+    print(f"Hello, {name}!")
+''')
+
+        route, mg_root, sources = _find_command("alice greet")
+
+        assert route is not None
+        assert route.params["name"].value == "alice"
+        assert route.params["name"].resolver == "name"
+
+        # Build resolve callback - no resolver file exists
+        pkg_roots = [mg_project_with_user / "src" / "mg_project"]
+        resolve = make_resolver(pkg_roots, None, has_user=True)
+
+        # Implicit resolver should return raw value
+        from mg.args import ResolveRequest
+        req = ResolveRequest(param="name", resolver="name", value="alice")
+        result = resolve(req)
+
+        assert result == "alice"  # Raw value, no transformation
+
+    def test_explicit_resolver_without_file_raises_error(self, mg_project_with_user):
+        """Explicit resolver (_target_as_mind_/) without file raises UnknownResolverError."""
+        from mg_cli import _find_command
+        from mg.resolvers import make_resolver, UnknownResolverError
+
+        # Create command with explicit param resolver
+        commands_dir = mg_project_with_user / "src" / "mg_project" / "commands" / "_target_as_mind_"
+        commands_dir.mkdir(parents=True)
+        (commands_dir.parent / "__init__.py").touch()
+        (commands_dir / "send.py").write_text('''
+from mg import cmd
+
+def define() -> cmd.Def:
+    return cmd.Def(description="Send to mind")
+
+def execute(ctx: cmd.Ctx) -> None:
+    pass
+''')
+
+        route, mg_root, sources = _find_command("forge send")
+
+        assert route is not None
+        assert route.params["target"].resolver == "mind"
+
+        # Build resolve callback - no resolver file exists
+        pkg_roots = [mg_project_with_user / "src" / "mg_project"]
+        resolve = make_resolver(pkg_roots, None, has_user=True)
+
+        # Explicit resolver should raise error
+        from mg.args import ResolveRequest
+        req = ResolveRequest(param="target", resolver="mind", value="forge")
+
+        with pytest.raises(UnknownResolverError) as exc_info:
+            resolve(req)
+
+        assert exc_info.value.resolver_name == "mind"
+
+    def test_resolver_file_is_discovered_and_used(self, mg_project_with_user):
+        """Resolver file in resolvers/ is discovered and used."""
+        from mg.resolvers import make_resolver
+
+        # Create resolver file
+        resolvers_dir = mg_project_with_user / "src" / "mg_project" / "resolvers"
+        resolvers_dir.mkdir(parents=True)
+        (resolvers_dir / "mind.py").write_text('''
+def resolve(value, ctx):
+    return f"Mind({value})"
+''')
+
+        pkg_roots = [mg_project_with_user / "src" / "mg_project"]
+        resolve = make_resolver(pkg_roots, None, has_user=True)
+
+        from mg.args import ResolveRequest
+        req = ResolveRequest(param="mind", resolver="mind", value="forge")
+        result = resolve(req)
+
+        assert result == "Mind(forge)"
+
+    def test_resolver_requires_user_when_found(self, mg_project):
+        """Resolver raises UserRequiredError when has_user=False."""
+        from mg.resolvers import make_resolver, UserRequiredError
+
+        # Create resolver file
+        resolvers_dir = mg_project / "src" / "mg_project" / "resolvers"
+        resolvers_dir.mkdir(parents=True)
+        (resolvers_dir / "mind.py").write_text('''
+def resolve(value, ctx):
+    return f"Mind({value})"
+''')
+
+        pkg_roots = [mg_project / "src" / "mg_project"]
+        resolve = make_resolver(pkg_roots, None, has_user=False)
+
+        from mg.args import ResolveRequest
+        req = ResolveRequest(param="mind", resolver="mind", value="forge")
+
+        with pytest.raises(UserRequiredError) as exc_info:
+            resolve(req)
+
+        assert exc_info.value.resolver_name == "mind"
+
+    def test_user_resolver_overrides_project_resolver(self, mg_project_with_user):
+        """User resolvers override project resolvers."""
+        from mg.resolvers import make_resolver
+
+        # Create resolver in project
+        project_resolvers = mg_project_with_user / "src" / "mg_project" / "resolvers"
+        project_resolvers.mkdir(parents=True)
+        (project_resolvers / "mind.py").write_text('''
+def resolve(value, ctx):
+    return f"ProjectMind({value})"
+''')
+
+        # Create resolver in user (should win)
+        user_resolvers = mg_project_with_user / "users" / "testuser" / "src" / "mg_user" / "resolvers"
+        user_resolvers.mkdir(parents=True)
+        (user_resolvers / "mind.py").write_text('''
+def resolve(value, ctx):
+    return f"UserMind({value})"
+''')
+
+        pkg_roots = [
+            mg_project_with_user / "src" / "mg_project",
+            mg_project_with_user / "users" / "testuser" / "src" / "mg_user",
+        ]
+        resolve = make_resolver(pkg_roots, None, has_user=True)
+
+        from mg.args import ResolveRequest
+        req = ResolveRequest(param="mind", resolver="mind", value="forge")
+        result = resolve(req)
+
+        assert result == "UserMind(forge)"  # User wins
