@@ -1,0 +1,10 @@
+[match]
+git_email = [
+    "caseymarquis@gmail.com",
+]
+git_name = [
+    "Casey Marquis",
+]
+system_user = [
+    "casey",
+]

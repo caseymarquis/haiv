@@ -1,0 +1,49 @@
+# Task Assignment
+
+Load the following documents into context:
+{% for doc in context_docs %}
+- {{ doc }}
+{% endfor %}
+
+---
+
+## Task
+
+**{{ task_name }}**
+
+{{ task_description }}
+
+{% if location %}
+**Location:** `{{ location }}`
+{% endif %}
+
+{% if success_criteria %}
+## Success Criteria
+
+{% for criterion in success_criteria %}
+- {{ criterion }}
+{% endfor %}
+{% endif %}
+
+{% if patterns %}
+## Patterns to Follow
+
+{% for pattern in patterns %}
+- {{ pattern }}
+{% endfor %}
+{% endif %}
+
+{% if verification %}
+## Verification
+
+{{ verification }}
+{% endif %}
+
+---
+
+## Process
+
+1. Read the context documents first
+2. Propose your approach before coding
+3. Ask clarifying questions if needed
+4. Implement incrementally, testing as you go

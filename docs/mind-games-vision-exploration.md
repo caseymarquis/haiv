@@ -1,7 +1,7 @@
 # Mind-Games Vision Exploration
 
-**Status:** Phase 0.1 - Building `mg init`
-**Date:** 2025-12-27
+**Status:** Phase 1.0 - Manual multi-Claude via tmux
+**Date:** 2026-01-02
 
 ---
 
@@ -35,22 +35,60 @@ Key principles:
 - Shareable, versioned, installable via git repos
 
 ### Parallel Execution Infrastructure
-- tmux integration (near-term)
-- git worktree simplification
-- Potential: Server infrastructure for remote oversight/management (mobile, etc.)
 
-**tmux capabilities (from community exploration):**
-- Session isolation for parallel Claude instances
+**Decision: tmux as foundation, manual-first approach.**
+
+tmux provides process management; mg provides state management. Start with manual multi-Claude workflows using existing tmux, automate incrementally as friction points emerge.
+
+**Why tmux:**
+- Battle-tested process isolation (sessions/windows/panes)
 - Persistence across disconnections
-- Monitoring/orchestration of multiple agents
-- Natural pairing with git worktrees for code isolation
+- Programmatic control (`send-keys`, `capture-pane`) enables automation
+- Works with Claude CLI directly, no integration needed
+- One tmux server per user manages all sessions
 
-**Existing tools to evaluate:**
-- Claude Squad - multi-agent TUI with auto-accept, worktree isolation, monitoring
-- tmux-mcp - MCP server for programmatic tmux control
-- claunch - project-specific session management
+**Architecture:**
+```
+tmux server (process management)
+└── session: mg-{project}              # one per mg-managed repo
+    ├── window: main                   # worktree: main
+    ├── window: feature-auth           # worktree: feature-auth
+    └── window: feature-api            # worktree: feature-api
 
-**Question:** Build on these? Integrate with them? Or different approach?
+state/ (file-based state management)
+├── minds/                             # persistent memory per mind
+├── artifacts/                         # completed work products
+└── messages/                          # inter-mind communication
+```
+
+**Turn-based, not event-driven:**
+- LLMs excel at "here's the situation, what now?" - not continuous monitoring
+- Manager mind wakes on demand (`mg check`) or scheduled intervals
+- Captures worker state, assesses, acts, returns to sleep
+- Lower complexity, predictable costs, known to work
+
+**Manual workflow (current):**
+```bash
+# Create worktree
+git worktree add worktrees/feature-x -b feature-x main
+
+# Start tmux session for project (or attach if exists)
+tmux new-session -s mg-myproject -c /path/to/mg-state
+
+# Create window per worktree
+tmux new-window -n feature-x -c worktrees/feature-x
+claude   # start Claude in that window
+```
+
+**Automation targets (as friction emerges):**
+- `mg worktree add` - simplify worktree + window creation
+- `mg start` - launch mind with persistent memory loaded
+- `mg status` - show state of all minds (attention queue)
+- `mg check` - manager mind reviews workers
+
+**Related tools (reference, not dependencies):**
+- Claude Squad - demonstrates multi-agent TUI patterns
+- tmux-mcp - demonstrates programmatic tmux control via MCP
 
 ---
 
@@ -645,9 +683,10 @@ Phase 0: Core Infrastructure
    0.5   Worktree management (add/remove/list)
 
 Phase 1: Parallel Execution (the multiplier)
-   └── tmux MCP server integration
-   └── Orchestration infrastructure
-   └── Multiple Minds working simultaneously
+   1.0 → Manual multi-Claude via tmux (current: learn friction points)
+   1.1   `mg worktree add` - worktree + tmux window creation
+   1.2   `mg start` / `mg status` - mind lifecycle and visibility
+   1.3   `mg check` - manager mind reviews workers
 
 Phase 2 (enabled by Phase 1, done in parallel):
    ├── Capability/research tracking infrastructure

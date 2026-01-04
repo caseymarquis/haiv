@@ -67,6 +67,8 @@ def execute(ctx: cmd.Ctx) -> None:
 
 def _ensure_bindings() -> None:
     """Ensure tmux keybindings are set up."""
+    # Enable mouse support
+    subprocess.run(["tmux", "set-option", "-g", "mouse", "on"], capture_output=True)
     # Set Ctrl+Space as prefix
     subprocess.run(["tmux", "set-option", "-g", "prefix", "C-Space"], capture_output=True)
     subprocess.run(["tmux", "unbind-key", "C-b"], capture_output=True)

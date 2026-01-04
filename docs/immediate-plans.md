@@ -1,6 +1,6 @@
 # Immediate Plans
 
-**Date:** 2025-01-02
+**Date:** 2026-01-02
 **Goal:** Bootstrap mg development using mg itself
 
 ---
@@ -107,19 +107,65 @@ Extended `mg/args.py` and test utilities:
 
 ---
 
-## Phase 4: Parallel Development
+## Phase 4: Parallel Development (CURRENT)
 
-Start running multiple Claude sessions:
+**Decision:** Use tmux as foundation, manual-first approach. See vision doc for details.
 
-1. Create additional worktrees for feature branches
-2. Spawn tmux sessions, one per worktree
-3. Each Claude instance works independently
-4. Coordinate via git (push/pull/merge)
+### 4.1: Concepts (emerging)
 
-**Blockers to identify:**
-- What's the manual tmux workflow?
-- What friction points emerge?
-- What coordination is actually needed?
+**Window = task, not worktree:**
+- Window named by task (e.g., `implement-oauth`, `research-caching`)
+- Worktree is optional resource - some tasks need code isolation, some don't
+- A task could involve multiple worktrees
+
+**Manager role = context assembly:**
+- Decide what context a task needs (role, task description, worktree, docs)
+- Launch mind with composed context
+- Monitor progress via `tmux capture-pane`
+
+**Task artifacts (needed):**
+- Some representation of a task that mg can use to:
+  - Create tmux window with right name/cwd
+  - Compose initial prompt with context
+  - Track state (pending, in-progress, blocked, done)
+- Format TBD - probably markdown or TOML in `state/tasks/`
+
+### 4.2: Manual Workflow (now)
+
+```bash
+# Session already exists: mind-games
+
+# Create window for a task (with or without worktree)
+tmux new-window -n task-name -c /path/to/working/dir
+
+# Switch to window, start Claude, give initial context manually
+```
+
+### 4.3: Friction Points to Watch
+
+- Switching attention between windows
+- Knowing which minds need input
+- Composing initial context (repetitive, error-prone)
+- Tracking what each mind is working on
+- Loading/saving persistent memory
+
+### 4.4: Automation Candidates
+
+| Command | Purpose | Priority |
+|---------|---------|----------|
+| `mg task new` | Create task artifact + tmux window | High |
+| `mg task start` | Launch mind with context from artifact | High |
+| `mg status` | Show all tasks and their state | Medium |
+| `mg worktree add` | Simplify worktree creation | Medium |
+
+### 4.5: Delegable Now
+
+**`mg users new` (Phase 3.5)** - finish the remaining Phase 3 work:
+- Create `mg_core/commands/users/new.py`
+- Templates in `mg_core/__assets__/users/`
+- Tests for user creation
+
+This is a good first delegation candidate - well-defined scope, existing patterns to follow.
 
 ---
 
