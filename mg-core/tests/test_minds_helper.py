@@ -394,3 +394,177 @@ class TestListMinds:
         minds = list_minds(tmp_path / "nonexistent")
 
         assert minds == []
+
+
+# =============================================================================
+# Mind Creation Tests
+# =============================================================================
+
+from unittest.mock import patch
+
+from mg_core.helpers.minds import (
+    InvalidMindNameError,
+    MindExistsError,
+    validate_mind_name,
+    generate_mind_name,
+    mind_exists,
+    scaffold_mind,
+)
+
+
+class TestValidateMindName:
+    """Tests for validate_mind_name function."""
+
+    def test_valid_simple_name(self):
+        """Accepts simple lowercase name."""
+        validate_mind_name("wren")  # Should not raise
+
+    def test_valid_name_with_numbers(self):
+        """Accepts name with numbers (not at start)."""
+        validate_mind_name("wren2")  # Should not raise
+
+    def test_valid_name_with_hyphen(self):
+        """Accepts name with hyphens."""
+        validate_mind_name("my-mind")  # Should not raise
+
+    def test_valid_name_with_underscore(self):
+        """Accepts name with underscores (not at start)."""
+        validate_mind_name("my_mind")  # Should not raise
+
+    def test_rejects_empty_name(self):
+        """Rejects empty string."""
+        with pytest.raises(InvalidMindNameError) as exc_info:
+            validate_mind_name("")
+        assert "empty" in exc_info.value.reason.lower()
+
+    def test_rejects_uppercase(self):
+        """Rejects names with uppercase letters."""
+        with pytest.raises(InvalidMindNameError) as exc_info:
+            validate_mind_name("Wren")
+        assert "lowercase" in exc_info.value.reason.lower()
+
+    def test_rejects_underscore_start(self):
+        """Rejects names starting with underscore."""
+        with pytest.raises(InvalidMindNameError) as exc_info:
+            validate_mind_name("_wren")
+        assert "underscore" in exc_info.value.reason.lower()
+
+    def test_rejects_number_start(self):
+        """Rejects names starting with number."""
+        with pytest.raises(InvalidMindNameError) as exc_info:
+            validate_mind_name("123wren")
+        assert "letter" in exc_info.value.reason.lower()
+
+    def test_rejects_special_chars(self):
+        """Rejects names with special characters."""
+        with pytest.raises(InvalidMindNameError) as exc_info:
+            validate_mind_name("wren@home")
+        assert "alphanumeric" in exc_info.value.reason.lower()
+
+
+class TestMindExists:
+    """Tests for mind_exists function."""
+
+    def test_returns_false_when_dir_not_exists(self, tmp_path):
+        """Returns False when minds_dir doesn't exist."""
+        assert mind_exists("wren", tmp_path / "nonexistent") is False
+
+    def test_returns_false_when_mind_not_exists(self, tmp_path):
+        """Returns False when mind doesn't exist."""
+        minds_dir = tmp_path / "minds"
+        minds_dir.mkdir()
+        assert mind_exists("wren", minds_dir) is False
+
+    def test_returns_true_for_top_level_mind(self, tmp_path):
+        """Returns True for mind at top level."""
+        minds_dir = tmp_path / "minds"
+        (minds_dir / "wren").mkdir(parents=True)
+        assert mind_exists("wren", minds_dir) is True
+
+    def test_returns_true_for_mind_in_org_dir(self, tmp_path):
+        """Returns True for mind in organizational directory."""
+        minds_dir = tmp_path / "minds"
+        (minds_dir / "_new" / "robin").mkdir(parents=True)
+        assert mind_exists("robin", minds_dir) is True
+
+
+class TestGenerateMindName:
+    """Tests for generate_mind_name function."""
+
+    def test_returns_generated_name(self):
+        """Returns name from subprocess."""
+        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+            mock_run.return_value.stdout = "sparrow\n"
+            mock_run.return_value.returncode = 0
+
+            name = generate_mind_name(existing=[])
+
+        assert name == "sparrow"
+
+    def test_avoids_existing_names(self):
+        """Passes existing names to avoid duplicates."""
+        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+            mock_run.return_value.stdout = "robin\n"
+            mock_run.return_value.returncode = 0
+
+            generate_mind_name(existing=["wren", "forge"])
+
+        # Check that existing names were passed in the user prompt (last arg)
+        call_args = mock_run.call_args[0][0]
+        user_prompt = call_args[-1]
+        assert "wren" in user_prompt
+
+    def test_raises_on_subprocess_failure(self):
+        """Raises RuntimeError when subprocess fails."""
+        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stderr = "error"
+
+            with pytest.raises(RuntimeError):
+                generate_mind_name(existing=[])
+
+
+class TestScaffoldMind:
+    """Tests for scaffold_mind function."""
+
+    @pytest.fixture
+    def templates(self):
+        """Create TemplateRenderer for mg_core assets."""
+        import mg_core
+        from mg.paths import PkgPaths
+        from mg.templates import TemplateRenderer
+
+        pkg = PkgPaths.from_module(mg_core)
+        return TemplateRenderer(pkg.assets)
+
+    def test_creates_mind_in_new_folder(self, tmp_path, templates):
+        """Creates mind folder in _new/ organizational directory."""
+        minds_dir = tmp_path / "minds"
+
+        mind = scaffold_mind("robin", minds_dir, templates)
+
+        assert mind.name == "robin"
+        assert mind.paths.root == minds_dir / "_new" / "robin"
+        assert mind.paths.startup.is_dir()
+        assert mind.paths.docs.is_dir()
+
+    def test_creates_startup_files(self, tmp_path, templates):
+        """Creates all startup files."""
+        minds_dir = tmp_path / "minds"
+
+        mind = scaffold_mind("robin", minds_dir, templates)
+
+        assert mind.paths.welcome_file.is_file()
+        assert mind.paths.immediate_plan_file.is_file()
+        assert mind.paths.long_term_vision_file.is_file()
+        assert mind.paths.my_process_file.is_file()
+        assert mind.paths.scratchpad_file.is_file()
+        assert mind.paths.references_file.is_file()
+
+    def test_raises_if_mind_exists(self, tmp_path, templates):
+        """Raises MindExistsError if mind already exists."""
+        minds_dir = tmp_path / "minds"
+        (minds_dir / "robin").mkdir(parents=True)
+
+        with pytest.raises(MindExistsError):
+            scaffold_mind("robin", minds_dir, templates)

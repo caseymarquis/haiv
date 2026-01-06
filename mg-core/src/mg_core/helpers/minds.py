@@ -20,11 +20,23 @@ Mind names cannot start with underscore. Directories starting with _ are
 organizational and can contain minds.
 """
 
+from __future__ import annotations
+
+import re
+import subprocess
 import tomllib
 import tomli_w
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mg.templates import TemplateRenderer
+
+
+# Valid name pattern: starts with letter, then alphanumeric/hyphen/underscore
+_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*$")
 
 
 class MindNotFoundError(Exception):
@@ -73,6 +85,32 @@ class MindPaths:
     def docs(self) -> Path:
         """Path to the docs/ directory."""
         return self.root / "docs"
+
+    # Startup files
+    @property
+    def welcome_file(self) -> Path:
+        """Path to welcome.md (task assignment from creator)."""
+        return self.startup / "welcome.md"
+
+    @property
+    def immediate_plan_file(self) -> Path:
+        """Path to immediate-plan.md (tactical, current work)."""
+        return self.startup / "immediate-plan.md"
+
+    @property
+    def long_term_vision_file(self) -> Path:
+        """Path to long-term-vision.md (strategic, direction)."""
+        return self.startup / "long-term-vision.md"
+
+    @property
+    def my_process_file(self) -> Path:
+        """Path to my-process.md (how I work, lessons learned)."""
+        return self.startup / "my-process.md"
+
+    @property
+    def scratchpad_file(self) -> Path:
+        """Path to scratchpad.md (messy thinking, notes)."""
+        return self.startup / "scratchpad.md"
 
     @property
     def references_file(self) -> Path:
@@ -349,3 +387,153 @@ def find_session(sessions_file: Path, session_id: str) -> Session | None:
         if session.id.startswith(session_id):
             return session
     return None
+
+
+# --- Mind Creation ---
+
+
+class MindExistsError(Exception):
+    """Raised when trying to create a mind that already exists."""
+
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(f"Mind '{name}' already exists")
+
+
+class InvalidMindNameError(Exception):
+    """Raised when a mind name is invalid."""
+
+    def __init__(self, name: str, reason: str):
+        self.name = name
+        self.reason = reason
+        super().__init__(f"Invalid mind name '{name}': {reason}")
+
+
+def validate_mind_name(name: str) -> None:
+    """Validate that a mind name is valid.
+
+    Args:
+        name: The name to validate.
+
+    Raises:
+        InvalidMindNameError: If the name is invalid.
+    """
+    if not name:
+        raise InvalidMindNameError(name, "Name cannot be empty")
+
+    if name != name.lower():
+        raise InvalidMindNameError(name, "Name must be lowercase")
+
+    if name.startswith("_"):
+        raise InvalidMindNameError(
+            name, "Name cannot start with underscore (reserved for organizational directories)"
+        )
+
+    if not name[0].isalpha():
+        raise InvalidMindNameError(name, "Name must start with a letter")
+
+    if not _NAME_PATTERN.match(name):
+        raise InvalidMindNameError(name, "Name must be alphanumeric with hyphens/underscores only")
+
+
+def generate_mind_name(existing: list[str]) -> str:
+    """Generate a unique mind name using Claude.
+
+    Args:
+        existing: List of existing mind names to avoid.
+
+    Returns:
+        A short, memorable, lowercase name not in existing.
+
+    Raises:
+        RuntimeError: If name generation fails.
+    """
+    if existing:
+        avoid_clause = f" Do not use: {', '.join(existing)}."
+    else:
+        avoid_clause = ""
+
+    system_prompt = (
+        "You generate names for AI assistants. "
+        "Output a single short, memorable, lowercase name (like wren, sage, spark). "
+        "Output only the name, nothing else."
+    )
+    user_prompt = f"Generate a name.{avoid_clause}"
+
+    result = subprocess.run(
+        [
+            "claude", "-p",
+            "--model", "haiku",
+            "--system-prompt", system_prompt,
+            user_prompt,
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to generate name: {result.stderr}")
+
+    return result.stdout.strip()
+
+
+def mind_exists(name: str, minds_dir: Path) -> bool:
+    """Check if a mind with the given name already exists.
+
+    Args:
+        name: The mind name to check.
+        minds_dir: Path to the minds/ directory.
+
+    Returns:
+        True if the mind exists, False otherwise.
+    """
+    if not minds_dir.exists():
+        return False
+
+    existing = [n for n, _ in list_mind_paths(minds_dir)]
+    return name in existing
+
+
+def scaffold_mind(name: str, minds_dir: Path, templates: TemplateRenderer) -> Mind:
+    """Create a new mind folder with proper structure.
+
+    Creates in _new/ organizational directory with:
+    - startup/welcome.md (template for creator to fill in)
+    - startup/immediate-plan.md
+    - startup/long-term-vision.md
+    - startup/my-process.md
+    - startup/scratchpad.md
+    - startup/references.toml
+    - docs/
+
+    Args:
+        name: The mind name (must be validated first).
+        minds_dir: Path to the minds/ directory.
+        templates: TemplateRenderer for writing template files.
+
+    Returns:
+        The created Mind object.
+
+    Raises:
+        MindExistsError: If a mind with this name already exists.
+    """
+    if mind_exists(name, minds_dir):
+        raise MindExistsError(name)
+
+    # Create in _new/ organizational directory
+    mind_root = minds_dir / "_new" / name
+    paths = MindPaths(root=mind_root)
+
+    # Create directories
+    paths.startup.mkdir(parents=True)
+    paths.docs.mkdir(parents=True)
+
+    # Write template files
+    templates.write("minds/welcome.md.j2", paths.welcome_file)
+    templates.write("minds/references.toml.j2", paths.references_file)
+    paths.immediate_plan_file.write_text("# Immediate Plan\n")
+    paths.long_term_vision_file.write_text("# Long-Term Vision\n")
+    paths.my_process_file.write_text("# My Process\n")
+    paths.scratchpad_file.write_text("# Scratchpad\n")
+
+    return Mind(paths=paths)
