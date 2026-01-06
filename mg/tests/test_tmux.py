@@ -1,0 +1,197 @@
+"""Tests for the Tmux wrapper class."""
+
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+import pytest
+
+from mg.tmux import Tmux
+from mg.errors import TmuxError
+
+
+@pytest.fixture
+def tmux():
+    """Create a Tmux instance with quiet=True for testing."""
+    return Tmux(mg_root=Path("/home/user/mind-games"), quiet=True)
+
+
+class TestTmuxInit:
+    def test_session_derived_from_mg_root_name(self, tmux):
+        assert tmux.session == "mind-games"
+
+    def test_session_with_different_path(self):
+        t = Tmux(mg_root=Path("/some/other/project"))
+        assert t.session == "project"
+
+
+class TestTmuxRun:
+    @patch("mg.tmux.subprocess.run")
+    def test_run_creates_session_then_executes(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="output", stderr="")
+
+        result = tmux.run("list-sessions")
+
+        # First call: has-session check, second call: actual command
+        assert mock_run.call_count == 2
+        assert "has-session" in mock_run.call_args_list[0][0][0]
+        assert "list-sessions" in mock_run.call_args_list[1][0][0]
+        assert result == "output"
+
+    @patch("mg.tmux.subprocess.run")
+    def test_run_raises_tmux_error_on_failure(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=1, stdout="", stderr="no server running"
+        )
+
+        with pytest.raises(TmuxError) as exc_info:
+            tmux.run("list-sessions")
+
+        assert "tmux command failed" in str(exc_info.value)
+        assert exc_info.value.stderr == "no server running"
+
+
+class TestCreateSessionIfNeeded:
+    @patch("mg.tmux.subprocess.run")
+    def test_creates_session_when_missing(self, mock_run, tmux):
+        # First call (has-session) fails, second call (new-session) succeeds
+        mock_run.side_effect = [
+            MagicMock(returncode=1, stdout="", stderr="no session"),
+            MagicMock(returncode=0, stdout="", stderr=""),
+        ]
+
+        created = tmux.create_session_if_needed()
+
+        assert created is True
+        assert mock_run.call_count == 2
+        assert "new-session -d -s mind-games" in mock_run.call_args_list[1][0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_skips_creation_when_exists(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        created = tmux.create_session_if_needed()
+
+        assert created is False
+        mock_run.assert_called_once()  # Only has-session check
+
+
+class TestHasSession:
+    @patch("mg.tmux.subprocess.run")
+    def test_has_session_returns_true_when_exists(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        assert tmux.has_session() is True
+        mock_run.assert_called_once()
+        assert "has-session -t mind-games" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_has_session_returns_false_when_missing(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=1, stdout="", stderr="no session"
+        )
+
+        assert tmux.has_session() is False
+
+
+class TestListWindows:
+    @patch("mg.tmux.subprocess.run")
+    def test_list_windows_parses_output(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="0:main\n1:editor\n2:tests\n",
+            stderr="",
+        )
+
+        windows = tmux.list_windows()
+
+        assert windows == ["0:main", "1:editor", "2:tests"]
+        assert "list-windows -t mind-games" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_list_windows_with_custom_format(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="main\neditor\n", stderr=""
+        )
+
+        tmux.list_windows(format="#{window_name}")
+
+        assert "-F '#{window_name}'" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_list_windows_handles_empty_output(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        windows = tmux.list_windows()
+
+        assert windows == []
+
+
+class TestCapturPane:
+    @patch("mg.tmux.subprocess.run")
+    def test_capture_pane_default_target(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="pane content\n", stderr=""
+        )
+
+        result = tmux.capture_pane()
+
+        assert result == "pane content\n"
+        assert "capture-pane -p -t mind-games" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_capture_pane_with_target(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+
+        tmux.capture_pane(target="1.0")
+
+        assert "-t mind-games:1.0" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_capture_pane_with_line_range(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
+
+        tmux.capture_pane(start=-100, end=0)
+
+        cmd = mock_run.call_args[0][0]
+        assert "-S -100" in cmd
+        assert "-E 0" in cmd
+
+
+class TestSendKeys:
+    @patch("mg.tmux.subprocess.run")
+    def test_send_keys_with_enter(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.send_keys("ls -la")
+
+        cmd = mock_run.call_args[0][0]
+        assert "send-keys -t mind-games" in cmd
+        assert "'ls -la'" in cmd
+        assert "Enter" in cmd
+
+    @patch("mg.tmux.subprocess.run")
+    def test_send_keys_without_enter(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.send_keys("partial", enter=False)
+
+        cmd = mock_run.call_args[0][0]
+        assert "'partial'" in cmd
+        assert "Enter" not in cmd
+
+    @patch("mg.tmux.subprocess.run")
+    def test_send_keys_with_target(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.send_keys("cmd", target="2")
+
+        assert "-t mind-games:2" in mock_run.call_args[0][0]
+
+    @patch("mg.tmux.subprocess.run")
+    def test_send_keys_escapes_single_quotes(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.send_keys("echo 'hello'")
+
+        cmd = mock_run.call_args[0][0]
+        # Single quotes should be escaped as '\''
+        assert "'\\''hello'\\'''" in cmd or "echo '\\''hello'\\''" in cmd
