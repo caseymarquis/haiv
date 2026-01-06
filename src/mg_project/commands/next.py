@@ -67,6 +67,15 @@ def execute(ctx: cmd.Ctx) -> None:
 
 def _ensure_bindings() -> None:
     """Ensure tmux keybindings are set up."""
+    # Enable 256 color and RGB support
+    subprocess.run(
+        ["tmux", "set-option", "-g", "default-terminal", "tmux-256color"],
+        capture_output=True,
+    )
+    subprocess.run(
+        ["tmux", "set-option", "-as", "terminal-features", ",*:RGB"],
+        capture_output=True,
+    )
     # Enable mouse support
     subprocess.run(["tmux", "set-option", "-g", "mouse", "on"], capture_output=True)
     # Set Ctrl+Space as prefix
