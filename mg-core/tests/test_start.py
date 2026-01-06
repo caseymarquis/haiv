@@ -86,13 +86,14 @@ class TestStartExecution:
             # Should clear terminal
             mock_system.assert_called_once_with("clear")
 
-            # Should exec claude with prompt
+            # Should exec claude with prompt first, then allowedTools
             mock_exec.assert_called_once()
             args = mock_exec.call_args[0]
             assert args[0] == "claude"
             assert args[1] == "claude"
-            assert "--prompt" in args
-            assert "mg become wren" in args[-1]
+            assert "mg become wren" in args[2]  # prompt is first after claude
+            assert "--allowedTools" in args
+            assert "Bash(mg become wren)" in args
 
     def test_starts_in_tmux_with_flag(self, tmp_path):
         """With --tmux, creates new tmux window."""

@@ -72,26 +72,31 @@ def _start_in_terminal(ctx: cmd.Ctx, mind: Mind) -> None:
     os.system("clear")
 
     # Replace this process with claude (no return on success)
+    # Prompt must come before flags
     prompt = f"Run `mg become {mind.name}`"
-    os.execlp("claude", "claude", "--prompt", prompt)
+    allowed = f"Bash(mg become {mind.name})"
+    os.execlp("claude", "claude", prompt, "--allowedTools", allowed)
 
 
 def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     """Start claude in a new tmux window."""
     tmux = Tmux(ctx.paths.root)
 
-    # Get or create window for this mind
-    window = tmux.get_window(mind.name)
-
-    # Set environment in tmux session
+    # Set environment in tmux session BEFORE creating window
+    # (so the shell inherits the vars when it spawns)
     tmux.setenv("MG_MIND", mind.name)
     tmux.setenv("MG_ROOT", str(ctx.paths.root))
+
+    # Get or create window for this mind
+    window = tmux.get_window(mind.name)
 
     # Clear terminal
     window.send_keys("clear")
 
-    # Determine session handling
+    # Build claude command with allowlist for mg become
+    # Prompt must come before flags
     prompt = f"Run `mg become {mind.name}`"
+    allowed = f'--allowedTools "Bash(mg become {mind.name})"'
 
     if ctx.args.has("resume"):
         # Resume existing session
@@ -104,7 +109,7 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
         if not session:
             raise CommandError("No session found to resume")
 
-        window.send_keys(f'claude --resume {session.id} --prompt "{prompt}"')
+        window.send_keys(f'claude "{prompt}" --resume {session.id} {allowed}')
 
     elif ctx.args.has("task"):
         # Start new tracked session
@@ -116,8 +121,8 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
         )
         save_session(mind.paths.sessions_file, session)
 
-        window.send_keys(f'claude --session-id {session.id} --prompt "{prompt}"')
+        window.send_keys(f'claude "{prompt}" --session-id {session.id} {allowed}')
 
     else:
         # Untracked session (existing behavior)
-        window.send_keys(f'claude --prompt "{prompt}"')
+        window.send_keys(f'claude "{prompt}" {allowed}')
