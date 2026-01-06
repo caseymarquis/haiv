@@ -6,10 +6,11 @@ that encourages Claude to analyze and help fix the error.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
-from mg.errors import TmuxError
+from mg.errors import CommandError, TmuxError
 
 
 class Tmux:
@@ -196,3 +197,26 @@ class Tmux:
             cmd += " Enter"
 
         self.run(cmd, intent=f"send keys to pane '{full_target}'")
+
+    def attach(self) -> None:
+        """Attach to the session, replacing the current process.
+
+        This uses os.execvp() to replace the Python process with tmux.
+        The session is created first if it doesn't exist.
+
+        Raises:
+            CommandError: If called from within Claude Code or tmux.
+        """
+        if os.environ.get("CLAUDECODE"):
+            raise CommandError(
+                "Cannot attach to tmux from within Claude Code. "
+                "Run 'mg tmux' from a regular terminal instead."
+            )
+        if os.environ.get("TMUX"):
+            raise CommandError(
+                "Already inside tmux. Use 'tmux switch-client -t "
+                f"{self.session}' to switch sessions."
+            )
+
+        self.create_session_if_needed()
+        os.execvp("tmux", ["tmux", "attach-session", "-t", self.session])

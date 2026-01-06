@@ -1,11 +1,12 @@
 """Tests for the Tmux wrapper class."""
 
+import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 
 from mg.tmux import Tmux
-from mg.errors import TmuxError
+from mg.errors import CommandError, TmuxError
 
 
 @pytest.fixture
@@ -195,3 +196,41 @@ class TestSendKeys:
         cmd = mock_run.call_args[0][0]
         # Single quotes should be escaped as '\''
         assert "'\\''hello'\\'''" in cmd or "echo '\\''hello'\\''" in cmd
+
+
+class TestAttach:
+    def test_attach_raises_in_claude_code(self, tmux, monkeypatch):
+        monkeypatch.setenv("CLAUDECODE", "1")
+        monkeypatch.delenv("TMUX", raising=False)
+
+        with pytest.raises(CommandError) as exc_info:
+            tmux.attach()
+
+        assert "Claude Code" in str(exc_info.value)
+
+    def test_attach_raises_in_tmux(self, tmux, monkeypatch):
+        monkeypatch.delenv("CLAUDECODE", raising=False)
+        monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,12345,0")
+
+        with pytest.raises(CommandError) as exc_info:
+            tmux.attach()
+
+        assert "Already inside tmux" in str(exc_info.value)
+        assert "switch-client" in str(exc_info.value)
+
+    @patch("mg.tmux.os.execvp")
+    @patch("mg.tmux.subprocess.run")
+    def test_attach_creates_session_and_execs(self, mock_run, mock_execvp, tmux, monkeypatch):
+        monkeypatch.delenv("CLAUDECODE", raising=False)
+        monkeypatch.delenv("TMUX", raising=False)
+        # Session doesn't exist, then creation succeeds
+        mock_run.side_effect = [
+            MagicMock(returncode=1, stdout="", stderr="no session"),
+            MagicMock(returncode=0, stdout="", stderr=""),
+        ]
+
+        tmux.attach()
+
+        mock_execvp.assert_called_once_with(
+            "tmux", ["tmux", "attach-session", "-t", "mind-games"]
+        )
