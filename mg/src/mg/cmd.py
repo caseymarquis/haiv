@@ -41,6 +41,7 @@ class Flag:
     resolver: str | None = None
     min_args: int = 1
     max_args: int | None = 1
+    description: str | None = None
 
 
 @dataclass

@@ -1,0 +1,123 @@
+"""mg start {mind} - Launch a mind.
+
+Starts Claude Code with the mind's startup context.
+"""
+
+from __future__ import annotations
+
+import os
+import uuid
+from datetime import datetime, timezone
+
+from mg import cmd
+from mg.errors import CommandError
+from mg.tmux import Tmux
+
+from mg_core.helpers.minds import (
+    Mind,
+    Session,
+    find_session,
+    get_most_recent_session,
+    save_session,
+)
+
+
+def define() -> cmd.Def:
+    return cmd.Def(
+        description="Launch a mind",
+        flags=[
+            cmd.Flag("tmux", type=bool, description="Start in a new tmux window"),
+            cmd.Flag("task", type=str, description="Task description for new session"),
+            cmd.Flag(
+                "resume",
+                type=str,
+                min_args=0,
+                max_args=1,
+                description="Resume session (most recent if no ID)",
+            ),
+        ],
+    )
+
+
+def execute(ctx: cmd.Ctx) -> None:
+    mind: Mind = ctx.args.get_one("mind")
+    use_tmux = ctx.args.has("tmux")
+    has_task = ctx.args.has("task")
+    has_resume = ctx.args.has("resume")
+
+    # Validate: --task and --resume require --tmux
+    if (has_task or has_resume) and not use_tmux:
+        raise CommandError("--task and --resume require --tmux")
+
+    # Validate: --task and --resume are mutually exclusive
+    if has_task and has_resume:
+        raise CommandError("Cannot use --task and --resume together")
+
+    if use_tmux:
+        _start_in_tmux(ctx, mind)
+    else:
+        _start_in_terminal(ctx, mind)
+
+
+def _start_in_terminal(ctx: cmd.Ctx, mind: Mind) -> None:
+    """Start claude in the current terminal."""
+    # Set MG_MIND (required) - inherited by exec'd process
+    os.environ["MG_MIND"] = mind.name
+
+    # Set MG_ROOT as optimization if not already set (auto-discovery works without it)
+    if not os.environ.get("MG_ROOT"):
+        os.environ["MG_ROOT"] = str(ctx.paths.root)
+
+    # Clear terminal
+    os.system("clear")
+
+    # Replace this process with claude (no return on success)
+    prompt = f"Run `mg become {mind.name}`"
+    os.execlp("claude", "claude", "--prompt", prompt)
+
+
+def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
+    """Start claude in a new tmux window."""
+    tmux = Tmux(ctx.paths.root)
+
+    # Get or create window for this mind
+    window = tmux.get_window(mind.name)
+
+    # Set environment in tmux session
+    tmux.setenv("MG_MIND", mind.name)
+    tmux.setenv("MG_ROOT", str(ctx.paths.root))
+
+    # Clear terminal
+    window.send_keys("clear")
+
+    # Determine session handling
+    prompt = f"Run `mg become {mind.name}`"
+
+    if ctx.args.has("resume"):
+        # Resume existing session
+        resume_values = ctx.args.get_list("resume", default_value=[])
+        if resume_values:
+            session = find_session(mind.paths.sessions_file, resume_values[0])
+        else:
+            session = get_most_recent_session(mind.paths.sessions_file)
+
+        if not session:
+            raise CommandError("No session found to resume")
+
+        window.send_keys(f'claude --resume {session.id} --prompt "{prompt}"')
+
+    elif ctx.args.has("task"):
+        # Start new tracked session
+        task = ctx.args.get_one("task")
+        session = Session(
+            id=str(uuid.uuid4()),
+            task=task,
+            started=datetime.now(timezone.utc),
+        )
+        save_session(mind.paths.sessions_file, session)
+
+        window.send_keys(f'claude --session-id {session.id} --prompt "{prompt}"')
+
+    else:
+        # Untracked session (existing behavior)
+        window.send_keys(f'claude --prompt "{prompt}"')

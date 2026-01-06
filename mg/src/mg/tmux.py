@@ -13,6 +13,48 @@ from pathlib import Path
 from mg.errors import CommandError, TmuxError
 
 
+class TmuxWindow:
+    """A window within a tmux session.
+
+    Created via Tmux.get_window(), not directly instantiated.
+
+    Attributes:
+        tmux: The parent Tmux instance.
+        name: The window name.
+        created: True if the window was just created, False if it already existed.
+    """
+
+    def __init__(self, tmux: "Tmux", name: str, created: bool):
+        self.tmux = tmux
+        self.name = name
+        self.created = created
+
+    def send_keys(self, keys: str, enter: bool = True) -> None:
+        """Send keys to this window.
+
+        Args:
+            keys: The keys/text to send.
+            enter: If True, append Enter key after the keys.
+        """
+        self.tmux.send_keys(keys, target=self.name, enter=enter)
+
+    def capture_pane(
+        self,
+        start: int | None = None,
+        end: int | None = None,
+    ) -> str:
+        """Capture the contents of this window's pane.
+
+        Args:
+            start: Start line (negative = from scrollback). Default: visible start.
+            end: End line. Default: visible end.
+
+        Returns:
+            The captured pane content.
+        """
+        return self.tmux.capture_pane(target=self.name, start=start, end=end)
+
+
 class Tmux:
     """Thin wrapper around tmux commands for a single session.
 
@@ -197,6 +239,51 @@ class Tmux:
             cmd += " Enter"
 
         self.run(cmd, intent=f"send keys to pane '{full_target}'")
+
+    def get_window(self, name: str, *, must_create: bool = False) -> TmuxWindow:
+        """Get or create a window by name.
+
+        Args:
+            name: The window name.
+            must_create: If True, raise TmuxError if the window already exists.
+
+        Returns:
+            TmuxWindow instance with `created` attribute indicating if it was new.
+
+        Raises:
+            TmuxError: If must_create=True and window already exists.
+        """
+        # Check if window exists
+        windows = self.list_windows(format="#{window_name}")
+        exists = name in windows
+
+        if exists:
+            if must_create:
+                raise TmuxError(
+                    f"Window '{name}' already exists in session '{self.session}'",
+                    stderr="",
+                )
+            return TmuxWindow(self, name, created=False)
+
+        # Create the window
+        self.run(f"new-window -t {self.session} -n {name}", intent=f"create window '{name}'")
+        return TmuxWindow(self, name, created=True)
+
+    def setenv(self, var: str, value: str, *, global_: bool = False) -> None:
+        """Set an environment variable in the session.
+
+        Args:
+            var: The environment variable name.
+            value: The value to set.
+            global_: If True, set globally (-g flag). Otherwise, set for the session.
+        """
+        flag = "-g " if global_ else ""
+        # Escape single quotes in value
+        escaped_value = value.replace("'", "'\\''")
+        self.run(
+            f"setenv {flag}-t {self.session} {var} '{escaped_value}'",
+            intent=f"set {var} in session",
+        )
 
     def attach(self) -> None:
         """Attach to the session, replacing the current process.

@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 
-from mg.tmux import Tmux
+from mg.tmux import Tmux, TmuxWindow
 from mg.errors import CommandError, TmuxError
 
 
@@ -234,3 +234,103 @@ class TestAttach:
         mock_execvp.assert_called_once_with(
             "tmux", ["tmux", "attach-session", "-t", "mind-games"]
         )
+
+
+class TestGetWindow:
+    @patch("mg.tmux.subprocess.run")
+    def test_get_window_creates_when_missing(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="bash\n", stderr="")
+
+        window = tmux.get_window("wren")
+
+        assert isinstance(window, TmuxWindow)
+        assert window.name == "wren"
+        assert window.created is True
+        # Should have called list-windows and new-window
+        assert any("new-window" in str(call) for call in mock_run.call_args_list)
+
+    @patch("mg.tmux.subprocess.run")
+    def test_get_window_returns_existing(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="bash\nwren\n", stderr="")
+
+        window = tmux.get_window("wren")
+
+        assert window.name == "wren"
+        assert window.created is False
+        # Should NOT have called new-window
+        assert not any("new-window" in str(call) for call in mock_run.call_args_list)
+
+    @patch("mg.tmux.subprocess.run")
+    def test_get_window_raises_when_must_create_and_exists(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="wren\n", stderr="")
+
+        with pytest.raises(TmuxError) as exc_info:
+            tmux.get_window("wren", must_create=True)
+
+        assert "already exists" in str(exc_info.value)
+
+
+class TestSetenv:
+    @patch("mg.tmux.subprocess.run")
+    def test_setenv_session_scope(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.setenv("MG_MIND", "wren")
+
+        cmd = mock_run.call_args[0][0]
+        assert "setenv" in cmd
+        assert "-t mind-games" in cmd
+        assert "MG_MIND" in cmd
+        assert "'wren'" in cmd
+        # Check -g flag is not present (but -g in mind-games is fine)
+        assert "setenv -g" not in cmd
+
+    @patch("mg.tmux.subprocess.run")
+    def test_setenv_global_scope(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.setenv("MG_ROOT", "/path/to/root", global_=True)
+
+        cmd = mock_run.call_args[0][0]
+        assert "-g" in cmd
+
+    @patch("mg.tmux.subprocess.run")
+    def test_setenv_escapes_single_quotes(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.setenv("VAR", "it's a value")
+
+        cmd = mock_run.call_args[0][0]
+        assert "'\\''s a value" in cmd or "it'\\''s" in cmd
+
+
+class TestTmuxWindow:
+    @patch("mg.tmux.subprocess.run")
+    def test_window_send_keys(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        window = TmuxWindow(tmux, "wren", created=True)
+
+        window.send_keys("echo hello")
+
+        cmd = mock_run.call_args[0][0]
+        assert "send-keys" in cmd
+        assert "-t mind-games:wren" in cmd
+        assert "'echo hello'" in cmd
+
+    @patch("mg.tmux.subprocess.run")
+    def test_window_capture_pane(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="pane content\n", stderr="")
+        window = TmuxWindow(tmux, "wren", created=True)
+
+        result = window.capture_pane()
+
+        assert result == "pane content\n"
+        cmd = mock_run.call_args[0][0]
+        assert "-t mind-games:wren" in cmd
+
+    def test_window_attributes(self, tmux):
+        window = TmuxWindow(tmux, "wren", created=True)
+
+        assert window.tmux is tmux
+        assert window.name == "wren"
+        assert window.created is True

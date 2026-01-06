@@ -177,3 +177,8 @@ class Paths:
                 "Run 'mg users new --name <name>' to create one."
             )
         return self.users / self._user_name / "state"
+
+    @property
+    def minds(self) -> Path:
+        """Minds directory (users/{name}/state/minds/)."""
+        return self.state / "minds"
