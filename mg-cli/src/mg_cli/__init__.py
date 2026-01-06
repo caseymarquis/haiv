@@ -1,6 +1,7 @@
 """mg: Seamless management of a collaborative AI team."""
 
 import os
+import shlex
 import sys
 import traceback
 from dataclasses import dataclass
@@ -239,7 +240,7 @@ def main():
         print(f"Usage: {prog} <command> [args...]")
         return
 
-    command_string = " ".join(args)
+    command_string = shlex.join(args)
 
     route, mg_root, sources = _find_command(command_string)
 
@@ -260,6 +261,7 @@ def main():
         pkg_roots.append(Path(mg_core.__file__).parent)
 
         # mg_project and mg_user via Paths
+        paths = None
         if mg_root is not None:
             paths = Paths(
                 _called_from=None,
@@ -272,7 +274,7 @@ def main():
             if mg_username is not None and paths.user.root.exists():
                 pkg_roots.append(paths.user.root)
 
-        resolve = make_resolver(pkg_roots, paths=None, has_user=mg_username is not None)
+        resolve = make_resolver(pkg_roots, paths=paths, has_user=mg_username is not None)
         ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username, resolve=resolve)
         run_command(command, ctx)
     except Exception as exc:
