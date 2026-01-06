@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 from mg import env
 
@@ -80,6 +81,18 @@ class PkgPaths:
     """
 
     root: Path
+
+    @classmethod
+    def from_module(cls, module: ModuleType) -> PkgPaths:
+        """Create PkgPaths from a module.
+
+        Args:
+            module: A Python module (e.g., mg_core).
+
+        Returns:
+            PkgPaths pointing to the module's root directory.
+        """
+        return cls(root=Path(module.__file__).parent)
 
     @property
     def assets(self) -> Path:
