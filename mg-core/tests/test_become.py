@@ -95,7 +95,8 @@ class TestBecomeEnvironmentChecks:
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
-        assert "Read the following files" in captured.out
+        assert "Welcome back, wren!" in captured.out
+        assert "documents you left for yourself" in captured.out
         assert "identity.md" in captured.out
 
 
@@ -117,7 +118,8 @@ class TestBecomeExecution:
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
-        assert "Read the following files" in captured.out
+        assert "Welcome back, wren!" in captured.out
+        assert "documents you left for yourself" in captured.out
         assert "src/roles/coo.md" in captured.out
         assert "docs/problems.md" in captured.out
 
@@ -140,7 +142,8 @@ class TestBecomeExecution:
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
-        assert "Read the following files" in captured.out
+        assert "Welcome back, wren!" in captured.out
+        assert "documents you left for yourself" in captured.out
         assert "identity.md" in captured.out
         assert "current-focus.md" in captured.out
         assert "references.toml" not in captured.out
@@ -188,7 +191,8 @@ path = "src/roles/coo.md"
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
-        assert "no startup files" in captured.out
+        assert "Welcome back, wren!" in captured.out
+        assert "no startup documents" in captured.out
 
 
 def _create_mock_mind(

@@ -54,10 +54,16 @@ def _output_startup_files(ctx: cmd.Ctx, mind: Mind) -> None:
         rel_path = file.relative_to(ctx.paths.root)
         files_to_read.append(str(rel_path))
 
+    # Welcome message
+    ctx.print(f"Welcome back, {mind.name}!")
+    ctx.print("")
+
     if not files_to_read:
-        ctx.print(f"Mind '{mind.name}' has no startup files.")
+        ctx.print("You have no startup documents yet. Ask what you should work on.")
         return
 
-    ctx.print("Read the following files in their entirety:")
+    ctx.print("Here are the documents you left for yourself.")
+    ctx.print("Please read them in their entirety before continuing your work:")
+    ctx.print("")
     for path in files_to_read:
         ctx.print(f"- {path}")
