@@ -21,6 +21,7 @@ Example: With `forge/status.py` and `_mind_/status.py`:
 This matches user expectations: typed literals are intentional, params capture variable data.
 """
 
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -124,7 +125,7 @@ def find_route_in_paths(
     Raises:
         AmbiguousRouteError: If multiple param directories could match.
     """
-    parts = command_string.split()
+    parts = shlex.split(command_string)
 
     # Separate routing parts from flags (everything from first - onward)
     route_parts, raw_flags = _split_at_flags(parts)

@@ -386,6 +386,39 @@ class TestParamsAndFlags:
         assert result.raw_flags == ["--verbose"]
 
 
+class TestQuotedValues:
+    """Tests for quoted flag values."""
+
+    def test_quoted_flag_value_preserved(self):
+        """'--name "Casey Smith"' parses as single value."""
+        paths = [Path("cmd.py")]
+        result = find_route_in_paths('cmd --name "Casey Smith"', paths)
+        assert result is not None
+        assert result.file == Path("cmd.py")
+        assert result.raw_flags == ["--name", "Casey Smith"]
+
+    def test_single_quoted_flag_value(self):
+        """'--name 'Casey Smith'' parses as single value."""
+        paths = [Path("cmd.py")]
+        result = find_route_in_paths("cmd --name 'Casey Smith'", paths)
+        assert result is not None
+        assert result.raw_flags == ["--name", "Casey Smith"]
+
+    def test_quoted_value_in_rest(self):
+        """Quoted values work in rest args too."""
+        paths = [Path("echo/_rest_.py")]
+        result = find_route_in_paths('echo "hello world" foo', paths)
+        assert result is not None
+        assert result.rest == ["hello world", "foo"]
+
+    def test_quoted_routing_part(self):
+        """Quoted routing parts work correctly."""
+        paths = [Path("_name_/greet.py")]
+        result = find_route_in_paths('"first last" greet', paths)
+        assert result is not None
+        assert result.params["name"].value == "first last"
+
+
 class TestFlags:
     """Tests for flag handling at routing layer.
 
