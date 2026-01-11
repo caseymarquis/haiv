@@ -55,16 +55,16 @@ class TestNameHandling:
     def test_uses_provided_name(self, sandbox: Sandbox):
         """Uses --name when provided."""
         sandbox.run("minds new --name robin")
-        assert (sandbox.ctx.paths.minds / "_new" / "robin").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin").is_dir()
 
     def test_generates_name_when_not_provided(self, sandbox: Sandbox):
         """Generates a name when --name not provided."""
-        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+        with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
             sandbox.run("minds new")
         # Check that a mind folder was created in _new/
-        new_dir = sandbox.ctx.paths.minds / "_new"
+        new_dir = sandbox.ctx.paths.user.minds_dir / "_new"
         assert new_dir.exists()
         minds = [d.name for d in new_dir.iterdir() if d.is_dir()]
         assert len(minds) == 1
@@ -73,13 +73,13 @@ class TestNameHandling:
     def test_rejects_duplicate_name(self, sandbox: Sandbox):
         """Rejects name that already exists."""
         # Create existing mind
-        (sandbox.ctx.paths.minds / "robin").mkdir(parents=True)
+        (sandbox.ctx.paths.user.minds_dir / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
             sandbox.run("minds new --name robin")
 
     def test_rejects_duplicate_in_new_folder(self, sandbox: Sandbox):
         """Rejects name that exists in _new/ folder."""
-        (sandbox.ctx.paths.minds / "_new" / "robin").mkdir(parents=True)
+        (sandbox.ctx.paths.user.minds_dir / "_new" / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
             sandbox.run("minds new --name robin")
 
@@ -95,22 +95,22 @@ class TestDirectoryStructure:
     def test_creates_in_new_folder(self, sandbox: Sandbox):
         """Creates mind folder in _new/ subdirectory."""
         sandbox.run("minds new --name robin")
-        assert (sandbox.ctx.paths.minds / "_new" / "robin").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin").is_dir()
 
     def test_creates_startup_directory(self, sandbox: Sandbox):
         """Creates startup/ directory."""
         sandbox.run("minds new --name robin")
-        assert (sandbox.ctx.paths.minds / "_new" / "robin" / "startup").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup").is_dir()
 
     def test_creates_docs_directory(self, sandbox: Sandbox):
         """Creates docs/ directory."""
         sandbox.run("minds new --name robin")
-        assert (sandbox.ctx.paths.minds / "_new" / "robin" / "docs").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "docs").is_dir()
 
     def test_creates_welcome_md(self, sandbox: Sandbox):
         """Creates startup/welcome.md template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "welcome.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "welcome.md"
         assert path.is_file()
         content = path.read_text()
         assert "Task Assignment" in content
@@ -118,31 +118,31 @@ class TestDirectoryStructure:
     def test_creates_immediate_plan_md(self, sandbox: Sandbox):
         """Creates startup/immediate-plan.md template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "immediate-plan.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "immediate-plan.md"
         assert path.is_file()
 
     def test_creates_long_term_vision_md(self, sandbox: Sandbox):
         """Creates startup/long-term-vision.md template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "long-term-vision.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "long-term-vision.md"
         assert path.is_file()
 
     def test_creates_my_process_md(self, sandbox: Sandbox):
         """Creates startup/my-process.md template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "my-process.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "my-process.md"
         assert path.is_file()
 
     def test_creates_scratchpad_md(self, sandbox: Sandbox):
         """Creates startup/scratchpad.md template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "scratchpad.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "scratchpad.md"
         assert path.is_file()
 
     def test_creates_references_toml(self, sandbox: Sandbox):
         """Creates startup/references.toml template."""
         sandbox.run("minds new --name robin")
-        path = sandbox.ctx.paths.minds / "_new" / "robin" / "startup" / "references.toml"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "references.toml"
         assert path.is_file()
         content = path.read_text()
         assert "references" in content.lower()
@@ -192,10 +192,10 @@ class TestEdgeCases:
     def test_creates_minds_dir_if_not_exists(self, sandbox: Sandbox):
         """Creates minds/ directory if it doesn't exist."""
         # Ensure minds dir doesn't exist
-        assert not sandbox.ctx.paths.minds.exists()
+        assert not sandbox.ctx.paths.user.minds_dir.exists()
         sandbox.run("minds new --name robin")
-        assert sandbox.ctx.paths.minds.exists()
-        assert (sandbox.ctx.paths.minds / "_new" / "robin").is_dir()
+        assert sandbox.ctx.paths.user.minds_dir.exists()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin").is_dir()
 
     def test_name_validation_lowercase(self, sandbox: Sandbox):
         """Name must be lowercase."""

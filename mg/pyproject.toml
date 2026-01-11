@@ -41,4 +41,5 @@ pythonpath = ["src"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "ty",
 ]

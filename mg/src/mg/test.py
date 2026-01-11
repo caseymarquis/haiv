@@ -45,10 +45,11 @@ from typing import Any, Callable
 from punq import Container
 
 from mg import cmd
-from mg.args import ResolveRequest, build_ctx
-from mg.loader import Command, load_command
+from mg._infrastructure.args import ResolveRequest, build_ctx
 from mg.paths import Paths, PkgPaths
-from mg.routing import RouteMatch, find_route
+from mg._infrastructure.loader import Command, load_command
+from mg.util import module_to_folder
+from mg._infrastructure.routing import RouteMatch, find_route
 
 # Default username for test contexts
 TEST_USERNAME = "testinius"
@@ -66,14 +67,14 @@ def _find_commands_module() -> ModuleType:
 
     pkg = _find_pkg_paths()
 
-    if not pkg.commands.is_dir():
+    if not pkg.commands_dir.is_dir():
         raise CommandsNotFoundError(
-            f"No commands/ directory found at {pkg.commands}"
+            f"No commands/ directory found at {pkg.commands_dir}"
         )
 
-    if not (pkg.commands / "__init__.py").exists():
+    if not (pkg.commands_dir / "__init__.py").exists():
         raise CommandsNotFoundError(
-            f"commands/ directory at {pkg.commands} has no __init__.py"
+            f"commands/ directory at {pkg.commands_dir} has no __init__.py"
         )
 
     module_name = f"{pkg.root.name}.commands"
@@ -112,12 +113,17 @@ def routes_to(
 
     if exists:
         if result is None:
-            commands_dir = Path(commands.__file__).parent
+            commands_dir = module_to_folder(commands)
             raise FileNotFoundError(
                 f"No route found for '{command_string}' in {commands_dir}"
             )
+        if result.file is None:
+            raise RuntimeError(
+                f"RouteMatch.file is None for '{command_string}'. "
+                "This indicates a bug in find_route()."
+            )
         if expected:
-            commands_dir = Path(commands.__file__).parent
+            commands_dir = module_to_folder(commands)
             actual_relative = result.file.relative_to(commands_dir)
             if str(actual_relative) != expected:
                 raise AssertionError(
@@ -130,7 +136,7 @@ def routes_to(
                 f"Expected no route for '{command_string}', but found {result.file}"
             )
         # Return RouteMatch with file=None for negative tests
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         pkg_root = commands_dir.parent
         return RouteMatch(file=None, pkg_root=pkg_root, params={}, rest=[], raw_flags=[])
 
@@ -153,7 +159,7 @@ def _create_test_root() -> Path:
 
     # Create test user folder structure using Paths
     paths = Paths(_called_from=None, _pkg_root=None, _mg_root=root, _user_name=TEST_USERNAME)
-    paths.state.mkdir(parents=True)
+    paths.user.state_dir.mkdir(parents=True)
 
     # Guard prevents cleanup until module unloads
     class Guard:
@@ -179,9 +185,14 @@ def parse(
 
     route = find_route(command_string, commands)
     if route is None:
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         raise FileNotFoundError(
             f"No route found for '{command_string}' in {commands_dir}"
+        )
+    if route.file is None:
+        raise RuntimeError(
+            f"RouteMatch.file is None for '{command_string}'. "
+            "This indicates a bug in find_route()."
         )
 
     command = load_command(route.file)
@@ -317,7 +328,7 @@ class Sandbox:
 
         # Create default user folder structure unless explicit mode
         if not config.explicit:
-            paths.state.mkdir(parents=True)
+            paths.user.state_dir.mkdir(parents=True)
 
         container = config.container or Container()
         self._ctx = cmd.Ctx(

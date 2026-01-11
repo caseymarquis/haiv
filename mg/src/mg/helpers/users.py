@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from mg.identity import Identity
-from mg.paths import PkgPaths
+from mg._infrastructure.identity import Identity
+from mg.paths import UserPaths
 
 
 class UserNotFoundError(Exception):
@@ -24,28 +24,6 @@ class UserNotFoundError(Exception):
             super().__init__(f"User '{name}' not found. Available users: {available_str}")
         else:
             super().__init__(f"User '{name}' not found.")
-
-
-@dataclass
-class UserPaths:
-    """Paths for a user's directory structure."""
-
-    root: Path  # users/{name}/
-
-    @property
-    def mg_user(self) -> PkgPaths:
-        """Package paths for users/{name}/src/mg_user/"""
-        return PkgPaths(root=self.root / "src" / "mg_user")
-
-    @property
-    def state(self) -> Path:
-        """users/{name}/state/"""
-        return self.root / "state"
-
-    @property
-    def minds(self) -> Path:
-        """users/{name}/state/minds/"""
-        return self.state / "minds"
 
 
 @dataclass

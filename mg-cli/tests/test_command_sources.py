@@ -252,9 +252,9 @@ class TestResolverIntegration:
     def test_implicit_resolver_without_file_returns_raw_value(self, mg_project_with_user):
         """Implicit resolver (_name_/) without resolver file returns raw string."""
         from mg_cli import _find_command, main
-        from mg.loader import load_command
-        from mg.args import build_ctx
-        from mg.resolvers import make_resolver
+        from mg._infrastructure.loader import load_command
+        from mg._infrastructure.args import build_ctx
+        from mg._infrastructure.resolvers import make_resolver
 
         # Create command with implicit param resolver
         commands_dir = mg_project_with_user / "src" / "mg_project" / "commands" / "_name_"
@@ -282,7 +282,7 @@ def execute(ctx: cmd.Ctx) -> None:
         resolve = make_resolver(pkg_roots, None, has_user=True)
 
         # Implicit resolver should return raw value
-        from mg.args import ResolveRequest
+        from mg._infrastructure.args import ResolveRequest
         req = ResolveRequest(param="name", resolver="name", value="alice")
         result = resolve(req)
 
@@ -291,7 +291,7 @@ def execute(ctx: cmd.Ctx) -> None:
     def test_explicit_resolver_without_file_raises_error(self, mg_project_with_user):
         """Explicit resolver (_target_as_mind_/) without file raises UnknownResolverError."""
         from mg_cli import _find_command
-        from mg.resolvers import make_resolver, UnknownResolverError
+        from mg._infrastructure.resolvers import make_resolver, UnknownResolverError
 
         # Create command with explicit param resolver
         commands_dir = mg_project_with_user / "src" / "mg_project" / "commands" / "_target_as_mind_"
@@ -317,7 +317,7 @@ def execute(ctx: cmd.Ctx) -> None:
         resolve = make_resolver(pkg_roots, None, has_user=True)
 
         # Explicit resolver should raise error
-        from mg.args import ResolveRequest
+        from mg._infrastructure.args import ResolveRequest
         req = ResolveRequest(param="target", resolver="mind", value="forge")
 
         with pytest.raises(UnknownResolverError) as exc_info:
@@ -327,7 +327,7 @@ def execute(ctx: cmd.Ctx) -> None:
 
     def test_resolver_file_is_discovered_and_used(self, mg_project_with_user):
         """Resolver file in resolvers/ is discovered and used."""
-        from mg.resolvers import make_resolver
+        from mg._infrastructure.resolvers import make_resolver
 
         # Create resolver file
         resolvers_dir = mg_project_with_user / "src" / "mg_project" / "resolvers"
@@ -340,7 +340,7 @@ def resolve(value, ctx):
         pkg_roots = [mg_project_with_user / "src" / "mg_project"]
         resolve = make_resolver(pkg_roots, None, has_user=True)
 
-        from mg.args import ResolveRequest
+        from mg._infrastructure.args import ResolveRequest
         req = ResolveRequest(param="mind", resolver="mind", value="forge")
         result = resolve(req)
 
@@ -348,7 +348,7 @@ def resolve(value, ctx):
 
     def test_resolver_requires_user_when_found(self, mg_project):
         """Resolver raises UserRequiredError when has_user=False."""
-        from mg.resolvers import make_resolver, UserRequiredError
+        from mg._infrastructure.resolvers import make_resolver, UserRequiredError
 
         # Create resolver file
         resolvers_dir = mg_project / "src" / "mg_project" / "resolvers"
@@ -361,7 +361,7 @@ def resolve(value, ctx):
         pkg_roots = [mg_project / "src" / "mg_project"]
         resolve = make_resolver(pkg_roots, None, has_user=False)
 
-        from mg.args import ResolveRequest
+        from mg._infrastructure.args import ResolveRequest
         req = ResolveRequest(param="mind", resolver="mind", value="forge")
 
         with pytest.raises(UserRequiredError) as exc_info:
@@ -371,7 +371,7 @@ def resolve(value, ctx):
 
     def test_user_resolver_overrides_project_resolver(self, mg_project_with_user):
         """User resolvers override project resolvers."""
-        from mg.resolvers import make_resolver
+        from mg._infrastructure.resolvers import make_resolver
 
         # Create resolver in project
         project_resolvers = mg_project_with_user / "src" / "mg_project" / "resolvers"
@@ -395,7 +395,7 @@ def resolve(value, ctx):
         ]
         resolve = make_resolver(pkg_roots, None, has_user=True)
 
-        from mg.args import ResolveRequest
+        from mg._infrastructure.args import ResolveRequest
         req = ResolveRequest(param="mind", resolver="mind", value="forge")
         result = resolve(req)
 

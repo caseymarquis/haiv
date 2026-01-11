@@ -7,10 +7,11 @@ from typing import Any
 from unittest.mock import Mock, patch, call
 
 from mg import test
-from mg.args import ResolveRequest
+from mg._infrastructure.args import ResolveRequest
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import Mind, MindPaths, Session, save_session
+from mg.helpers.minds import Mind, MindPaths
+from mg.helpers.sessions import Session, save_session
 
 
 class TestStartRouting:
@@ -107,7 +108,7 @@ class TestStartExecution:
             ctx.paths._mg_root = tmp_path
 
         # Patch at subprocess level (like Tmux class tests)
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             test.execute("start wren --tmux", resolve=mock_resolve, setup=setup)
@@ -213,18 +214,19 @@ class TestStartSessionManagement:
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-            test.execute(
+            result = test.execute(
                 "start wren --tmux --task 'Fix authentication bug'",
                 resolve=mock_resolve,
                 setup=setup,
             )
 
-        # Session file should exist
-        sessions_file = mind_dir / "sessions.ig.toml"
+        # Session file should exist at user level
+        sessions_file = result.ctx.paths.user.sessions_file
         assert sessions_file.exists()
 
         # Should contain the task
@@ -241,8 +243,9 @@ class TestStartSessionManagement:
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             test.execute(
@@ -260,22 +263,21 @@ class TestStartSessionManagement:
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
 
-        # Create a session to resume
-        sessions_file = mind_dir / "sessions.ig.toml"
-        session = Session(
-            id="abc-123-def",
-            task="Previous task",
-            started=datetime.now(timezone.utc),
-        )
-        save_session(sessions_file, session)
-
         def mock_resolve(req: ResolveRequest) -> Mind:
             return Mind(paths=MindPaths(root=mind_dir))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
+            # Create a session to resume
+            session = Session(
+                id="abc-123-def",
+                task="Previous task",
+                started=datetime.now(timezone.utc),
+            )
+            save_session(ctx.paths.user.sessions_file, session)
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             test.execute("start wren --tmux --resume", resolve=mock_resolve, setup=setup)
@@ -291,28 +293,28 @@ class TestStartSessionManagement:
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
 
-        # Create multiple sessions
-        sessions_file = mind_dir / "sessions.ig.toml"
-        session1 = Session(
-            id="xyz-789-ghi",
-            task="Older task",
-            started=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        )
-        session2 = Session(
-            id="abc-123-def",
-            task="Newer task",
-            started=datetime(2026, 1, 5, tzinfo=timezone.utc),
-        )
-        save_session(sessions_file, session1)
-        save_session(sessions_file, session2)
-
         def mock_resolve(req: ResolveRequest) -> Mind:
             return Mind(paths=MindPaths(root=mind_dir))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
+            # Create multiple sessions
+            sessions_file = ctx.paths.user.sessions_file
+            session1 = Session(
+                id="xyz-789-ghi",
+                task="Older task",
+                started=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            )
+            session2 = Session(
+                id="abc-123-def",
+                task="Newer task",
+                started=datetime(2026, 1, 5, tzinfo=timezone.utc),
+            )
+            save_session(sessions_file, session1)
+            save_session(sessions_file, session2)
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             # Resume the older session by ID
@@ -332,21 +334,21 @@ class TestStartSessionManagement:
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
 
-        sessions_file = mind_dir / "sessions.ig.toml"
-        session = Session(
-            id="abc-123-def-456-ghi",
-            task="Task",
-            started=datetime.now(timezone.utc),
-        )
-        save_session(sessions_file, session)
-
         def mock_resolve(req: ResolveRequest) -> Mind:
             return Mind(paths=MindPaths(root=mind_dir))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
+            # Create session to resume
+            session = Session(
+                id="abc-123-def-456-ghi",
+                task="Task",
+                started=datetime.now(timezone.utc),
+            )
+            save_session(ctx.paths.user.sessions_file, session)
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             # Resume with partial ID
@@ -373,8 +375,9 @@ class TestStartSessionManagement:
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
+            ctx.paths._user_name = "testuser"
 
-        with patch("mg.tmux.subprocess.run") as mock_run:
+        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             with pytest.raises(CommandError) as exc_info:

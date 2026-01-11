@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from types import ModuleType
 
-from mg.loader import load_command, load_commands_module, Command
+from mg._infrastructure.loader import load_command, load_commands_module, Command
 from mg import cmd
 from mg.paths import Paths
 
@@ -280,7 +280,7 @@ class TestLoadCommandsModule:
 
     def test_works_with_find_route(self, tmp_path):
         """Loaded module can be used with find_route."""
-        from mg.routing import find_route
+        from mg._infrastructure.routing import find_route
 
         # Create commands structure
         commands_dir = tmp_path / "commands"

@@ -3,7 +3,7 @@
 import pytest
 
 from mg import cmd, test
-from mg.routing import ParamCapture
+from mg._infrastructure.routing import ParamCapture
 from mg.test import CommandsNotFoundError
 from tests.fixtures.fake_commands import commands as fake_commands
 

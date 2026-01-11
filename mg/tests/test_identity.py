@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from mg.identity import (
+from mg._infrastructure.identity import (
     AmbiguousIdentityError,
     CurrentEnv,
     Identity,

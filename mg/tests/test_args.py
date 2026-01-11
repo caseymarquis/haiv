@@ -5,9 +5,9 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from mg import cmd
-from mg.args import build_ctx
-from mg.routing import RouteMatch, ParamCapture
-from mg.loader import Command
+from mg._infrastructure.args import build_ctx
+from mg._infrastructure.routing import RouteMatch, ParamCapture
+from mg._infrastructure.loader import Command
 
 # Mock pkg_root for tests
 MOCK_PKG_ROOT = Path("/fake/pkg")

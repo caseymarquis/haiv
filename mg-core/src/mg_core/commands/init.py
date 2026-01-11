@@ -4,7 +4,7 @@ from pathlib import Path
 
 from mg import cmd
 from mg.errors import CommandError
-from mg.git import Git
+from mg.wrappers.git import Git
 
 
 def define() -> cmd.Def:

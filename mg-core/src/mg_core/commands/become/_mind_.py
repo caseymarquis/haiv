@@ -6,10 +6,11 @@ If MG_MIND is unset, prints bootstrap instructions.
 
 import os
 
-from mg import cmd, env
+from mg import cmd
+from mg._infrastructure import env
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import Mind
+from mg.helpers.minds import Mind
 
 
 def define() -> cmd.Def:
@@ -19,7 +20,7 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    mind: Mind = ctx.args.get_one("mind")
+    mind = ctx.args.get_one("mind", type=Mind)
     current_mind = os.environ.get(env.MG_MIND)
 
     # If already a different mind, error - can't switch identities

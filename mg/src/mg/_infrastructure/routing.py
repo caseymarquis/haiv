@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
+from mg.util import module_to_folder
+
 
 class AmbiguousRouteError(Exception):
     """Raised when multiple param directories could match."""
@@ -74,7 +76,7 @@ def find_route(command_string: str, commands: ModuleType) -> RouteMatch | None:
     Returns:
         RouteMatch with file path and captured params, or None if not found.
     """
-    commands_dir = Path(commands.__file__).parent
+    commands_dir = module_to_folder(commands)
     pkg_root = commands_dir.parent
 
     paths = paths_from_module(commands)
@@ -82,6 +84,12 @@ def find_route(command_string: str, commands: ModuleType) -> RouteMatch | None:
 
     if result is None:
         return None
+
+    if result.file is None:
+        raise RuntimeError(
+            f"find_route_in_paths returned RouteMatch with file=None for '{command_string}'. "
+            "This indicates a bug in the routing logic."
+        )
 
     # Convert relative path to absolute
     result.file = commands_dir / result.file
@@ -93,7 +101,7 @@ def paths_from_module(commands: ModuleType) -> list[Path]:
 
     Returns paths relative to the module directory.
     """
-    commands_dir = Path(commands.__file__).parent
+    commands_dir = module_to_folder(commands)
     paths = []
 
     for py_file in commands_dir.rglob("*.py"):

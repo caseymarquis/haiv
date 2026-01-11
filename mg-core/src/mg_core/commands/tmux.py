@@ -6,7 +6,7 @@ error if called from within Claude Code or an existing tmux session.
 """
 
 from mg import cmd
-from mg.tmux import Tmux
+from mg.wrappers.tmux import Tmux
 
 
 def define() -> cmd.Def:

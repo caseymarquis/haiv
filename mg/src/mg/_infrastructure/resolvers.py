@@ -8,7 +8,7 @@ Each resolver module must have a `resolve(value: str, ctx: ResolverContext) -> A
 
 Example resolver (resolvers/mind.py):
     def resolve(value: str, ctx: ResolverContext) -> Mind:
-        return get_mind(ctx.paths.user.state / "minds", value)
+        return get_mind(ctx.paths.user.state_dir / "minds", value)
 """
 
 import importlib.util
@@ -18,7 +18,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
 
-from mg.args import ResolveRequest
+from mg._infrastructure.args import ResolveRequest
 
 
 class ResolverError(Exception):

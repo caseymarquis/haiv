@@ -1,9 +1,9 @@
-"""Tests for mg_core.helpers.minds module."""
+"""Tests for mg.helpers.minds module."""
 
 import pytest
 from pathlib import Path
 
-from mg_core.helpers.minds import (
+from mg.helpers.minds import (
     Mind,
     MindPaths,
     MindNotFoundError,
@@ -21,12 +21,12 @@ class TestMindPaths:
     def test_startup_path(self, tmp_path):
         """startup property returns root/startup."""
         paths = MindPaths(root=tmp_path / "wren")
-        assert paths.startup == tmp_path / "wren" / "startup"
+        assert paths.startup_dir == tmp_path / "wren" / "startup"
 
     def test_docs_path(self, tmp_path):
         """docs property returns root/docs."""
         paths = MindPaths(root=tmp_path / "wren")
-        assert paths.docs == tmp_path / "wren" / "docs"
+        assert paths.docs_dir == tmp_path / "wren" / "docs"
 
     def test_references_file_path(self, tmp_path):
         """references_file property returns startup/references.toml."""
@@ -155,7 +155,7 @@ class TestMindEnsureStructure:
 
         issues = mind.ensure_structure(fix=True)
 
-        assert mind.paths.startup.exists()
+        assert mind.paths.startup_dir.exists()
         startup_issues = [i for i in issues if "startup/ directory" in i.message]
         assert len(startup_issues) == 1
         assert startup_issues[0].fixed is True
@@ -181,7 +181,7 @@ class TestMindEnsureStructure:
 
         issues = mind.ensure_structure(fix=True)
 
-        assert mind.paths.docs.exists()
+        assert mind.paths.docs_dir.exists()
         docs_issues = [i for i in issues if "docs/ directory" in i.message]
         assert len(docs_issues) == 1
         assert docs_issues[0].fixed is True
@@ -207,8 +207,8 @@ class TestMindEnsureStructure:
         issues = mind.ensure_structure(fix=False)
 
         assert len(issues) == 3  # startup, references.toml, docs
-        assert not mind.paths.startup.exists()
-        assert not mind.paths.docs.exists()
+        assert not mind.paths.startup_dir.exists()
+        assert not mind.paths.docs_dir.exists()
         assert all(not i.fixed for i in issues)
 
 
@@ -402,7 +402,7 @@ class TestListMinds:
 
 from unittest.mock import patch
 
-from mg_core.helpers.minds import (
+from mg.helpers.minds import (
     InvalidMindNameError,
     MindExistsError,
     validate_mind_name,
@@ -493,7 +493,7 @@ class TestGenerateMindName:
 
     def test_returns_generated_name(self):
         """Returns name from subprocess."""
-        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+        with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
 
@@ -503,7 +503,7 @@ class TestGenerateMindName:
 
     def test_avoids_existing_names(self):
         """Passes existing names to avoid duplicates."""
-        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+        with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "robin\n"
             mock_run.return_value.returncode = 0
 
@@ -516,7 +516,7 @@ class TestGenerateMindName:
 
     def test_raises_on_subprocess_failure(self):
         """Raises RuntimeError when subprocess fails."""
-        with patch("mg_core.helpers.minds.subprocess.run") as mock_run:
+        with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "error"
 
@@ -535,7 +535,7 @@ class TestScaffoldMind:
         from mg.templates import TemplateRenderer
 
         pkg = PkgPaths.from_module(mg_core)
-        return TemplateRenderer(pkg.assets)
+        return TemplateRenderer(pkg.assets_dir)
 
     def test_creates_mind_in_new_folder(self, tmp_path, templates):
         """Creates mind folder in _new/ organizational directory."""
@@ -545,8 +545,8 @@ class TestScaffoldMind:
 
         assert mind.name == "robin"
         assert mind.paths.root == minds_dir / "_new" / "robin"
-        assert mind.paths.startup.is_dir()
-        assert mind.paths.docs.is_dir()
+        assert mind.paths.startup_dir.is_dir()
+        assert mind.paths.docs_dir.is_dir()
 
     def test_creates_startup_files(self, tmp_path, templates):
         """Creates all startup files."""

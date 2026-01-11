@@ -25,11 +25,11 @@ from __future__ import annotations
 import re
 import subprocess
 import tomllib
-import tomli_w
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from mg.paths import MindPaths
 
 if TYPE_CHECKING:
     from mg.templates import TemplateRenderer
@@ -71,59 +71,6 @@ class DuplicateMindError(Exception):
 
 
 @dataclass
-class MindPaths:
-    """Paths for a mind's directory structure."""
-
-    root: Path
-
-    @property
-    def startup(self) -> Path:
-        """Path to the startup/ directory."""
-        return self.root / "startup"
-
-    @property
-    def docs(self) -> Path:
-        """Path to the docs/ directory."""
-        return self.root / "docs"
-
-    # Startup files
-    @property
-    def welcome_file(self) -> Path:
-        """Path to welcome.md (task assignment from creator)."""
-        return self.startup / "welcome.md"
-
-    @property
-    def immediate_plan_file(self) -> Path:
-        """Path to immediate-plan.md (tactical, current work)."""
-        return self.startup / "immediate-plan.md"
-
-    @property
-    def long_term_vision_file(self) -> Path:
-        """Path to long-term-vision.md (strategic, direction)."""
-        return self.startup / "long-term-vision.md"
-
-    @property
-    def my_process_file(self) -> Path:
-        """Path to my-process.md (how I work, lessons learned)."""
-        return self.startup / "my-process.md"
-
-    @property
-    def scratchpad_file(self) -> Path:
-        """Path to scratchpad.md (messy thinking, notes)."""
-        return self.startup / "scratchpad.md"
-
-    @property
-    def references_file(self) -> Path:
-        """Path to references.toml."""
-        return self.startup / "references.toml"
-
-    @property
-    def sessions_file(self) -> Path:
-        """Path to sessions.ig.toml (ignored by git)."""
-        return self.root / "sessions.ig.toml"
-
-
-@dataclass
 class MindStructureIssue:
     """An issue found during mind structure validation."""
 
@@ -160,13 +107,13 @@ class Mind:
         issues: list[MindStructureIssue] = []
 
         # Check startup/ directory
-        if not self.paths.startup.exists():
+        if not self.paths.startup_dir.exists():
             issue = MindStructureIssue(
-                path=self.paths.startup,
+                path=self.paths.startup_dir,
                 message="Missing startup/ directory",
             )
             if fix:
-                self.paths.startup.mkdir(parents=True)
+                self.paths.startup_dir.mkdir(parents=True)
                 issue.fixed = True
             issues.append(issue)
 
@@ -178,19 +125,19 @@ class Mind:
             )
             if fix:
                 # Ensure parent exists first
-                self.paths.startup.mkdir(parents=True, exist_ok=True)
+                self.paths.startup_dir.mkdir(parents=True, exist_ok=True)
                 self.paths.references_file.write_text("# External document references\n")
                 issue.fixed = True
             issues.append(issue)
 
         # Check docs/ directory
-        if not self.paths.docs.exists():
+        if not self.paths.docs_dir.exists():
             issue = MindStructureIssue(
-                path=self.paths.docs,
+                path=self.paths.docs_dir,
                 message="Missing docs/ directory",
             )
             if fix:
-                self.paths.docs.mkdir(parents=True)
+                self.paths.docs_dir.mkdir(parents=True)
                 issue.fixed = True
             issues.append(issue)
 
@@ -220,11 +167,11 @@ class Mind:
 
         Returns absolute paths sorted by name.
         """
-        if not self.paths.startup.exists():
+        if not self.paths.startup_dir.exists():
             return []
 
         files = []
-        for item in sorted(self.paths.startup.iterdir()):
+        for item in sorted(self.paths.startup_dir.iterdir()):
             if item.is_file() and item.name != "references.toml":
                 files.append(item)
         return files
@@ -313,80 +260,6 @@ def list_minds(minds_dir: Path) -> list[Mind]:
         DuplicateMindError: If duplicate names exist.
     """
     return [Mind(paths=MindPaths(root=path)) for _, path in list_mind_paths(minds_dir)]
-
-
-# --- Session Management ---
-
-MAX_SESSIONS = 20
-
-
-@dataclass
-class Session:
-    """A tracked Claude session for a mind."""
-
-    id: str
-    task: str
-    started: datetime
-
-
-def load_sessions(sessions_file: Path) -> list[Session]:
-    """Load sessions from TOML file.
-
-    Returns sessions ordered most-recent-first.
-    """
-    if not sessions_file.exists():
-        return []
-
-    with open(sessions_file, "rb") as f:
-        data = tomllib.load(f)
-
-    sessions = []
-    for entry in data.get("sessions", []):
-        sessions.append(
-            Session(
-                id=entry["id"],
-                task=entry["task"],
-                started=entry["started"],
-            )
-        )
-    return sessions
-
-
-def save_session(sessions_file: Path, session: Session) -> None:
-    """Prepend a new session to the file (most recent first).
-
-    Keeps at most MAX_SESSIONS entries, dropping oldest.
-    """
-    existing = load_sessions(sessions_file)
-    all_sessions = [session] + existing
-
-    # Keep only the most recent MAX_SESSIONS
-    all_sessions = all_sessions[:MAX_SESSIONS]
-
-    data = {
-        "sessions": [
-            {"id": s.id, "task": s.task, "started": s.started}
-            for s in all_sessions
-        ]
-    }
-
-    with open(sessions_file, "wb") as f:
-        tomli_w.dump(data, f)
-
-
-def get_most_recent_session(sessions_file: Path) -> Session | None:
-    """Get the most recently started session."""
-    sessions = load_sessions(sessions_file)
-    return sessions[0] if sessions else None
-
-
-def find_session(sessions_file: Path, session_id: str) -> Session | None:
-    """Find session by ID (supports partial matching)."""
-    sessions = load_sessions(sessions_file)
-    for session in sessions:
-        if session.id.startswith(session_id):
-            return session
-    return None
 
 
 # --- Mind Creation ---
@@ -525,8 +398,8 @@ def scaffold_mind(name: str, minds_dir: Path, templates: TemplateRenderer) -> Mi
     paths = MindPaths(root=mind_root)
 
     # Create directories
-    paths.startup.mkdir(parents=True)
-    paths.docs.mkdir(parents=True)
+    paths.startup_dir.mkdir(parents=True)
+    paths.docs_dir.mkdir(parents=True)
 
     # Write template files
     templates.write("minds/welcome.md.j2", paths.welcome_file)

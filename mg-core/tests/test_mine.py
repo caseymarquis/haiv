@@ -7,13 +7,13 @@ from unittest.mock import patch
 from mg import test
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import Mind, MindPaths
+from mg.helpers.minds import Mind, MindPaths
 
 
 def create_mind(ctx, name: str, role: str | None = None) -> Mind:
     """Helper to create a mind using ctx.paths."""
-    ctx.paths.minds.mkdir(parents=True, exist_ok=True)
-    mind = Mind(paths=MindPaths(root=ctx.paths.minds / name))
+    ctx.paths.user.minds_dir.mkdir(parents=True, exist_ok=True)
+    mind = Mind(paths=MindPaths(root=ctx.paths.user.minds_dir / name))
     mind.ensure_structure()
     if role:
         mind.paths.references_file.write_text(f'role = "{role}"\n')
@@ -79,7 +79,7 @@ class TestMineExecution:
     def test_handles_missing_mind_gracefully(self):
         """mine provides helpful error for non-existent mind."""
         def setup(ctx):
-            ctx.paths.minds.mkdir(parents=True, exist_ok=True)
+            ctx.paths.user.minds_dir.mkdir(parents=True, exist_ok=True)
 
         with patch.dict(os.environ, {"MG_MIND": "nonexistent"}):
             with pytest.raises(Exception):  # MindNotFoundError

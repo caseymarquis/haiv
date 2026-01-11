@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
-from mg.resolvers import (
+from mg._infrastructure.resolvers import (
     discover_resolvers,
     load_resolver,
     make_resolver,
@@ -13,7 +13,7 @@ from mg.resolvers import (
     UnknownResolverError,
     UserRequiredError,
 )
-from mg.args import ResolveRequest
+from mg._infrastructure.args import ResolveRequest
 
 
 class TestDiscoverResolvers:

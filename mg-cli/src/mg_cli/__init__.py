@@ -4,21 +4,29 @@ import os
 import shlex
 import sys
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import cast
 
-from mg import env
+import mg_core
+import mg_core.commands
+
+from mg._infrastructure import env
 from mg.paths import get_mg_root, Paths
-from mg.routing import find_route, RouteMatch
-from mg.loader import load_command, load_commands_module
-from mg.args import build_ctx
-from mg.runner import run_command
-from mg.identity import detect_user, Identity
-from mg.resolvers import make_resolver
+from mg._infrastructure.routing import find_route, RouteMatch
+from mg._infrastructure.loader import load_command, load_commands_module
+from mg._infrastructure.args import build_ctx
+from mg._infrastructure.runner import run_command
+from mg._infrastructure.identity import detect_user, Identity
+from mg._infrastructure.resolvers import make_resolver
+from mg.util import module_to_folder
 
 __version__ = "0.1.0"
+
+# Core package root (computed once at import)
+_core_root = module_to_folder(mg_core)
 
 # Cached mg_root lookup
 _mg_root: Path | None = None
@@ -52,8 +60,8 @@ def _detect_user_cached() -> Identity:
     if _user is None and _user_error is None:
         try:
             mg_root = _get_mg_root_cached()
-            paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root)
-            _user = detect_user(paths.users)
+            paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _core_root=_core_root)
+            _user = detect_user(paths.users_dir)
             if _user is None:
                 raise Exception(
                     "No user identity found.\n"
@@ -119,7 +127,7 @@ def _try_source(
     command_string: str,
     name: str,
     path: str,
-    get_commands: callable,
+    get_commands: Callable[[], ModuleType],
 ) -> tuple[RouteMatch | None, CommandSource]:
     """Try to find a command in a single source.
 
@@ -145,8 +153,8 @@ def _get_project_commands() -> ModuleType:
     mg_root = _get_mg_root_cached()
     os.environ[env.MG_ROOT] = str(mg_root)
 
-    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root)
-    return load_commands_module(paths.project.commands / "__init__.py")
+    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _core_root=_core_root)
+    return load_commands_module(paths.pkgs.project.commands_dir / "__init__.py")
 
 
 def _get_user_commands() -> ModuleType:
@@ -154,8 +162,8 @@ def _get_user_commands() -> ModuleType:
     mg_root = _get_mg_root_cached()
     user = _detect_user_cached()
 
-    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name)
-    return load_commands_module(paths.user.commands / "__init__.py")
+    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name, _core_root=_core_root)
+    return load_commands_module(paths.pkgs.user.commands_dir / "__init__.py")
 
 
 def _find_command(
@@ -191,12 +199,11 @@ def _find_command(
         return route, _mg_root, sources
 
     # Fall back to mg_core (always available)
-    from mg_core import commands as core_commands
     route, source = _try_source(
         command_string,
         "mg_core",
         "(installed)",
-        lambda: core_commands,
+        lambda: mg_core.commands,
     )
     sources.append(source)
 
@@ -247,6 +254,14 @@ def main():
     if route is None:
         _print_not_found(command_string, sources)
         sys.exit(1)
+        raise AssertionError("unreachable")
+
+    if route.file is None:
+        raise RuntimeError(
+            f"RouteMatch.file is None for '{command_string}'. "
+            "This indicates a bug in find_route() - it should return None "
+            "instead of a RouteMatch with file=None."
+        )
 
     try:
         command = load_command(route.file)
@@ -256,9 +271,8 @@ def main():
         # Order: mg_core, mg_project, mg_user (later overrides earlier)
         pkg_roots: list[Path] = []
 
-        # mg_core (already imported by _find_command)
-        import mg_core
-        pkg_roots.append(Path(mg_core.__file__).parent)
+        # mg_core
+        pkg_roots.append(_core_root)
 
         # mg_project and mg_user via Paths
         paths = None
@@ -268,11 +282,12 @@ def main():
                 _pkg_root=None,
                 _mg_root=mg_root,
                 _user_name=mg_username,
+                _core_root=_core_root,
             )
-            if paths.project.root.exists():
-                pkg_roots.append(paths.project.root)
-            if mg_username is not None and paths.user.root.exists():
-                pkg_roots.append(paths.user.root)
+            if paths.pkgs.project.root.exists():
+                pkg_roots.append(paths.pkgs.project.root)
+            if mg_username is not None and paths.pkgs.user.root.exists():
+                pkg_roots.append(paths.pkgs.user.root)
 
         resolve = make_resolver(pkg_roots, paths=paths, has_user=mg_username is not None)
         ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username, resolve=resolve)

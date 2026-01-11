@@ -5,9 +5,9 @@ Converts a mind name string to a Mind object using the helpers.minds module.
 
 import sys
 
-from mg.resolvers import ResolverContext
+from mg._infrastructure.resolvers import ResolverContext
 
-from mg_core.helpers.minds import Mind, resolve_mind
+from mg.helpers.minds import Mind, resolve_mind
 
 
 def resolve(value: str, ctx: ResolverContext) -> Mind:
@@ -24,7 +24,7 @@ def resolve(value: str, ctx: ResolverContext) -> Mind:
         MindNotFoundError: If mind not found.
         DuplicateMindError: If duplicate names exist.
     """
-    mind = resolve_mind(value, ctx.paths.minds)
+    mind = resolve_mind(value, ctx.paths.user.minds_dir)
 
     # Ensure structure, warn on issues
     try:

@@ -9,7 +9,7 @@ import tomli_w
 
 from mg import cmd
 from mg.errors import CommandError
-from mg.identity import CurrentEnv, get_current_env
+from mg._infrastructure.identity import CurrentEnv, get_current_env
 
 
 # Valid name pattern: starts with letter, then alphanumeric/hyphen/underscore
@@ -44,7 +44,7 @@ def execute(ctx: cmd.Ctx) -> None:
     _validate_name(name)
 
     # Check if user exists
-    user_dir = ctx.paths.users / name
+    user_dir = ctx.paths.users_dir / name
     identity_file = user_dir / "identity.toml"
 
     if user_dir.exists():

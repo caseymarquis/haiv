@@ -13,9 +13,9 @@ class TestSandboxPkgDiscovery:
     """Tests for automatic package discovery in sandbox."""
 
     def test_sandbox_has_pkg_paths(self):
-        """Sandbox ctx.paths.pkg is a PkgPaths instance."""
+        """Sandbox ctx.paths.pkgs.current is a PkgPaths instance."""
         sandbox = create_sandbox()
-        assert isinstance(sandbox.ctx.paths.pkg, PkgPaths)
+        assert isinstance(sandbox.ctx.paths.pkgs.current, PkgPaths)
 
     def test_pkg_root_points_to_module(self):
         """pkg.root points to a module directory (contains __init__.py or is importable).
@@ -26,14 +26,14 @@ class TestSandboxPkgDiscovery:
         """
         sandbox = create_sandbox()
         # Should point to src/mg/ since this test is in mg/tests/
-        assert sandbox.ctx.paths.pkg.root.parent.name == "src"
-        assert sandbox.ctx.paths.pkg.root.name == "mg"
-        assert (sandbox.ctx.paths.pkg.root / "__init__.py").exists()
+        assert sandbox.ctx.paths.pkgs.current.root.parent.name == "src"
+        assert sandbox.ctx.paths.pkgs.current.root.name == "mg"
+        assert (sandbox.ctx.paths.pkgs.current.root / "__init__.py").exists()
 
     def test_pkg_assets_derived_from_root(self):
-        """pkg.assets is __assets__ under pkg.root."""
+        """pkg.assets_dir is __assets__ under pkg.root."""
         sandbox = create_sandbox()
-        assert sandbox.ctx.paths.pkg.assets == sandbox.ctx.paths.pkg.root / "__assets__"
+        assert sandbox.ctx.paths.pkgs.current.assets_dir == sandbox.ctx.paths.pkgs.current.root / "__assets__"
 
 
 class TestSandboxPkgOverride:
@@ -46,13 +46,13 @@ class TestSandboxPkgOverride:
 
         sandbox = create_sandbox(SandboxConfig(pkg_root=custom_pkg))
 
-        assert sandbox.ctx.paths.pkg.root == custom_pkg
+        assert sandbox.ctx.paths.pkgs.current.root == custom_pkg
 
     def test_pkg_assets_with_override(self, tmp_path):
-        """pkg.assets works with overridden pkg_root."""
+        """pkg.assets_dir works with overridden pkg_root."""
         custom_pkg = tmp_path / "custom_module"
         custom_pkg.mkdir()
 
         sandbox = create_sandbox(SandboxConfig(pkg_root=custom_pkg))
 
-        assert sandbox.ctx.paths.pkg.assets == custom_pkg / "__assets__"
+        assert sandbox.ctx.paths.pkgs.current.assets_dir == custom_pkg / "__assets__"

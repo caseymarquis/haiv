@@ -9,7 +9,19 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from mg.errors import GitError
+from mg.errors import CommandError
+
+
+class GitError(CommandError):
+    """Raised when a git command fails.
+
+    Attributes:
+        stderr: The stderr output from the git command.
+    """
+
+    def __init__(self, message: str, stderr: str = ""):
+        super().__init__(message)
+        self.stderr = stderr
 
 
 class Git:

@@ -11,27 +11,3 @@ class CommandError(Exception):
     """
 
     pass
-
-
-class GitError(CommandError):
-    """Raised when a git command fails.
-
-    Attributes:
-        stderr: The stderr output from the git command.
-    """
-
-    def __init__(self, message: str, stderr: str = ""):
-        super().__init__(message)
-        self.stderr = stderr
-
-
-class TmuxError(CommandError):
-    """Raised when a tmux command fails.
-
-    Attributes:
-        stderr: The stderr output from the tmux command.
-    """
-
-    def __init__(self, message: str, stderr: str = ""):
-        super().__init__(message)
-        self.stderr = stderr

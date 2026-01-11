@@ -1,4 +1,13 @@
-"""Path utilities for mg projects."""
+"""Path utilities for mg projects.
+
+Naming conventions:
+- `root` - base anchor path (exception to suffix rule)
+- `*_dir` - directory path (e.g., `state_dir`, `minds_dir`)
+- `*_file` - file path (e.g., `sessions_file`, `welcome_file`)
+- no suffix - container object (e.g., `pkgs`, `user` returns UserPaths)
+
+The lack of suffix distinguishes container objects from raw Path values.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
-from mg import env
+from mg._infrastructure import env
+from mg.util import module_to_folder
 
 
 def _is_valid_mg_root(path: Path) -> bool:
@@ -92,22 +102,147 @@ class PkgPaths:
         Returns:
             PkgPaths pointing to the module's root directory.
         """
-        return cls(root=Path(module.__file__).parent)
+        return cls(root=module_to_folder(module))
 
     @property
-    def assets(self) -> Path:
+    def assets_dir(self) -> Path:
         """The __assets__ directory for non-code assets."""
         return self.root / "__assets__"
 
     @property
-    def commands(self) -> Path:
+    def commands_dir(self) -> Path:
         """The commands directory."""
         return self.root / "commands"
 
     @property
-    def resolvers(self) -> Path:
+    def resolvers_dir(self) -> Path:
         """The resolvers directory."""
         return self.root / "resolvers"
+
+
+@dataclass
+class UserPaths:
+    """Paths for a user's directory structure.
+
+    Provides access to user state (minds, sessions) and user package.
+    """
+
+    root: Path  # users/{name}/
+
+    @property
+    def mg_user(self) -> PkgPaths:
+        """Package paths for users/{name}/src/mg_user/"""
+        return PkgPaths(root=self.root / "src" / "mg_user")
+
+    @property
+    def state_dir(self) -> Path:
+        """users/{name}/state/"""
+        return self.root / "state"
+
+    @property
+    def minds_dir(self) -> Path:
+        """users/{name}/state/minds/"""
+        return self.state_dir / "minds"
+
+    @property
+    def sessions_file(self) -> Path:
+        """users/{name}/state/sessions.ig.toml"""
+        return self.state_dir / "sessions.ig.toml"
+
+
+@dataclass
+class MindPaths:
+    """Paths for a mind's directory structure."""
+
+    root: Path
+
+    @property
+    def startup_dir(self) -> Path:
+        """Path to the startup/ directory."""
+        return self.root / "startup"
+
+    @property
+    def docs_dir(self) -> Path:
+        """Path to the docs/ directory."""
+        return self.root / "docs"
+
+    # Startup files
+    @property
+    def welcome_file(self) -> Path:
+        """Path to welcome.md (task assignment from creator)."""
+        return self.startup_dir / "welcome.md"
+
+    @property
+    def immediate_plan_file(self) -> Path:
+        """Path to immediate-plan.md (tactical, current work)."""
+        return self.startup_dir / "immediate-plan.md"
+
+    @property
+    def long_term_vision_file(self) -> Path:
+        """Path to long-term-vision.md (strategic, direction)."""
+        return self.startup_dir / "long-term-vision.md"
+
+    @property
+    def my_process_file(self) -> Path:
+        """Path to my-process.md (how I work, lessons learned)."""
+        return self.startup_dir / "my-process.md"
+
+    @property
+    def scratchpad_file(self) -> Path:
+        """Path to scratchpad.md (messy thinking, notes)."""
+        return self.startup_dir / "scratchpad.md"
+
+    @property
+    def references_file(self) -> Path:
+        """Path to references.toml."""
+        return self.startup_dir / "references.toml"
+
+
+@dataclass
+class Pkgs:
+    """Package paths for command/resolver discovery.
+
+    All mg packages follow the same structure with commands/, resolvers/,
+    and __assets__/ directories.
+    """
+
+    _current_root: Path | None
+    _mg_root: Path | None
+    _user_name: str | None
+    _core_root: Path | None = None
+
+    @property
+    def current(self) -> PkgPaths:
+        """The package containing the current command."""
+        if self._current_root is None:
+            raise RuntimeError("Package root not set. This is a bug in mg.")
+        return PkgPaths(root=self._current_root)
+
+    @property
+    def core(self) -> PkgPaths:
+        """mg_core package (installed)."""
+        if self._core_root is None:
+            raise RuntimeError("Core package root not set. This is a bug in mg.")
+        return PkgPaths(root=self._core_root)
+
+    @property
+    def project(self) -> PkgPaths:
+        """mg_project package (src/mg_project/)."""
+        if self._mg_root is None:
+            raise RuntimeError("mg project root not set. Run 'mg start' first.")
+        return PkgPaths(root=self._mg_root / "src" / "mg_project")
+
+    @property
+    def user(self) -> PkgPaths:
+        """mg_user package (users/{name}/src/mg_user/)."""
+        if self._mg_root is None:
+            raise RuntimeError("mg project root not set. Run 'mg start' first.")
+        if self._user_name is None:
+            raise RuntimeError(
+                "No user identity found.\n"
+                "Run 'mg users new --name <name>' to create one."
+            )
+        return PkgPaths(root=self._mg_root / "users" / self._user_name / "src" / "mg_user")
 
 
 @dataclass
@@ -123,12 +258,14 @@ class Paths:
         _pkg_root: Root of the package containing the command (e.g., mg_core/).
         _mg_root: Root of the mg project (e.g., some-project-mg/).
         _user_name: Name of the current user (folder name in users/).
+        _core_root: Root of the mg_core package (passed in by CLI).
     """
 
     _called_from: Path | None
     _pkg_root: Path | None
     _mg_root: Path | None
     _user_name: str | None = None
+    _core_root: Path | None = None
 
     @property
     def called_from(self) -> Path:
@@ -138,11 +275,14 @@ class Paths:
         return self._called_from
 
     @property
-    def pkg(self) -> PkgPaths:
-        """Package paths for the command's package."""
-        if self._pkg_root is None:
-            raise RuntimeError("Package root not set. This is a bug in mg.")
-        return PkgPaths(root=self._pkg_root)
+    def pkgs(self) -> Pkgs:
+        """Package paths for command/resolver discovery."""
+        return Pkgs(
+            _current_root=self._pkg_root,
+            _mg_root=self._mg_root,
+            _user_name=self._user_name,
+            _core_root=self._core_root,
+        )
 
     @property
     def root(self) -> Path:
@@ -152,46 +292,26 @@ class Paths:
         return self._mg_root
 
     @property
-    def project(self) -> PkgPaths:
-        """Project package paths (src/mg_project/)."""
-        return PkgPaths(root=self.root / "src" / "mg_project")
-
-    @property
     def git_dir(self) -> Path:
         """The .git directory."""
         return self.root / ".git"
 
     @property
-    def worktrees(self) -> Path:
+    def worktrees_dir(self) -> Path:
         """The worktrees directory."""
         return self.root / "worktrees"
 
     @property
-    def users(self) -> Path:
+    def users_dir(self) -> Path:
         """The users directory."""
         return self.root / "users"
 
     @property
-    def user(self) -> PkgPaths:
-        """User package paths (users/{name}/src/mg_user/)."""
+    def user(self) -> UserPaths:
+        """Current user's paths (state, sessions, etc.)."""
         if self._user_name is None:
             raise RuntimeError(
                 "No user identity found.\n"
                 "Run 'mg users new --name <name>' to create one."
             )
-        return PkgPaths(root=self.users / self._user_name / "src" / "mg_user")
-
-    @property
-    def state(self) -> Path:
-        """User state directory (users/{name}/state/)."""
-        if self._user_name is None:
-            raise RuntimeError(
-                "No user identity found.\n"
-                "Run 'mg users new --name <name>' to create one."
-            )
-        return self.users / self._user_name / "state"
-
-    @property
-    def minds(self) -> Path:
-        """Minds directory (users/{name}/state/minds/)."""
-        return self.state / "minds"
+        return UserPaths(root=self.users_dir / self._user_name)

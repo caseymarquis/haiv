@@ -23,7 +23,7 @@ import pytest
 
 from mg import test
 from mg.errors import CommandError
-from mg.git import Git
+from mg.wrappers.git import Git
 from mg.test import SandboxConfig, Sandbox
 
 
@@ -60,11 +60,11 @@ class InitResult:
 
     @property
     def main_worktree(self):
-        return self.paths.worktrees / "main"
+        return self.paths.worktrees_dir / "main"
 
     @property
     def develop_worktree(self):
-        return self.paths.worktrees / "develop"
+        return self.paths.worktrees_dir / "develop"
 
     @property
     def peer_dir(self):
@@ -145,7 +145,7 @@ class TestInitFreshEmpty:
         assert fresh_init.paths.git_dir.is_dir()
 
     def test_creates_worktrees_directory(self, fresh_init):
-        assert fresh_init.paths.worktrees.is_dir()
+        assert fresh_init.paths.worktrees_dir.is_dir()
 
     def test_creates_claude_md(self, fresh_init):
         assert (fresh_init.paths.root / "CLAUDE.md").exists()
@@ -233,7 +233,7 @@ class TestInitFreshNonEmpty:
         nonempty_sandbox.init("--force")
 
         assert nonempty_sandbox.paths.git_dir.is_dir()
-        assert nonempty_sandbox.paths.worktrees.is_dir()
+        assert nonempty_sandbox.paths.worktrees_dir.is_dir()
 
     def test_force_moves_files_to_worktree(self, nonempty_sandbox):
         nonempty_sandbox.init("--force")

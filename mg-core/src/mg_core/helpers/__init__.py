@@ -1,1 +1,0 @@
-"""mg-core helper utilities."""

@@ -4,7 +4,7 @@ Handles the command lifecycle: setup → execute → teardown.
 """
 
 from mg import cmd
-from mg.loader import Command
+from mg._infrastructure.loader import Command
 
 
 def run_command(command: Command, ctx: cmd.Ctx) -> None:

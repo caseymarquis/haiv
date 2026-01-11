@@ -11,7 +11,7 @@ import os
 from mg import cmd
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import resolve_mind
+from mg.helpers.minds import resolve_mind
 
 
 def define() -> cmd.Def:
@@ -28,12 +28,12 @@ def execute(ctx: cmd.Ctx) -> None:
         )
 
     # Resolve the mind
-    mind = resolve_mind(mind_name, ctx.paths.minds)
+    mind = resolve_mind(mind_name, ctx.paths.user.minds_dir)
 
     # Output mind info
     ctx.print(f"Mind: {mind.name}")
     ctx.print(f"Location: {mind.paths.root}")
-    ctx.print(f"Startup: {mind.paths.startup}")
+    ctx.print(f"Startup: {mind.paths.startup_dir}")
 
     # Check for role in references.toml
     if mind.paths.references_file.exists():

@@ -6,19 +6,16 @@ Starts Claude Code with the mind's startup context.
 from __future__ import annotations
 
 import os
-import uuid
-from datetime import datetime, timezone
 
 from mg import cmd
 from mg.errors import CommandError
-from mg.tmux import Tmux
+from mg.wrappers.tmux import Tmux
 
-from mg_core.helpers.minds import (
-    Mind,
-    Session,
+from mg.helpers.minds import Mind
+from mg.helpers.sessions import (
+    create_session,
     find_session,
     get_most_recent_session,
-    save_session,
 )
 
 
@@ -40,7 +37,7 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    mind: Mind = ctx.args.get_one("mind")
+    mind = ctx.args.get_one("mind", type=Mind)
     use_tmux = ctx.args.has("tmux")
     has_task = ctx.args.has("task")
     has_resume = ctx.args.has("resume")
@@ -98,13 +95,15 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     prompt = f"Run `mg become {mind.name}`"
     allowed = f'--allowedTools "Bash(mg become {mind.name})"'
 
+    sessions_file = ctx.paths.user.sessions_file
+
     if ctx.args.has("resume"):
         # Resume existing session
         resume_values = ctx.args.get_list("resume", default_value=[])
         if resume_values:
-            session = find_session(mind.paths.sessions_file, resume_values[0])
+            session = find_session(sessions_file, resume_values[0])
         else:
-            session = get_most_recent_session(mind.paths.sessions_file)
+            session = get_most_recent_session(sessions_file)
 
         if not session:
             raise CommandError("No session found to resume")
@@ -114,12 +113,7 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     elif ctx.args.has("task"):
         # Start new tracked session
         task = ctx.args.get_one("task")
-        session = Session(
-            id=str(uuid.uuid4()),
-            task=task,
-            started=datetime.now(timezone.utc),
-        )
-        save_session(mind.paths.sessions_file, session)
+        session = create_session(sessions_file, task, mind.name)
 
         window.send_keys(f'claude "{prompt}" --session-id {session.id} {allowed}')
 

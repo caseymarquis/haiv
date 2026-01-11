@@ -18,7 +18,7 @@ class TestPkgPaths:
     def test_assets_is_relative_to_root(self, tmp_path):
         """assets is __assets__ under root."""
         pkg = PkgPaths(root=tmp_path)
-        assert pkg.assets == tmp_path / "__assets__"
+        assert pkg.assets_dir == tmp_path / "__assets__"
 
 
 class TestPaths:
@@ -62,33 +62,33 @@ class TestPaths:
 
     def test_worktrees(self, paths, tmp_path):
         """worktrees is worktrees under root."""
-        assert paths.worktrees == tmp_path / "worktrees"
+        assert paths.worktrees_dir == tmp_path / "worktrees"
 
     def test_pkg_is_pkg_paths(self, paths):
         """pkg is a PkgPaths instance."""
-        assert isinstance(paths.pkg, PkgPaths)
+        assert isinstance(paths.pkgs.current, PkgPaths)
 
     def test_pkg_raises_if_none(self, tmp_path):
-        """pkg raises if pkg_root not set."""
+        """pkgs.current raises if pkg_root not set."""
         paths = Paths(_called_from=tmp_path, _pkg_root=None, _mg_root=None)
         with pytest.raises(RuntimeError, match="Package root not set"):
-            _ = paths.pkg
+            _ = paths.pkgs.current
 
     def test_pkg_assets(self, paths, tmp_path):
-        """pkg.assets points to package's __assets__."""
-        assert paths.pkg.assets == tmp_path / "src" / "mg_core" / "__assets__"
+        """pkg.assets_dir points to package's __assets__."""
+        assert paths.pkgs.current.assets_dir == tmp_path / "src" / "mg_core" / "__assets__"
 
     def test_project_is_pkg_paths(self, paths):
         """project is a PkgPaths instance (computed from root)."""
-        assert isinstance(paths.project, PkgPaths)
+        assert isinstance(paths.pkgs.project, PkgPaths)
 
     def test_project_root_derived_from_root(self, paths, tmp_path):
         """project.root is derived from paths.root."""
-        assert paths.project.root == tmp_path / "src" / "mg_project"
+        assert paths.pkgs.project.root == tmp_path / "src" / "mg_project"
 
     def test_project_assets(self, paths, tmp_path):
-        """project.assets points to project's __assets__."""
-        assert paths.project.assets == tmp_path / "src" / "mg_project" / "__assets__"
+        """project.assets_dir points to project's __assets__."""
+        assert paths.pkgs.project.assets_dir == tmp_path / "src" / "mg_project" / "__assets__"
 
 
 # TODO: Add paths.user after user identification is implemented
@@ -141,7 +141,7 @@ class TestGetMgRoot:
 
     def test_returns_env_var_when_valid(self, valid_mg_root, monkeypatch):
         """Returns MG_ROOT env var when set and valid."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.setenv(env.MG_ROOT, str(valid_mg_root))
@@ -149,7 +149,7 @@ class TestGetMgRoot:
 
     def test_raises_if_env_not_absolute(self, tmp_path, monkeypatch):
         """Raises if MG_ROOT is not absolute."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.setenv(env.MG_ROOT, "relative/path")
@@ -158,7 +158,7 @@ class TestGetMgRoot:
 
     def test_raises_if_env_path_missing(self, tmp_path, monkeypatch):
         """Raises if MG_ROOT path doesn't exist."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.setenv(env.MG_ROOT, "/nonexistent/path")
@@ -167,7 +167,7 @@ class TestGetMgRoot:
 
     def test_raises_if_env_not_valid_mg_root(self, tmp_path, monkeypatch):
         """Raises if MG_ROOT exists but is not a valid mg root."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.setenv(env.MG_ROOT, str(tmp_path))
@@ -178,7 +178,7 @@ class TestGetMgRoot:
 
     def test_finds_mg_root_in_cwd(self, valid_mg_root, monkeypatch):
         """Finds mg root when cwd is the root."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.delenv(env.MG_ROOT, raising=False)
@@ -186,7 +186,7 @@ class TestGetMgRoot:
 
     def test_finds_mg_root_in_parent(self, valid_mg_root, monkeypatch):
         """Finds mg root by walking up from subdirectory."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         subdir = valid_mg_root / "some" / "nested" / "dir"
@@ -197,7 +197,7 @@ class TestGetMgRoot:
 
     def test_raises_when_no_mg_root_found(self, tmp_path, monkeypatch):
         """Raises when no mg root can be found walking up."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.delenv(env.MG_ROOT, raising=False)
@@ -208,7 +208,7 @@ class TestGetMgRoot:
 
     def test_error_suggests_mg_start(self, tmp_path, monkeypatch):
         """Error messages guide user to run mg start."""
-        from mg import env
+        from mg._infrastructure import env
         from mg.paths import get_mg_root
 
         monkeypatch.delenv(env.MG_ROOT, raising=False)

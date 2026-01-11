@@ -1,9 +1,9 @@
-"""Tests for mg_core.helpers.packages module."""
+"""Tests for mg.helpers.packages module."""
 
 import pytest
 from pathlib import Path
 
-from mg_core.helpers.packages import (
+from mg.helpers.packages import (
     PackageSource,
     PackageInfo,
     PkgSearchResult,
@@ -11,8 +11,8 @@ from mg_core.helpers.packages import (
     discover_packages,
     discover_packages_detailed,
 )
-from mg_core.helpers.users import UserInfo, UserPaths
-from mg.identity import Identity
+from mg.helpers.users import UserInfo, UserPaths
+from mg._infrastructure.identity import Identity
 
 
 def make_user(tmp_path: Path, name: str = "testuser") -> UserInfo:
@@ -114,7 +114,7 @@ class TestDiscoverPackages:
     def test_user_local_omitted_when_no_init(self, tmp_path):
         """User package omitted when commands/__init__.py missing."""
         user = make_user(tmp_path)
-        (user.paths.mg_user.commands).mkdir(parents=True)
+        (user.paths.mg_user.commands_dir).mkdir(parents=True)
         # No __init__.py
 
         result = discover_packages(tmp_path, user=user)

@@ -8,7 +8,7 @@ from __future__ import annotations
 from mg import cmd
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import (
+from mg.helpers.minds import (
     InvalidMindNameError,
     MindExistsError,
     generate_mind_name,
@@ -28,7 +28,7 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    minds_dir = ctx.paths.minds
+    minds_dir = ctx.paths.user.minds_dir
 
     # Get or generate name
     if ctx.args.has("name"):

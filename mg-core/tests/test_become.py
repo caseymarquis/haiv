@@ -7,10 +7,10 @@ from typing import Any
 from unittest.mock import patch
 
 from mg import test
-from mg.args import ResolveRequest
+from mg._infrastructure.args import ResolveRequest
 from mg.errors import CommandError
 
-from mg_core.helpers.minds import Mind, MindPaths
+from mg.helpers.minds import Mind, MindPaths
 
 
 class TestBecomeRouting:

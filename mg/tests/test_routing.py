@@ -8,7 +8,7 @@ Tests are split into two groups:
 import pytest
 from pathlib import Path
 
-from mg.routing import (
+from mg._infrastructure.routing import (
     find_route_in_paths,
     find_route,
     paths_from_module,

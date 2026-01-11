@@ -1,17 +1,17 @@
-"""Tests for mg_core.helpers.commands module."""
+"""Tests for mg.helpers.commands module."""
 
 import pytest
 from pathlib import Path
 
 from mg import cmd
-from mg_core.helpers.commands import (
+from mg.helpers.commands import (
     CommandInfo,
     PackageCommands,
     path_to_command_name,
     commands_for_package,
     discover_commands,
 )
-from mg_core.helpers.packages import PackageInfo, PackageSource
+from mg.helpers.packages import PackageInfo, PackageSource
 from mg.paths import PkgPaths
 
 
@@ -137,20 +137,20 @@ class TestCommandsForPackage:
     def test_single_command(self, tmp_path):
         """Package with one command file."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "init.py", "Initialize")
+        make_command_file(pkg.paths.commands_dir / "init.py", "Initialize")
 
         result = commands_for_package(pkg)
 
         assert len(result) == 1
         assert result[0].name == "init"
-        assert result[0].file == pkg.paths.commands / "init.py"
+        assert result[0].file == pkg.paths.commands_dir / "init.py"
 
     def test_multiple_commands_sorted(self, tmp_path):
         """Multiple commands returned sorted by name."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "zzz.py", "Last")
-        make_command_file(pkg.paths.commands / "aaa.py", "First")
-        make_command_file(pkg.paths.commands / "mmm.py", "Middle")
+        make_command_file(pkg.paths.commands_dir / "zzz.py", "Last")
+        make_command_file(pkg.paths.commands_dir / "aaa.py", "First")
+        make_command_file(pkg.paths.commands_dir / "mmm.py", "Middle")
 
         result = commands_for_package(pkg)
 
@@ -160,7 +160,7 @@ class TestCommandsForPackage:
     def test_nested_command(self, tmp_path):
         """Nested command file has compound name."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "users" / "new.py", "Create user")
+        make_command_file(pkg.paths.commands_dir / "users" / "new.py", "Create user")
 
         result = commands_for_package(pkg)
 
@@ -170,7 +170,7 @@ class TestCommandsForPackage:
     def test_excludes_init_files(self, tmp_path):
         """__init__.py files at root are excluded."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "real.py", "Real command")
+        make_command_file(pkg.paths.commands_dir / "real.py", "Real command")
         # __init__.py already exists from make_valid_package
 
         result = commands_for_package(pkg)
@@ -181,8 +181,8 @@ class TestCommandsForPackage:
     def test_excludes_dunder_in_subdirectory(self, tmp_path):
         """__init__.py in subdirectory is also excluded (dunder rule)."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "start" / "__init__.py", "Start command")
-        make_command_file(pkg.paths.commands / "real.py", "Real command")
+        make_command_file(pkg.paths.commands_dir / "start" / "__init__.py", "Start command")
+        make_command_file(pkg.paths.commands_dir / "real.py", "Real command")
 
         result = commands_for_package(pkg)
 
@@ -192,7 +192,7 @@ class TestCommandsForPackage:
     def test_param_command_name(self, tmp_path):
         """Param file names convert to <param>."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "_mind_.py", "Mind command")
+        make_command_file(pkg.paths.commands_dir / "_mind_.py", "Mind command")
 
         result = commands_for_package(pkg)
 
@@ -202,7 +202,7 @@ class TestCommandsForPackage:
     def test_definition_not_loaded_during_discovery(self, tmp_path):
         """Commands are discovered without loading definitions."""
         pkg = make_valid_package(tmp_path / "pkg")
-        make_command_file(pkg.paths.commands / "test.py", "Test")
+        make_command_file(pkg.paths.commands_dir / "test.py", "Test")
 
         result = commands_for_package(pkg)
 

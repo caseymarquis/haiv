@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from mg.paths import Paths, PkgPaths
 
 if TYPE_CHECKING:
-    from mg_core.helpers.users import UserInfo
+    from mg.helpers.users import UserInfo
 
 
 class PackageSource(Enum):
@@ -90,9 +90,9 @@ def _check_package(pkg_paths: PkgPaths) -> str | None:
         None if valid, or a skip reason string.
     """
     try:
-        if not pkg_paths.commands.is_dir():
+        if not pkg_paths.commands_dir.is_dir():
             return "commands/ directory not found"
-        if not (pkg_paths.commands / "__init__.py").is_file():
+        if not (pkg_paths.commands_dir / "__init__.py").is_file():
             return "commands/__init__.py not found"
         return None
     except PermissionError as e:
@@ -179,7 +179,7 @@ def discover_packages_detailed(
                 _mg_root=mg_root,
                 _user_name=user.name if user else None,
             )
-            project_paths = paths.project
+            project_paths = paths.pkgs.project
             skip_reason = _check_package(project_paths)
         except Exception as e:
             project_paths = None
@@ -211,7 +211,7 @@ def discover_packages_detailed(
                 _mg_root=mg_root,
                 _user_name=user.name,
             )
-            user_paths = paths.user
+            user_paths = paths.pkgs.user
             skip_reason = _check_package(user_paths)
         except Exception as e:
             user_paths = None

@@ -10,7 +10,7 @@ import tomllib
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from mg.git import Git
+from mg.wrappers.git import Git
 
 
 # -----------------------------------------------------------------------------

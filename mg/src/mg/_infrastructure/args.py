@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mg import cmd
-from mg.loader import Command
 from mg.paths import Paths
-from mg.routing import RouteMatch
+from mg._infrastructure.loader import Command
+from mg._infrastructure.routing import RouteMatch
 
 
 @dataclass

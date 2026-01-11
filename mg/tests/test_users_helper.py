@@ -1,9 +1,9 @@
-"""Tests for mg_core.helpers.users module."""
+"""Tests for mg.helpers.users module."""
 
 import pytest
 from pathlib import Path
 
-from mg_core.helpers.users import (
+from mg.helpers.users import (
     UserPaths,
     UserInfo,
     UserNotFoundError,
@@ -27,12 +27,12 @@ class TestUserPaths:
     def test_state_path(self, tmp_path):
         """state property returns root/state/."""
         paths = UserPaths(root=tmp_path / "casey")
-        assert paths.state == tmp_path / "casey" / "state"
+        assert paths.state_dir == tmp_path / "casey" / "state"
 
     def test_minds_path(self, tmp_path):
         """minds property returns root/state/minds/."""
         paths = UserPaths(root=tmp_path / "casey")
-        assert paths.minds == tmp_path / "casey" / "state" / "minds"
+        assert paths.minds_dir == tmp_path / "casey" / "state" / "minds"
 
 
 class TestUserInfo:
@@ -42,7 +42,7 @@ class TestUserInfo:
         """name property returns folder name."""
         paths = UserPaths(root=tmp_path / "casey")
         # Create a minimal Identity
-        from mg.identity import Identity
+        from mg._infrastructure.identity import Identity
         identity = Identity(name="casey", path=tmp_path / "casey", matched_by="manual")
 
         user = UserInfo(paths=paths, identity=identity)

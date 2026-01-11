@@ -8,9 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from mg import cmd
-from mg.loader import load_command
-
-from mg_core.helpers.packages import PackageInfo, discover_packages
+from mg.helpers.packages import PackageInfo, discover_packages
+from mg._infrastructure.loader import load_command
 
 
 @dataclass
@@ -117,7 +116,7 @@ def commands_for_package(package: PackageInfo) -> list[CommandInfo]:
     Returns:
         List of commands sorted by name.
     """
-    commands_dir = package.paths.commands
+    commands_dir = package.paths.commands_dir
     commands: list[CommandInfo] = []
 
     for py_file in commands_dir.rglob("*.py"):
