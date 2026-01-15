@@ -76,6 +76,7 @@ class TestCommandSources:
         route, mg_root, sources = _find_command("test_cmd")
 
         assert route is not None
+        assert route.file is not None
         assert route.file.name == "test_cmd.py"
         # mg_core should be in checked sources
         core_sources = [s for s in sources if s.name == "mg_core"]
@@ -124,6 +125,7 @@ def execute(ctx: cmd.Ctx) -> None:
         route, mg_root, sources = _find_command("project_only")
 
         assert route is not None
+        assert route.file is not None
         assert route.file.name == "project_only.py"
 
     def test_fallback_to_core_when_not_in_project(self, mg_project):
@@ -210,6 +212,7 @@ def execute(ctx: cmd.Ctx) -> None:
         route, mg_root, sources = _find_command("user_only")
 
         assert route is not None
+        assert route.file is not None
         assert route.file.name == "user_only.py"
 
     def test_fallback_to_project_when_not_in_user(self, mg_project_with_user):
@@ -243,6 +246,7 @@ def execute(ctx: cmd.Ctx) -> None:
         user_sources = [s for s in sources if s.name == "mg_user"]
         assert len(user_sources) == 1
         assert user_sources[0].checked is False
+        assert user_sources[0].error is not None
         assert "No user identity found" in user_sources[0].error
 
 

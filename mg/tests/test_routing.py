@@ -10,7 +10,7 @@ from pathlib import Path
 
 from mg._infrastructure.routing import (
     find_route_in_paths,
-    find_route,
+    require_route,
     paths_from_module,
     ParamCapture,
     AmbiguousRouteError,
@@ -665,23 +665,21 @@ class TestPathsFromModule:
             assert not p.is_absolute()
 
 
-class TestFindRoute:
+class TestRequireRoute:
     """Integration tests for module-based routing."""
 
     def test_routes_through_module(self):
-        """find_route works with module input."""
+        """require_route works with module input."""
         from tests.fixtures.fake_commands import commands
 
-        result = find_route("simple", commands)
-        assert result is not None
+        result = require_route("simple", commands)
         assert result.file.name == "simple.py"
 
     def test_param_capture_through_module(self):
         """Params captured correctly through module interface."""
         from tests.fixtures.fake_commands import commands
 
-        result = find_route("alice greet", commands)
-        assert result is not None
+        result = require_route("alice greet", commands)
         assert "name" in result.params
         assert result.params["name"].value == "alice"
         assert result.params["name"].resolver == "name"
@@ -691,7 +689,6 @@ class TestFindRoute:
         """Rest captured correctly through module interface."""
         from tests.fixtures.fake_commands import commands
 
-        result = find_route("echo hello world", commands)
-        assert result is not None
+        result = require_route("echo hello world", commands)
         assert result.file.name == "_rest_.py"
         assert result.rest == ["hello", "world"]

@@ -7,6 +7,7 @@ from types import ModuleType
 from mg._infrastructure.loader import load_command, load_commands_module, Command
 from mg import cmd
 from mg.paths import Paths
+from mg.util import module_to_folder
 
 
 def make_paths() -> Paths:
@@ -25,7 +26,7 @@ class TestLoadCommand:
         """Returns a Command wrapper, not raw module."""
         from tests.fixtures.fake_commands import commands
 
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         command = load_command(commands_dir / "simple.py")
 
         assert isinstance(command, Command)
@@ -34,7 +35,7 @@ class TestLoadCommand:
         """Command.define() returns cmd.Def."""
         from tests.fixtures.fake_commands import commands
 
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         command = load_command(commands_dir / "simple.py")
 
         result = command.define()
@@ -45,7 +46,7 @@ class TestLoadCommand:
         """Command.execute() is callable."""
         from tests.fixtures.fake_commands import commands
 
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         command = load_command(commands_dir / "simple.py")
 
         assert callable(command.execute)
@@ -54,7 +55,7 @@ class TestLoadCommand:
         """Loads command from nested path."""
         from tests.fixtures.fake_commands import commands
 
-        commands_dir = Path(commands.__file__).parent
+        commands_dir = module_to_folder(commands)
         command = load_command(commands_dir / "_name_" / "greet.py")
 
         result = command.define()
@@ -85,10 +86,10 @@ def execute(ctx):
     pass
 """)
         cmd1 = load_command(cmd_file)
-        cmd1._module.count = 42
+        setattr(cmd1._module, "count", 42)
 
         cmd2 = load_command(cmd_file)
-        assert cmd2._module.count == 0  # Fresh load
+        assert getattr(cmd2._module, "count") == 0  # Fresh load
 
 
 class TestCommandLifecycle:
@@ -278,9 +279,9 @@ class TestLoadCommandsModule:
         with pytest.raises(SyntaxError):
             load_commands_module(init_file)
 
-    def test_works_with_find_route(self, tmp_path):
-        """Loaded module can be used with find_route."""
-        from mg._infrastructure.routing import find_route
+    def test_works_with_require_route(self, tmp_path):
+        """Loaded module can be used with require_route."""
+        from mg._infrastructure.routing import require_route
 
         # Create commands structure
         commands_dir = tmp_path / "commands"
@@ -295,7 +296,6 @@ def execute(ctx):
 """)
 
         module = load_commands_module(commands_dir / "__init__.py")
-        route = find_route("hello", module)
+        route = require_route("hello", module)
 
-        assert route is not None
         assert route.file.name == "hello.py"

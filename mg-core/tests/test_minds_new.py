@@ -39,7 +39,7 @@ class TestRouting:
 
     def test_routes_to_minds_new(self):
         """mg minds new routes to correct file."""
-        match = test.routes_to("minds new")
+        match = test.require_routes_to("minds new")
         assert match.file.name == "new.py"
         assert "minds" in str(match.file.parent)
 

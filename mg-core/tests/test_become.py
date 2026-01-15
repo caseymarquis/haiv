@@ -18,13 +18,13 @@ class TestBecomeRouting:
 
     def test_routes_to_mind_file(self):
         """'become wren' routes to become/_mind_.py."""
-        match = test.routes_to("become wren")
+        match = test.require_routes_to("become wren")
         assert match.file.name == "_mind_.py"
         assert "become" in str(match.file)
 
     def test_captures_mind_param(self):
         """Mind name is captured as param."""
-        match = test.routes_to("become wren")
+        match = test.require_routes_to("become wren")
         assert "mind" in match.params
         assert match.params["mind"].value == "wren"
         assert match.params["mind"].resolver == "mind"

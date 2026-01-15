@@ -50,7 +50,17 @@ class ParamCapture:
 
 
 @dataclass
-class RouteMatch:
+class _RouteFields:
+    """Shared fields for route types."""
+
+    pkg_root: Path
+    params: dict[str, ParamCapture] = field(default_factory=dict)
+    rest: list[str] = field(default_factory=list)
+    raw_flags: list[str] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class RouteMatch(_RouteFields):
     """Result of routing - the matched file and captured values.
 
     At the routing layer, flags are not parsed - they're collected raw.
@@ -59,11 +69,26 @@ class RouteMatch:
     file is None when no route was found (exists=False tests).
     """
 
-    file: Path | None
-    pkg_root: Path
-    params: dict[str, ParamCapture] = field(default_factory=dict)
-    rest: list[str] = field(default_factory=list)
-    raw_flags: list[str] = field(default_factory=list)
+    file: Path | None = None
+
+
+@dataclass(kw_only=True)
+class Route(_RouteFields):
+    """Resolved route with guaranteed file path.
+
+    Use require_route() to get this type - it raises if no route is found.
+    """
+
+    file: Path
+
+
+class RouteNotFoundError(Exception):
+    """Raised when require_route() cannot find a matching route."""
+
+    def __init__(self, command_string: str, commands_dir: Path) -> None:
+        self.command_string = command_string
+        self.commands_dir = commands_dir
+        super().__init__(f"No route found for '{command_string}' in {commands_dir}")
 
 
 def find_route(command_string: str, commands: ModuleType) -> RouteMatch | None:
@@ -94,6 +119,36 @@ def find_route(command_string: str, commands: ModuleType) -> RouteMatch | None:
     # Convert relative path to absolute
     result.file = commands_dir / result.file
     return result
+
+
+def require_route(command_string: str, commands: ModuleType) -> Route:
+    """Find the file that handles a command string, or raise.
+
+    Like find_route(), but raises RouteNotFoundError instead of returning None.
+    Returns Route with guaranteed file: Path.
+
+    Args:
+        command_string: Space-separated command like "forge message specs send"
+        commands: Module whose __file__ points to commands/__init__.py
+
+    Returns:
+        Route with file path and captured params.
+
+    Raises:
+        RouteNotFoundError: If no route matches the command string.
+    """
+    result = find_route(command_string, commands)
+    if result is None or result.file is None:
+        commands_dir = module_to_folder(commands)
+        raise RouteNotFoundError(command_string, commands_dir)
+
+    return Route(
+        file=result.file,
+        pkg_root=result.pkg_root,
+        params=result.params,
+        rest=result.rest,
+        raw_flags=result.raw_flags,
+    )
 
 
 def paths_from_module(commands: ModuleType) -> list[Path]:

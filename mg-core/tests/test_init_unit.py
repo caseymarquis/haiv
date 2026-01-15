@@ -14,12 +14,12 @@ class TestInitRouting:
 
     def test_init_routes(self):
         """'init' routes to init.py."""
-        match = test.routes_to("init")
+        match = test.require_routes_to("init")
         assert match.file.name == "init.py"
 
     def test_init_with_flags_routes(self):
         """'init --force' still routes to init.py."""
-        match = test.routes_to("init --force")
+        match = test.require_routes_to("init --force")
         assert match.file.name == "init.py"
 
 

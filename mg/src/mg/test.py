@@ -49,7 +49,7 @@ from mg._infrastructure.args import ResolveRequest, build_ctx
 from mg.paths import Paths, PkgPaths
 from mg._infrastructure.loader import Command, load_command
 from mg.util import module_to_folder
-from mg._infrastructure.routing import RouteMatch, find_route
+from mg._infrastructure.routing import RouteMatch, Route, find_route, require_route
 
 # Default username for test contexts
 TEST_USERNAME = "testinius"
@@ -99,46 +99,45 @@ class ExecuteResult:
 def routes_to(
     command_string: str,
     commands: ModuleType | None = None,
-    *,
-    expected: str | None = None,
-    exists: bool = True,
-) -> RouteMatch:
+) -> RouteMatch | None:
     """
-    Test that a command string routes to the expected file.
+    Check if a command string routes to a file.
+
+    Returns RouteMatch if found, None if not. Does not raise.
+    For most tests, use require_routes_to() instead.
     """
     if commands is None:
         commands = _find_commands_module()
 
-    result = find_route(command_string, commands)
+    return find_route(command_string, commands)
 
-    if exists:
-        if result is None:
-            commands_dir = module_to_folder(commands)
-            raise FileNotFoundError(
-                f"No route found for '{command_string}' in {commands_dir}"
-            )
-        if result.file is None:
-            raise RuntimeError(
-                f"RouteMatch.file is None for '{command_string}'. "
-                "This indicates a bug in find_route()."
-            )
-        if expected:
-            commands_dir = module_to_folder(commands)
-            actual_relative = result.file.relative_to(commands_dir)
-            if str(actual_relative) != expected:
-                raise AssertionError(
-                    f"Expected route '{expected}', got '{actual_relative}'"
-                )
-        return result
-    else:
-        if result is not None:
-            raise AssertionError(
-                f"Expected no route for '{command_string}', but found {result.file}"
-            )
-        # Return RouteMatch with file=None for negative tests
+
+def require_routes_to(
+    command_string: str,
+    commands: ModuleType | None = None,
+    *,
+    expected: str | None = None,
+) -> Route:
+    """
+    Test that a command string routes to the expected file.
+
+    Raises RouteNotFoundError if no route is found.
+    Returns Route with guaranteed file: Path.
+    """
+    if commands is None:
+        commands = _find_commands_module()
+
+    result = require_route(command_string, commands)
+
+    if expected:
         commands_dir = module_to_folder(commands)
-        pkg_root = commands_dir.parent
-        return RouteMatch(file=None, pkg_root=pkg_root, params={}, rest=[], raw_flags=[])
+        actual_relative = result.file.relative_to(commands_dir)
+        if str(actual_relative) != expected:
+            raise AssertionError(
+                f"Expected route '{expected}', got '{actual_relative}'"
+            )
+
+    return result
 
 
 # Prevent temp directory cleanup until module exit

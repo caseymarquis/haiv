@@ -19,19 +19,19 @@ class TestStartRouting:
 
     def test_routes_to_mind_file(self):
         """'start wren' routes to start/_mind_.py."""
-        match = test.routes_to("start wren")
+        match = test.require_routes_to("start wren")
         assert match.file.name == "_mind_.py"
         assert "start" in str(match.file)
 
     def test_captures_mind_param(self):
         """Mind name is captured as param."""
-        match = test.routes_to("start wren")
+        match = test.require_routes_to("start wren")
         assert "mind" in match.params
         assert match.params["mind"].value == "wren"
 
     def test_routes_with_tmux_flag(self):
         """'start wren --tmux' routes correctly."""
-        match = test.routes_to("start wren --tmux")
+        match = test.require_routes_to("start wren --tmux")
         assert match.file.name == "_mind_.py"
         assert "--tmux" in match.raw_flags
 

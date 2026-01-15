@@ -14,12 +14,12 @@ class TestUsersNewRouting:
 
     def test_routes(self):
         """'users new' routes to users/new.py."""
-        match = test.routes_to("users new")
+        match = test.require_routes_to("users new")
         assert match.file.name == "new.py"
 
     def test_routes_with_flags(self):
         """'users new --name foo' still routes to users/new.py."""
-        match = test.routes_to("users new --name foo")
+        match = test.require_routes_to("users new --name foo")
         assert match.file.name == "new.py"
 
 

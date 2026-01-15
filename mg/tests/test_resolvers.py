@@ -114,6 +114,7 @@ def resolve(value, ctx):
 """)
 
         module = load_resolver(resolver_file)
+        assert module is not None
         result = module.resolve("forge", None)
 
         assert result == "resolved_forge"
@@ -164,10 +165,12 @@ def resolve(value, ctx):
 """)
 
         mod1 = load_resolver(resolver_file)
-        mod1.count = 42
+        assert mod1 is not None
+        setattr(mod1, "count", 42)
 
         mod2 = load_resolver(resolver_file)
-        assert mod2.count == 0  # Fresh load
+        assert mod2 is not None
+        assert getattr(mod2, "count") == 0  # Fresh load
 
 
 class TestMakeResolver:

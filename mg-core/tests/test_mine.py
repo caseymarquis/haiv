@@ -25,7 +25,7 @@ class TestMineRouting:
 
     def test_routes_to_mine_file(self):
         """'mine' routes to mine.py."""
-        match = test.routes_to("mine")
+        match = test.require_routes_to("mine")
         assert match.file.name == "mine.py"
 
 

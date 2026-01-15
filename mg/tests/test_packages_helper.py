@@ -200,6 +200,7 @@ class TestDiscoverPackagesDetailed:
         result = discover_packages_detailed(tmp_path)
 
         project_skipped = [s for s in result.skipped if s.source == PackageSource.PROJECT_LOCAL]
+        assert project_skipped[0].reason is not None
         assert "commands/ directory not found" in project_skipped[0].reason
 
     def test_skip_reason_no_init(self, tmp_path):
@@ -209,6 +210,7 @@ class TestDiscoverPackagesDetailed:
         result = discover_packages_detailed(tmp_path)
 
         project_skipped = [s for s in result.skipped if s.source == PackageSource.PROJECT_LOCAL]
+        assert project_skipped[0].reason is not None
         assert "commands/__init__.py not found" in project_skipped[0].reason
 
     def test_included_has_no_reason(self, tmp_path):

@@ -15,25 +15,25 @@ class TestCommandsAutoDiscovery:
         """Raises CommandsNotFoundError when package has no commands/."""
         # mg package doesn't have src/mg/commands/, so discovery should fail
         with pytest.raises(CommandsNotFoundError):
-            test.routes_to("anything")
+            test.require_routes_to("anything")
 
     def test_explicit_commands_still_works(self):
         """Explicit commands argument bypasses discovery."""
-        match = test.routes_to("simple", fake_commands)
+        match = test.require_routes_to("simple", fake_commands)
         assert match.file.name == "simple.py"
 
 
-class TestRoutesTo:
-    """Tests for routes_to() - routing only."""
+class TestRequireRoutesTo:
+    """Tests for require_routes_to() - routing only."""
 
     def test_simple_command_routes(self):
         """'simple' routes to simple.py."""
-        match = test.routes_to("simple", fake_commands)
+        match = test.require_routes_to("simple", fake_commands)
         assert match.file.name == "simple.py"
 
     def test_param_directory_routes(self):
         """'alice greet' routes through _name_/ directory."""
-        match = test.routes_to("alice greet", fake_commands)
+        match = test.require_routes_to("alice greet", fake_commands)
         assert match.file.name == "greet.py"
         assert "name" in match.params
         assert match.params["name"].value == "alice"
@@ -42,24 +42,30 @@ class TestRoutesTo:
 
     def test_rest_captures_remaining(self):
         """'echo hello world' captures rest params."""
-        match = test.routes_to("echo hello world", fake_commands)
+        match = test.require_routes_to("echo hello world", fake_commands)
         assert match.file.name == "_rest_.py"
         assert match.rest == ["hello", "world"]
 
     def test_expected_path_assertion(self):
         """Can assert on expected path."""
-        match = test.routes_to("simple", fake_commands, expected="simple.py")
+        match = test.require_routes_to("simple", fake_commands, expected="simple.py")
         assert match.file.name == "simple.py"
 
     def test_nonexistent_raises(self):
-        """Nonexistent route raises FileNotFoundError."""
-        with pytest.raises(FileNotFoundError):
-            test.routes_to("nonexistent", fake_commands)
+        """Nonexistent route raises RouteNotFoundError."""
+        from mg._infrastructure.routing import RouteNotFoundError
 
-    def test_exists_false_for_negative_test(self):
-        """exists=False asserts route does NOT exist."""
-        match = test.routes_to("nonexistent", fake_commands, exists=False)
-        assert match.file is None
+        with pytest.raises(RouteNotFoundError):
+            test.require_routes_to("nonexistent", fake_commands)
+
+
+class TestRoutesTo:
+    """Tests for routes_to() - non-raising route check."""
+
+    def test_returns_none_for_nonexistent(self):
+        """routes_to returns None for nonexistent route."""
+        result = test.routes_to("nonexistent", fake_commands)
+        assert result is None
 
 
 class TestParse:
