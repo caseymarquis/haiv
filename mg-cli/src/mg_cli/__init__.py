@@ -245,6 +245,7 @@ def main():
     if not args:
         print(f"{prog} v{__version__}")
         print(f"Usage: {prog} <command> [args...]")
+        print(f"Run '{prog} help' for available commands")
         return
 
     command_string = shlex.join(args)
