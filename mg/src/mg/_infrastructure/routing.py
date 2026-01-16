@@ -206,6 +206,11 @@ def find_route_in_paths(
     # Literal matches take precedence
     literal_matches = [m for m in matches if not m[1]]  # No params = literal
     if literal_matches:
+        if len(literal_matches) > 1:
+            conflicting = [str(m[0]) for m in literal_matches]
+            raise AmbiguousRouteError(
+                f"Ambiguous route: multiple files match: {conflicting}"
+            )
         file_path, params, rest = literal_matches[0]
         return RouteMatch(
             file=file_path,
@@ -288,6 +293,9 @@ def _find_matches(
     if not remaining:
         if "_file_" in tree:
             return [(tree["_file_"], params.copy(), rest.copy())]
+        # Check for _index_.py at this level (directory default)
+        if "_index_.py" in tree and "_file_" in tree["_index_.py"]:
+            return [(tree["_index_.py"]["_file_"], params.copy(), rest.copy())]
         # Check for _rest_.py at this level
         if "_rest_.py" in tree and "_file_" in tree["_rest_.py"]:
             return [(tree["_rest_.py"]["_file_"], params.copy(), rest.copy())]
@@ -424,6 +432,8 @@ def _parse_param_file(name: str) -> tuple[str, str, bool] | None:
     if name.startswith("__"):
         return None
     if name == "_rest_.py":
+        return None
+    if name == "_index_.py":
         return None
 
     # Remove leading _ and trailing _.py

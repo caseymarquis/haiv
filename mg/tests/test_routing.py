@@ -502,6 +502,77 @@ class TestFlags:
         assert result.raw_flags == ["--flag1", "b", "--flag2"]
 
 
+class TestIndexFile:
+    """Tests for _index_.py as directory default."""
+
+    def test_index_not_treated_as_param_file(self):
+        """_index_.py should not capture 'index' as a parameter."""
+        paths = [Path("foo/_index_.py")]
+        result = find_route_in_paths("foo index", paths)
+        # Should NOT match - _index_.py is not a param file
+        assert result is None
+
+    def test_basic_index_routing(self):
+        """'foo' matches foo/_index_.py."""
+        paths = [Path("foo/_index_.py")]
+        result = find_route_in_paths("foo", paths)
+        assert result is not None
+        assert result.file == Path("foo/_index_.py")
+        assert result.params == {}
+        assert result.rest == []
+
+    def test_nested_index_routing(self):
+        """'a b' matches a/b/_index_.py."""
+        paths = [Path("a/b/_index_.py")]
+        result = find_route_in_paths("a b", paths)
+        assert result is not None
+        assert result.file == Path("a/b/_index_.py")
+
+    def test_index_with_param_dir(self):
+        """'forge' matches _mind_/_index_.py with param capture."""
+        paths = [Path("_mind_/_index_.py")]
+        result = find_route_in_paths("forge", paths)
+        assert result is not None
+        assert result.file == Path("_mind_/_index_.py")
+        assert "mind" in result.params
+        assert result.params["mind"].value == "forge"
+
+    def test_index_after_literal_and_param(self):
+        """'admin forge' matches admin/_mind_/_index_.py."""
+        paths = [Path("admin/_mind_/_index_.py")]
+        result = find_route_in_paths("admin forge", paths)
+        assert result is not None
+        assert result.file == Path("admin/_mind_/_index_.py")
+        assert result.params["mind"].value == "forge"
+
+    @pytest.mark.parametrize("paths", [
+        [Path("foo.py"), Path("foo/_index_.py")],
+        [Path("foo/_index_.py"), Path("foo.py")],
+    ])
+    def test_literal_file_and_index_is_ambiguous(self, paths):
+        """foo.py and foo/_index_.py raises AmbiguousRouteError."""
+        with pytest.raises(AmbiguousRouteError):
+            find_route_in_paths("foo", paths)
+
+    @pytest.mark.parametrize("paths", [
+        [Path("foo/_index_.py"), Path("foo/_rest_.py")],
+        [Path("foo/_rest_.py"), Path("foo/_index_.py")],
+    ])
+    def test_index_over_rest(self, paths):
+        """_index_.py beats _rest_.py at same level."""
+        result = find_route_in_paths("foo", paths)
+        assert result is not None
+        assert result.file == Path("foo/_index_.py")
+
+    def test_index_with_flags(self):
+        """Index routing works with flags."""
+        paths = [Path("foo/_index_.py")]
+        result = find_route_in_paths("foo --verbose --debug", paths)
+        assert result is not None
+        assert result.file == Path("foo/_index_.py")
+        assert result.raw_flags == ["--verbose", "--debug"]
+
+
 class TestDunderExclusion:
     """Tests for __dunder__ exclusion."""
 
@@ -692,3 +763,13 @@ class TestRequireRoute:
         result = require_route("echo hello world", commands)
         assert result.file.name == "_rest_.py"
         assert result.rest == ["hello", "world"]
+
+    def test_index_routing_through_module(self):
+        """Index file routes correctly through module interface."""
+        from tests.fixtures.fake_commands import commands
+
+        result = require_route("tools", commands)
+        assert result.file.name == "_index_.py"
+        assert result.file.parent.name == "tools"
+        assert result.params == {}
+        assert result.rest == []

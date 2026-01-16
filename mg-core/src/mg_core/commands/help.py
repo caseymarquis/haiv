@@ -7,7 +7,7 @@ and displays them with their descriptions from define().
 import re
 
 from mg import cmd
-from mg.helpers.commands import discover_commands
+from mg.helpers.commands import CommandInfo, discover_commands
 
 
 def define() -> cmd.Def:
@@ -93,7 +93,7 @@ def execute(ctx: cmd.Ctx) -> None:
                 ctx.print()
 
                 # Group by package name
-                by_package: dict[str, list[tuple[str, object]]] = {}
+                by_package: dict[str, list[tuple[str, CommandInfo]]] = {}
                 for cmd_id, pkg_name, commands_dir, info in matches:
                     if pkg_name not in by_package:
                         by_package[pkg_name] = []
