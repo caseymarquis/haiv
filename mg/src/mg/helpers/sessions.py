@@ -134,6 +134,33 @@ def resolve_short_id(sessions_file: Path, short_id: int) -> str | None:
     return None
 
 
+def get_session(sessions_file: Path, identifier: str) -> Session | None:
+    """Find session by short_id (if numeric) or UUID prefix.
+
+    Args:
+        sessions_file: Path to the sessions TOML file.
+        identifier: Either a short_id (e.g., "3") or partial/full UUID.
+
+    Returns:
+        Session if found, None otherwise.
+    """
+    sessions = load_sessions(sessions_file)
+
+    # Try short_id first if identifier is numeric
+    if identifier.isdigit():
+        short_id = int(identifier)
+        for session in sessions:
+            if session.short_id == short_id:
+                return session
+
+    # Try UUID prefix match
+    for session in sessions:
+        if session.id.startswith(identifier):
+            return session
+
+    return None
+
+
 def remove_session(sessions_file: Path, session_id: str) -> bool:
     """Remove a session by full ID (or partial UUID match).
 
