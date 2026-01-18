@@ -149,6 +149,11 @@ class UserPaths:
         """users/{name}/state/sessions.ig.toml"""
         return self.state_dir / "sessions.ig.toml"
 
+    @property
+    def settings_file(self) -> Path:
+        """users/{name}/mg.toml"""
+        return self.root / "mg.toml"
+
 
 @dataclass
 class MindPaths:
@@ -315,3 +320,8 @@ class Paths:
                 "Run 'mg users new --name <name>' to create one."
             )
         return UserPaths(root=self.users_dir / self._user_name)
+
+    @property
+    def project_settings_file(self) -> Path:
+        """The project-level mg.toml settings file."""
+        return self.root / "mg.toml"

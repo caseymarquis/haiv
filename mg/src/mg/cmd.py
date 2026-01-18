@@ -5,7 +5,9 @@ from typing import Any, TypeVar, overload
 
 from punq import Container
 
+from mg._infrastructure.settings import SettingsCache, get_settings
 from mg.paths import Paths
+from mg.settings import MgSettings
 from mg.templates import TemplateRenderer
 from mg.wrappers.git import Git
 
@@ -162,6 +164,12 @@ class Ctx:
     args: Args
     paths: Paths
     container: Container = field(default_factory=Container)
+    _settings_cache: SettingsCache = field(default_factory=SettingsCache)
+
+    @property
+    def settings(self) -> MgSettings:
+        """Get project settings (merged with user settings if available)."""
+        return get_settings(self.paths, self._settings_cache)
 
     @property
     def git(self) -> Git:
