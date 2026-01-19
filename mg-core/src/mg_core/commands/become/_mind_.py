@@ -45,26 +45,20 @@ def execute(ctx: cmd.Ctx) -> None:
 
 def _output_startup_files(ctx: cmd.Ctx, mind: Mind) -> None:
     """Output the list of files for the mind to read."""
-    files_to_read: list[str] = []
-
-    # Add paths from references.toml (relative to mg root)
-    files_to_read.extend(mind.get_references())
-
-    # Add startup files (convert to relative paths)
-    for file in mind.get_startup_files():
-        rel_path = file.relative_to(ctx.paths.root)
-        files_to_read.append(str(rel_path))
+    # get_startup_files() returns all files: references + work/ + home/
+    startup_files = mind.get_startup_files()
 
     # Welcome message
     ctx.print(f"Welcome back, {mind.name}!")
     ctx.print("")
 
-    if not files_to_read:
+    if not startup_files:
         ctx.print("You have no startup documents yet. Ask what you should work on.")
         return
 
     ctx.print("Here are the documents you left for yourself.")
     ctx.print("Please read them in their entirety before continuing your work:")
     ctx.print("")
-    for path in files_to_read:
-        ctx.print(f"- {path}")
+    for file in startup_files:
+        rel_path = file.relative_to(ctx.paths.root)
+        ctx.print(f"- {rel_path}")

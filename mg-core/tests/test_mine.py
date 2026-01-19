@@ -13,7 +13,7 @@ from mg.helpers.minds import Mind, MindPaths
 def create_mind(ctx, name: str, role: str | None = None) -> Mind:
     """Helper to create a mind using ctx.paths."""
     ctx.paths.user.minds_dir.mkdir(parents=True, exist_ok=True)
-    mind = Mind(paths=MindPaths(root=ctx.paths.user.minds_dir / name))
+    mind = Mind(paths=MindPaths(root=ctx.paths.user.minds_dir / name, mg_root=ctx.paths.root))
     mind.ensure_structure()
     if role:
         mind.paths.references_file.write_text(f'role = "{role}"\n')
@@ -54,8 +54,8 @@ class TestMineExecution:
         assert "wren" in captured.out
         assert "minds/wren" in captured.out
 
-    def test_outputs_startup_context_path(self, capsys):
-        """mine outputs startup context path."""
+    def test_outputs_work_path(self, capsys):
+        """mine outputs work directory path."""
         def setup(ctx):
             create_mind(ctx, "wren")
 
@@ -63,7 +63,7 @@ class TestMineExecution:
             test.execute("mine", setup=setup)
 
         captured = capsys.readouterr()
-        assert "startup" in captured.out.lower()
+        assert "work" in captured.out.lower()
 
     def test_outputs_role_from_references(self, capsys):
         """mine outputs role if present in references.toml."""

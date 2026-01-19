@@ -24,7 +24,7 @@ def resolve(value: str, ctx: ResolverContext) -> Mind:
         MindNotFoundError: If mind not found.
         DuplicateMindError: If duplicate names exist.
     """
-    mind = resolve_mind(value, ctx.paths.user.minds_dir)
+    mind = resolve_mind(value, ctx.paths.user.minds_dir, ctx.paths.root)
 
     # Ensure structure, warn on issues
     try:

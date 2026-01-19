@@ -28,12 +28,12 @@ def execute(ctx: cmd.Ctx) -> None:
         )
 
     # Resolve the mind
-    mind = resolve_mind(mind_name, ctx.paths.user.minds_dir)
+    mind = resolve_mind(mind_name, ctx.paths.user.minds_dir, ctx.paths.root)
 
     # Output mind info
     ctx.print(f"Mind: {mind.name}")
     ctx.print(f"Location: {mind.paths.root}")
-    ctx.print(f"Startup: {mind.paths.startup_dir}")
+    ctx.print(f"Work: {mind.paths.work.root}")
 
     # Check for role in references.toml
     if mind.paths.references_file.exists():

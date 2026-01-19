@@ -18,20 +18,45 @@ from mg.helpers.minds import (
 class TestMindPaths:
     """Tests for MindPaths dataclass."""
 
-    def test_startup_path(self, tmp_path):
-        """startup property returns root/startup."""
+    def test_work_root(self, tmp_path):
+        """work.root returns root/work."""
         paths = MindPaths(root=tmp_path / "wren")
-        assert paths.startup_dir == tmp_path / "wren" / "startup"
+        assert paths.work.root == tmp_path / "wren" / "work"
 
-    def test_docs_path(self, tmp_path):
-        """docs property returns root/docs."""
+    def test_work_docs_dir(self, tmp_path):
+        """work.docs_dir returns work/docs."""
         paths = MindPaths(root=tmp_path / "wren")
-        assert paths.docs_dir == tmp_path / "wren" / "docs"
+        assert paths.work.docs_dir == tmp_path / "wren" / "work" / "docs"
 
-    def test_references_file_path(self, tmp_path):
-        """references_file property returns startup/references.toml."""
+    def test_work_welcome_file(self, tmp_path):
+        """work.welcome_file returns work/welcome.md."""
         paths = MindPaths(root=tmp_path / "wren")
-        assert paths.references_file == tmp_path / "wren" / "startup" / "references.toml"
+        assert paths.work.welcome_file == tmp_path / "wren" / "work" / "welcome.md"
+
+    def test_work_immediate_plan_file(self, tmp_path):
+        """work.immediate_plan_file returns work/immediate-plan.md."""
+        paths = MindPaths(root=tmp_path / "wren")
+        assert paths.work.immediate_plan_file == tmp_path / "wren" / "work" / "immediate-plan.md"
+
+    def test_work_scratchpad_file(self, tmp_path):
+        """work.scratchpad_file returns work/scratchpad.md."""
+        paths = MindPaths(root=tmp_path / "wren")
+        assert paths.work.scratchpad_file == tmp_path / "wren" / "work" / "scratchpad.md"
+
+    def test_home_root(self, tmp_path):
+        """home.root returns root/home."""
+        paths = MindPaths(root=tmp_path / "wren")
+        assert paths.home.root == tmp_path / "wren" / "home"
+
+    def test_home_journal_file(self, tmp_path):
+        """home.journal_file returns home/journal.md."""
+        paths = MindPaths(root=tmp_path / "wren")
+        assert paths.home.journal_file == tmp_path / "wren" / "home" / "journal.md"
+
+    def test_references_file_at_root(self, tmp_path):
+        """references_file returns root/references.toml."""
+        paths = MindPaths(root=tmp_path / "wren")
+        assert paths.references_file == tmp_path / "wren" / "references.toml"
 
 
 class TestMind:
@@ -51,11 +76,10 @@ class TestMind:
         assert mind.get_references() == []
 
     def test_get_references_parses_toml(self, tmp_path):
-        """get_references parses references.toml correctly."""
+        """get_references parses references.toml at root level."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text('''
+        mind_dir.mkdir(parents=True)
+        (mind_dir / "references.toml").write_text('''
 [[references]]
 path = "src/mg_project/__assets__/roles/coo.md"
 
@@ -73,9 +97,8 @@ path = "users/casey/state/minds/wren/docs/problems.md"
     def test_get_references_skips_entries_without_path(self, tmp_path):
         """get_references skips entries missing path key."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text('''
+        mind_dir.mkdir(parents=True)
+        (mind_dir / "references.toml").write_text('''
 [[references]]
 path = "valid/path.md"
 
@@ -88,40 +111,68 @@ description = "missing path key"
 
         assert refs == ["valid/path.md"]
 
-    def test_get_startup_files_empty_when_no_dir(self, tmp_path):
-        """get_startup_files returns empty list when startup/ doesn't exist."""
+    def test_get_startup_files_empty_when_no_dirs(self, tmp_path):
+        """get_startup_files returns empty list when work/ and home/ don't exist."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
         mind = Mind(paths=MindPaths(root=mind_dir))
 
         assert mind.get_startup_files() == []
 
-    def test_get_startup_files_excludes_references_toml(self, tmp_path):
-        """get_startup_files excludes references.toml."""
+    def test_get_startup_files_from_work(self, tmp_path):
+        """get_startup_files returns files from work/ directory."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text("# refs")
-        (startup_dir / "identity.md").write_text("# identity")
-        (startup_dir / "current-focus.md").write_text("# focus")
+        work_dir = mind_dir / "work"
+        work_dir.mkdir(parents=True)
+        (work_dir / "welcome.md").write_text("# welcome")
+        (work_dir / "immediate-plan.md").write_text("# plan")
 
         mind = Mind(paths=MindPaths(root=mind_dir))
         files = mind.get_startup_files()
 
-        assert len(files) == 2
         names = [f.name for f in files]
-        assert "identity.md" in names
-        assert "current-focus.md" in names
-        assert "references.toml" not in names
+        assert "welcome.md" in names
+        assert "immediate-plan.md" in names
+
+    def test_get_startup_files_from_home(self, tmp_path):
+        """get_startup_files returns files from home/ directory."""
+        mind_dir = tmp_path / "wren"
+        home_dir = mind_dir / "home"
+        home_dir.mkdir(parents=True)
+        (home_dir / "journal.md").write_text("# journal")
+
+        mind = Mind(paths=MindPaths(root=mind_dir))
+        files = mind.get_startup_files()
+
+        names = [f.name for f in files]
+        assert "journal.md" in names
+
+    def test_get_startup_files_combines_work_and_home(self, tmp_path):
+        """get_startup_files returns files from both work/ and home/."""
+        mind_dir = tmp_path / "wren"
+        work_dir = mind_dir / "work"
+        home_dir = mind_dir / "home"
+        work_dir.mkdir(parents=True)
+        home_dir.mkdir(parents=True)
+        (work_dir / "welcome.md").write_text("")
+        (home_dir / "journal.md").write_text("")
+
+        mind = Mind(paths=MindPaths(root=mind_dir))
+        files = mind.get_startup_files()
+
+        names = [f.name for f in files]
+        assert len(files) == 2
+        assert "welcome.md" in names
+        assert "journal.md" in names
 
     def test_get_startup_files_sorted_by_name(self, tmp_path):
         """get_startup_files returns files sorted by name."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "z-last.md").write_text("")
-        (startup_dir / "a-first.md").write_text("")
-        (startup_dir / "m-middle.md").write_text("")
+        work_dir = mind_dir / "work"
+        work_dir.mkdir(parents=True)
+        (work_dir / "z-last.md").write_text("")
+        (work_dir / "a-first.md").write_text("")
+        (work_dir / "m-middle.md").write_text("")
 
         mind = Mind(paths=MindPaths(root=mind_dir))
         files = mind.get_startup_files()
@@ -132,10 +183,10 @@ description = "missing path key"
     def test_get_startup_files_excludes_directories(self, tmp_path):
         """get_startup_files only returns files, not directories."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "identity.md").write_text("")
-        (startup_dir / "subdir").mkdir()
+        work_dir = mind_dir / "work"
+        work_dir.mkdir(parents=True)
+        (work_dir / "identity.md").write_text("")
+        (work_dir / "docs").mkdir()  # This is a subdir, should be excluded
 
         mind = Mind(paths=MindPaths(root=mind_dir))
         files = mind.get_startup_files()
@@ -147,21 +198,34 @@ description = "missing path key"
 class TestMindEnsureStructure:
     """Tests for Mind.ensure_structure method."""
 
-    def test_creates_missing_startup_dir(self, tmp_path):
-        """Creates startup/ directory if missing."""
+    def test_creates_missing_work_dir(self, tmp_path):
+        """Creates work/ directory if missing."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
         mind = Mind(paths=MindPaths(root=mind_dir))
 
         issues = mind.ensure_structure(fix=True)
 
-        assert mind.paths.startup_dir.exists()
-        startup_issues = [i for i in issues if "startup/ directory" in i.message]
-        assert len(startup_issues) == 1
-        assert startup_issues[0].fixed is True
+        assert mind.paths.work.root.exists()
+        work_issues = [i for i in issues if i.message == "Missing work/ directory"]
+        assert len(work_issues) == 1
+        assert work_issues[0].fixed is True
+
+    def test_creates_missing_home_dir(self, tmp_path):
+        """Creates home/ directory if missing."""
+        mind_dir = tmp_path / "wren"
+        mind_dir.mkdir()
+        mind = Mind(paths=MindPaths(root=mind_dir))
+
+        issues = mind.ensure_structure(fix=True)
+
+        assert mind.paths.home.root.exists()
+        home_issues = [i for i in issues if "home/" in i.message]
+        assert len(home_issues) == 1
+        assert home_issues[0].fixed is True
 
     def test_creates_missing_references_toml(self, tmp_path):
-        """Creates startup/references.toml if missing."""
+        """Creates references.toml at root if missing."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
         mind = Mind(paths=MindPaths(root=mind_dir))
@@ -173,25 +237,25 @@ class TestMindEnsureStructure:
         assert len(ref_issues) == 1
         assert ref_issues[0].fixed is True
 
-    def test_creates_missing_docs_dir(self, tmp_path):
-        """Creates docs/ directory if missing."""
+    def test_creates_missing_work_docs_dir(self, tmp_path):
+        """Creates work/docs/ directory if missing."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
         mind = Mind(paths=MindPaths(root=mind_dir))
 
         issues = mind.ensure_structure(fix=True)
 
-        assert mind.paths.docs_dir.exists()
-        docs_issues = [i for i in issues if "docs/ directory" in i.message]
+        assert mind.paths.work.docs_dir.exists()
+        docs_issues = [i for i in issues if "work/docs/" in i.message]
         assert len(docs_issues) == 1
         assert docs_issues[0].fixed is True
 
     def test_no_issues_when_structure_complete(self, tmp_path):
         """Returns empty list when structure is complete."""
         mind_dir = tmp_path / "wren"
-        (mind_dir / "startup").mkdir(parents=True)
-        (mind_dir / "startup" / "references.toml").write_text("")
-        (mind_dir / "docs").mkdir()
+        (mind_dir / "work" / "docs").mkdir(parents=True)
+        (mind_dir / "home").mkdir(parents=True)
+        (mind_dir / "references.toml").write_text("")
         mind = Mind(paths=MindPaths(root=mind_dir))
 
         issues = mind.ensure_structure(fix=True)
@@ -206,9 +270,9 @@ class TestMindEnsureStructure:
 
         issues = mind.ensure_structure(fix=False)
 
-        assert len(issues) == 3  # startup, references.toml, docs
-        assert not mind.paths.startup_dir.exists()
-        assert not mind.paths.docs_dir.exists()
+        assert len(issues) == 4  # work, home, references.toml, work/docs
+        assert not mind.paths.work.root.exists()
+        assert not mind.paths.home.root.exists()
         assert all(not i.fixed for i in issues)
 
 
@@ -319,17 +383,18 @@ class TestResolveMind:
         minds_dir = tmp_path / "minds"
         (minds_dir / "wren").mkdir(parents=True)
 
-        mind = resolve_mind("wren", minds_dir)
+        mind = resolve_mind("wren", minds_dir, tmp_path)
 
         assert mind.name == "wren"
         assert mind.paths.root == minds_dir / "wren"
+        assert mind.paths.mg_root == tmp_path
 
     def test_resolves_mind_in_organizational_dir(self, tmp_path):
         """Resolves mind inside underscore directory."""
         minds_dir = tmp_path / "minds"
         (minds_dir / "_new" / "reed").mkdir(parents=True)
 
-        mind = resolve_mind("reed", minds_dir)
+        mind = resolve_mind("reed", minds_dir, tmp_path)
 
         assert mind.name == "reed"
         assert mind.paths.root == minds_dir / "_new" / "reed"
@@ -340,7 +405,7 @@ class TestResolveMind:
         (minds_dir / "wren").mkdir(parents=True)
 
         with pytest.raises(MindNotFoundError) as exc_info:
-            resolve_mind("unknown", minds_dir)
+            resolve_mind("unknown", minds_dir, tmp_path)
 
         assert exc_info.value.name == "unknown"
         assert "wren" in exc_info.value.available
@@ -348,7 +413,7 @@ class TestResolveMind:
     def test_raises_when_minds_dir_not_exists(self, tmp_path):
         """Raises MindNotFoundError when minds_dir doesn't exist."""
         with pytest.raises(MindNotFoundError) as exc_info:
-            resolve_mind("wren", tmp_path / "nonexistent")
+            resolve_mind("wren", tmp_path / "nonexistent", tmp_path)
 
         assert exc_info.value.name == "wren"
         assert exc_info.value.available == []
@@ -360,7 +425,7 @@ class TestResolveMind:
         (minds_dir / "_new" / "reed").mkdir(parents=True)
 
         with pytest.raises(DuplicateMindError):
-            resolve_mind("reed", minds_dir)
+            resolve_mind("reed", minds_dir, tmp_path)
 
 
 class TestListMinds:
@@ -372,7 +437,7 @@ class TestListMinds:
         (minds_dir / "wren").mkdir(parents=True)
         (minds_dir / "forge").mkdir()
 
-        minds = list_minds(minds_dir)
+        minds = list_minds(minds_dir, tmp_path)
 
         assert len(minds) == 2
         assert all(isinstance(m, Mind) for m in minds)
@@ -385,13 +450,13 @@ class TestListMinds:
         minds_dir = tmp_path / "minds"
         minds_dir.mkdir()
 
-        minds = list_minds(minds_dir)
+        minds = list_minds(minds_dir, tmp_path)
 
         assert minds == []
 
     def test_empty_when_dir_not_exists(self, tmp_path):
         """Returns empty list when minds_dir doesn't exist."""
-        minds = list_minds(tmp_path / "nonexistent")
+        minds = list_minds(tmp_path / "nonexistent", tmp_path)
 
         assert minds == []
 
@@ -545,20 +610,21 @@ class TestScaffoldMind:
 
         assert mind.name == "robin"
         assert mind.paths.root == minds_dir / "_new" / "robin"
-        assert mind.paths.startup_dir.is_dir()
-        assert mind.paths.docs_dir.is_dir()
+        assert mind.paths.work.root.is_dir()
+        assert mind.paths.work.docs_dir.is_dir()
+        assert mind.paths.home.root.is_dir()
 
     def test_creates_startup_files(self, tmp_path, templates):
-        """Creates all startup files."""
+        """Creates all work files and references.toml."""
         minds_dir = tmp_path / "minds"
 
         mind = scaffold_mind("robin", minds_dir, templates)
 
-        assert mind.paths.welcome_file.is_file()
-        assert mind.paths.immediate_plan_file.is_file()
-        assert mind.paths.long_term_vision_file.is_file()
-        assert mind.paths.my_process_file.is_file()
-        assert mind.paths.scratchpad_file.is_file()
+        assert mind.paths.work.welcome_file.is_file()
+        assert mind.paths.work.immediate_plan_file.is_file()
+        assert mind.paths.work.long_term_vision_file.is_file()
+        assert mind.paths.work.my_process_file.is_file()
+        assert mind.paths.work.scratchpad_file.is_file()
         assert mind.paths.references_file.is_file()
 
     def test_raises_if_mind_exists(self, tmp_path, templates):

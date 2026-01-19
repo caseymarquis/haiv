@@ -1,20 +1,26 @@
 """Mind resolution and helpers.
 
 Minds are long-running agents with persistent state. Each mind has a folder
-in users/{user}/state/minds/ containing startup context and documents.
+in users/{user}/state/minds/ containing work context and personal files.
 
 Directory structure:
     minds/
     ├── wren/                    # Mind name = folder name
-    │   ├── startup/             # Loaded on wake
-    │   │   ├── references.toml  # External doc references
-    │   │   ├── identity.md      # Who this mind is
-    │   │   └── current-focus.md # Active tasks
-    │   └── docs/                # Mind-specific documents
+    │   ├── work/                # Assignment docs (cleared between assignments)
+    │   │   ├── welcome.md       # [loaded on wake] Task assignment
+    │   │   ├── immediate-plan.md  # [loaded on wake]
+    │   │   ├── scratchpad.md    # [loaded on wake]
+    │   │   └── docs/            # Not auto-loaded
+    │   ├── home/                # Personal continuity (persists)
+    │   │   └── journal.md       # [loaded on wake]
+    │   └── references.toml      # [loaded on wake] External doc refs
     ├── _new/                    # Organizational dirs start with _
     │   └── reed/
     └── _archived/
         └── old-worker/
+
+On wake, the mind receives: external docs from references.toml, plus all
+top-level files in work/ and home/ (subdirectories are not auto-loaded).
 
 Mind names cannot start with underscore. Directories starting with _ are
 organizational and can contain minds.
@@ -94,9 +100,10 @@ class Mind:
         """Ensure the mind has valid structure, optionally fixing issues.
 
         Checks for:
-        - startup/ directory exists
-        - startup/references.toml exists
-        - docs/ directory exists
+        - work/ directory exists
+        - home/ directory exists
+        - references.toml exists (at root)
+        - work/docs/ directory exists
 
         Args:
             fix: If True, create missing directories/files.
@@ -106,38 +113,47 @@ class Mind:
         """
         issues: list[MindStructureIssue] = []
 
-        # Check startup/ directory
-        if not self.paths.startup_dir.exists():
+        # Check work/ directory
+        if not self.paths.work.root.exists():
             issue = MindStructureIssue(
-                path=self.paths.startup_dir,
-                message="Missing startup/ directory",
+                path=self.paths.work.root,
+                message="Missing work/ directory",
             )
             if fix:
-                self.paths.startup_dir.mkdir(parents=True)
+                self.paths.work.root.mkdir(parents=True)
                 issue.fixed = True
             issues.append(issue)
 
-        # Check startup/references.toml
+        # Check home/ directory
+        if not self.paths.home.root.exists():
+            issue = MindStructureIssue(
+                path=self.paths.home.root,
+                message="Missing home/ directory",
+            )
+            if fix:
+                self.paths.home.root.mkdir(parents=True)
+                issue.fixed = True
+            issues.append(issue)
+
+        # Check references.toml at root
         if not self.paths.references_file.exists():
             issue = MindStructureIssue(
                 path=self.paths.references_file,
-                message="Missing startup/references.toml",
+                message="Missing references.toml",
             )
             if fix:
-                # Ensure parent exists first
-                self.paths.startup_dir.mkdir(parents=True, exist_ok=True)
                 self.paths.references_file.write_text("# External document references\n")
                 issue.fixed = True
             issues.append(issue)
 
-        # Check docs/ directory
-        if not self.paths.docs_dir.exists():
+        # Check work/docs/ directory
+        if not self.paths.work.docs_dir.exists():
             issue = MindStructureIssue(
-                path=self.paths.docs_dir,
-                message="Missing docs/ directory",
+                path=self.paths.work.docs_dir,
+                message="Missing work/docs/ directory",
             )
             if fix:
-                self.paths.docs_dir.mkdir(parents=True)
+                self.paths.work.docs_dir.mkdir(parents=True)
                 issue.fixed = True
             issues.append(issue)
 
@@ -163,18 +179,39 @@ class Mind:
         return refs
 
     def get_startup_files(self) -> list[Path]:
-        """Get all files in startup/ except references.toml.
+        """Get all files to load on wake.
 
-        Returns absolute paths sorted by name.
+        Returns absolute paths for:
+        - External docs from references.toml (resolved to absolute paths)
+        - Top-level files in work/
+        - Top-level files in home/
+
+        Raises:
+            RuntimeError: If mg_root not set and references.toml has entries.
         """
-        if not self.paths.startup_dir.exists():
-            return []
+        files: list[Path] = []
 
-        files = []
-        for item in sorted(self.paths.startup_dir.iterdir()):
-            if item.is_file() and item.name != "references.toml":
-                files.append(item)
-        return files
+        # Add resolved reference paths first
+        for ref_path in self.get_references():
+            if self.paths.mg_root is None:
+                raise RuntimeError(
+                    f"Cannot resolve reference path '{ref_path}': mg_root not set on MindPaths"
+                )
+            files.append(self.paths.mg_root / ref_path)
+
+        # Add top-level files from work/
+        if self.paths.work.root.exists():
+            for item in self.paths.work.root.iterdir():
+                if item.is_file():
+                    files.append(item)
+
+        # Add top-level files from home/
+        if self.paths.home.root.exists():
+            for item in self.paths.home.root.iterdir():
+                if item.is_file():
+                    files.append(item)
+
+        return sorted(files, key=lambda p: p.name)
 
 
 def list_mind_paths(minds_dir: Path) -> list[tuple[str, Path]]:
@@ -226,12 +263,13 @@ def list_mind_paths(minds_dir: Path) -> list[tuple[str, Path]]:
     return sorted(results, key=lambda x: x[0])
 
 
-def resolve_mind(name: str, minds_dir: Path) -> Mind:
+def resolve_mind(name: str, minds_dir: Path, mg_root: Path) -> Mind:
     """Resolve a mind name to a Mind object.
 
     Args:
         name: The mind name to resolve.
         minds_dir: Path to the minds/ directory.
+        mg_root: The mg project root (needed to resolve references.toml paths).
 
     Returns:
         Mind object with resolved paths.
@@ -245,13 +283,17 @@ def resolve_mind(name: str, minds_dir: Path) -> Mind:
 
     for mind_name, mind_path in all_minds:
         if mind_name == name:
-            return Mind(paths=MindPaths(root=mind_path))
+            return Mind(paths=MindPaths(root=mind_path, mg_root=mg_root))
 
     raise MindNotFoundError(name, available)
 
 
-def list_minds(minds_dir: Path) -> list[Mind]:
+def list_minds(minds_dir: Path, mg_root: Path) -> list[Mind]:
     """List all minds in the minds directory.
+
+    Args:
+        minds_dir: Path to the minds/ directory.
+        mg_root: The mg project root (needed to resolve references.toml paths).
 
     Returns:
         List of Mind objects sorted by name.
@@ -259,7 +301,7 @@ def list_minds(minds_dir: Path) -> list[Mind]:
     Raises:
         DuplicateMindError: If duplicate names exist.
     """
-    return [Mind(paths=MindPaths(root=path)) for _, path in list_mind_paths(minds_dir)]
+    return [Mind(paths=MindPaths(root=path, mg_root=mg_root)) for _, path in list_mind_paths(minds_dir)]
 
 
 # --- Mind Creation ---
@@ -377,13 +419,14 @@ def scaffold_mind(
     """Create a new mind folder with proper structure.
 
     Creates in _new/ organizational directory with:
-    - startup/welcome.md (template for creator to fill in)
-    - startup/immediate-plan.md
-    - startup/long-term-vision.md
-    - startup/my-process.md
-    - startup/scratchpad.md
-    - startup/references.toml
-    - docs/
+    - work/welcome.md (template for creator to fill in)
+    - work/immediate-plan.md
+    - work/long-term-vision.md
+    - work/my-process.md
+    - work/scratchpad.md
+    - work/docs/
+    - home/
+    - references.toml (at root)
 
     Args:
         name: The mind name (must be validated first).
@@ -405,15 +448,16 @@ def scaffold_mind(
     paths = MindPaths(root=mind_root)
 
     # Create directories
-    paths.startup_dir.mkdir(parents=True)
-    paths.docs_dir.mkdir(parents=True)
+    paths.work.root.mkdir(parents=True)
+    paths.work.docs_dir.mkdir(parents=True)
+    paths.home.root.mkdir(parents=True)
 
     # Write template files
-    templates.write("minds/welcome.md.j2", paths.welcome_file, location=location or "")
+    templates.write("minds/welcome.md.j2", paths.work.welcome_file, location=location or "")
     templates.write("minds/references.toml.j2", paths.references_file)
-    paths.immediate_plan_file.write_text("# Immediate Plan\n")
-    paths.long_term_vision_file.write_text("# Long-Term Vision\n")
-    paths.my_process_file.write_text("# My Process\n")
-    paths.scratchpad_file.write_text("# Scratchpad\n")
+    paths.work.immediate_plan_file.write_text("# Immediate Plan\n")
+    paths.work.long_term_vision_file.write_text("# Long-Term Vision\n")
+    paths.work.my_process_file.write_text("# My Process\n")
+    paths.work.scratchpad_file.write_text("# Scratchpad\n")
 
     return Mind(paths=paths)

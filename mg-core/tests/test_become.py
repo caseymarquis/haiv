@@ -80,13 +80,13 @@ class TestBecomeEnvironmentChecks:
     def test_outputs_files_when_mg_mind_matches(self, tmp_path, capsys):
         """When MG_MIND matches, outputs files to read."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text("")
-        (startup_dir / "identity.md").write_text("# Identity")
+        work_dir = mind_dir / "work"
+        work_dir.mkdir(parents=True)
+        (mind_dir / "references.toml").write_text("")
+        (work_dir / "identity.md").write_text("# Identity")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
+            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
@@ -103,16 +103,21 @@ class TestBecomeEnvironmentChecks:
 class TestBecomeExecution:
     """Test become command file output."""
 
-    def test_outputs_references_from_toml(self, capsys):
+    def test_outputs_references_from_toml(self, tmp_path, capsys):
         """Outputs paths from references.toml."""
+        mg_root = tmp_path
         def mock_resolve(req: ResolveRequest) -> Mind:
             return _create_mock_mind(
                 req.value,
-                references=["src/roles/coo.md", "docs/problems.md"],
+                mg_root=mg_root,
+                startup_files=[
+                    mg_root / "src/roles/coo.md",
+                    mg_root / "docs/problems.md",
+                ],
             )
 
         def setup(ctx):
-            ctx.paths._mg_root = Path("/fake/root")
+            ctx.paths._mg_root = mg_root
 
         with patch.dict(os.environ, {"MG_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
@@ -123,17 +128,17 @@ class TestBecomeExecution:
         assert "src/roles/coo.md" in captured.out
         assert "docs/problems.md" in captured.out
 
-    def test_outputs_startup_files(self, tmp_path, capsys):
-        """Outputs non-toml files from startup/."""
+    def test_outputs_work_files(self, tmp_path, capsys):
+        """Outputs files from work/ directory."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text("")
-        (startup_dir / "identity.md").write_text("# Identity")
-        (startup_dir / "current-focus.md").write_text("# Focus")
+        work_dir = mind_dir / "work"
+        work_dir.mkdir(parents=True)
+        (mind_dir / "references.toml").write_text("")
+        (work_dir / "identity.md").write_text("# Identity")
+        (work_dir / "current-focus.md").write_text("# Focus")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
+            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
@@ -148,41 +153,39 @@ class TestBecomeExecution:
         assert "current-focus.md" in captured.out
         assert "references.toml" not in captured.out
 
-    def test_outputs_references_before_startup_files(self, tmp_path, capsys):
-        """References appear before startup files in output."""
-        mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text('''
-[[references]]
-path = "src/roles/coo.md"
-''')
-        (startup_dir / "identity.md").write_text("")
-
+    def test_outputs_files_sorted_by_name(self, tmp_path, capsys):
+        """All files are sorted by name in output."""
+        mg_root = tmp_path
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
+            return _create_mock_mind(
+                req.value,
+                mg_root=mg_root,
+                startup_files=[
+                    mg_root / "wren/work/zebra.md",
+                    mg_root / "wren/work/alpha.md",
+                ],
+            )
 
         def setup(ctx):
-            ctx.paths._mg_root = tmp_path
+            ctx.paths._mg_root = mg_root
 
         with patch.dict(os.environ, {"MG_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
         lines = captured.out.strip().split("\n")
-        ref_pos = next(i for i, l in enumerate(lines) if "src/roles/coo.md" in l)
-        startup_pos = next(i for i, l in enumerate(lines) if "identity.md" in l)
-        assert ref_pos < startup_pos
+        alpha_pos = next(i for i, l in enumerate(lines) if "alpha.md" in l)
+        zebra_pos = next(i for i, l in enumerate(lines) if "zebra.md" in l)
+        assert alpha_pos < zebra_pos
 
     def test_empty_mind_shows_message(self, tmp_path, capsys):
-        """Shows message when mind has no startup files."""
+        """Shows message when mind has no files."""
         mind_dir = tmp_path / "wren"
-        startup_dir = mind_dir / "startup"
-        startup_dir.mkdir(parents=True)
-        (startup_dir / "references.toml").write_text("")
+        mind_dir.mkdir(parents=True)
+        (mind_dir / "references.toml").write_text("")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
+            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
 
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
@@ -197,19 +200,23 @@ path = "src/roles/coo.md"
 
 def _create_mock_mind(
     name: str,
-    references: list[str] | None = None,
+    mg_root: Path,
+    startup_files: list[Path] | None = None,
 ) -> Mind:
-    """Create a Mind with mocked get_references."""
+    """Create a Mind with mocked get_startup_files.
+
+    Args:
+        name: Mind name.
+        mg_root: The mg root path (needed for MindPaths).
+        startup_files: List of absolute Paths to return from get_startup_files().
+    """
 
     class MockMind(Mind):
-        def __init__(self, name: str, refs: list[str]):
-            super().__init__(paths=MindPaths(root=Path(f"/fake/minds/{name}")))
-            self._refs = refs
-
-        def get_references(self) -> list[str]:
-            return self._refs
+        def __init__(self, name: str, mg_root: Path, files: list[Path]):
+            super().__init__(paths=MindPaths(root=Path(f"/fake/minds/{name}"), mg_root=mg_root))
+            self._files = files
 
         def get_startup_files(self) -> list[Path]:
-            return []
+            return sorted(self._files, key=lambda p: p.name)
 
-    return MockMind(name, references or [])
+    return MockMind(name, mg_root, startup_files or [])

@@ -156,51 +156,100 @@ class UserPaths:
 
 
 @dataclass
-class MindPaths:
-    """Paths for a mind's directory structure."""
+class WorkPaths:
+    """Paths within a mind's work/ directory (assignment docs).
+
+    Work contains assignment-specific documents that may be cleared
+    between assignments.
+    """
 
     root: Path
 
     @property
-    def startup_dir(self) -> Path:
-        """Path to the startup/ directory."""
-        return self.root / "startup"
-
-    @property
     def docs_dir(self) -> Path:
-        """Path to the docs/ directory."""
+        """Path to work/docs/ directory."""
         return self.root / "docs"
 
-    # Startup files
     @property
     def welcome_file(self) -> Path:
         """Path to welcome.md (task assignment from creator)."""
-        return self.startup_dir / "welcome.md"
+        return self.root / "welcome.md"
 
     @property
     def immediate_plan_file(self) -> Path:
         """Path to immediate-plan.md (tactical, current work)."""
-        return self.startup_dir / "immediate-plan.md"
+        return self.root / "immediate-plan.md"
 
     @property
     def long_term_vision_file(self) -> Path:
         """Path to long-term-vision.md (strategic, direction)."""
-        return self.startup_dir / "long-term-vision.md"
+        return self.root / "long-term-vision.md"
 
     @property
     def my_process_file(self) -> Path:
         """Path to my-process.md (how I work, lessons learned)."""
-        return self.startup_dir / "my-process.md"
+        return self.root / "my-process.md"
 
     @property
     def scratchpad_file(self) -> Path:
         """Path to scratchpad.md (messy thinking, notes)."""
-        return self.startup_dir / "scratchpad.md"
+        return self.root / "scratchpad.md"
+
+
+@dataclass
+class HomePaths:
+    """Paths within a mind's home/ directory (personal continuity).
+
+    Home contains personal documents that persist across assignments.
+    """
+
+    root: Path
+
+    @property
+    def journal_file(self) -> Path:
+        """Path to journal.md (personal notes, reflections)."""
+        return self.root / "journal.md"
+
+
+@dataclass
+class MindPaths:
+    """Paths for a mind's directory structure.
+
+    Structure:
+        minds/{mind}/
+        ├── work/              # Assignment docs (cleared between assignments)
+        │   ├── welcome.md
+        │   ├── immediate-plan.md
+        │   ├── long-term-vision.md
+        │   ├── my-process.md
+        │   ├── scratchpad.md
+        │   └── docs/
+        ├── home/              # Personal continuity (persists)
+        │   └── journal.md
+        └── references.toml
+
+    Args:
+        root: The mind's root directory (e.g., minds/wren/).
+        mg_root: The mg project root (needed to resolve references.toml paths).
+    """
+
+    root: Path
+    mg_root: Path | None = None
+
+    @property
+    def work(self) -> WorkPaths:
+        """Paths within work/ directory."""
+        return WorkPaths(root=self.root / "work")
+
+    @property
+    def home(self) -> HomePaths:
+        """Paths within home/ directory."""
+        return HomePaths(root=self.root / "home")
 
     @property
     def references_file(self) -> Path:
-        """Path to references.toml."""
-        return self.startup_dir / "references.toml"
+        """Path to references.toml (at root level)."""
+        return self.root / "references.toml"
 
 
 @dataclass

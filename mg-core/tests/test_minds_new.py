@@ -119,52 +119,57 @@ class TestDirectoryStructure:
         sandbox.run("minds new --no-worktree --name robin")
         assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin").is_dir()
 
-    def test_creates_startup_directory(self, sandbox: Sandbox):
-        """Creates startup/ directory."""
+    def test_creates_work_directory(self, sandbox: Sandbox):
+        """Creates work/ directory."""
         sandbox.run("minds new --no-worktree --name robin")
-        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work").is_dir()
 
-    def test_creates_docs_directory(self, sandbox: Sandbox):
-        """Creates docs/ directory."""
+    def test_creates_home_directory(self, sandbox: Sandbox):
+        """Creates home/ directory."""
         sandbox.run("minds new --no-worktree --name robin")
-        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "docs").is_dir()
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "home").is_dir()
+
+    def test_creates_work_docs_directory(self, sandbox: Sandbox):
+        """Creates work/docs/ directory."""
+        sandbox.run("minds new --no-worktree --name robin")
+        assert (sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "docs").is_dir()
 
     def test_creates_welcome_md(self, sandbox: Sandbox):
-        """Creates startup/welcome.md template."""
+        """Creates work/welcome.md template."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "welcome.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "welcome.md"
         assert path.is_file()
         content = path.read_text()
         assert "Task Assignment" in content
 
     def test_creates_immediate_plan_md(self, sandbox: Sandbox):
-        """Creates startup/immediate-plan.md template."""
+        """Creates work/immediate-plan.md template."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "immediate-plan.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "immediate-plan.md"
         assert path.is_file()
 
     def test_creates_long_term_vision_md(self, sandbox: Sandbox):
-        """Creates startup/long-term-vision.md template."""
+        """Creates work/long-term-vision.md template."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "long-term-vision.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "long-term-vision.md"
         assert path.is_file()
 
     def test_creates_my_process_md(self, sandbox: Sandbox):
-        """Creates startup/my-process.md template."""
+        """Creates work/my-process.md template."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "my-process.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "my-process.md"
         assert path.is_file()
 
     def test_creates_scratchpad_md(self, sandbox: Sandbox):
-        """Creates startup/scratchpad.md template."""
+        """Creates work/scratchpad.md template."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "scratchpad.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "scratchpad.md"
         assert path.is_file()
 
     def test_creates_references_toml(self, sandbox: Sandbox):
-        """Creates startup/references.toml template."""
+        """Creates references.toml at root level."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "references.toml"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "references.toml"
         assert path.is_file()
         content = path.read_text()
         assert "references" in content.lower()
@@ -259,7 +264,7 @@ class TestWorktreeFlags:
     def test_no_worktree_welcome_has_no_location(self, sandbox: Sandbox):
         """welcome.md has no location line when --no-worktree used."""
         sandbox.run("minds new --no-worktree --name robin")
-        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "welcome.md"
+        path = sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:**" not in content
 
@@ -296,14 +301,14 @@ class TestWorktreeCreation:
     def test_worktree_welcome_has_location(self, git_sandbox: Sandbox):
         """welcome.md has location populated when --worktree used."""
         git_sandbox.run("minds new --worktree --name robin")
-        path = git_sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "welcome.md"
+        path = git_sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:** `worktrees/robin/`" in content
 
     def test_worktree_custom_name_in_welcome(self, git_sandbox: Sandbox):
         """welcome.md has custom worktree name when provided."""
         git_sandbox.run("minds new --worktree feature-x --name robin")
-        path = git_sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "startup" / "welcome.md"
+        path = git_sandbox.ctx.paths.user.minds_dir / "_new" / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:** `worktrees/feature-x/`" in content
 
