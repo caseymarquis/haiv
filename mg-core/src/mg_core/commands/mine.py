@@ -1,6 +1,6 @@
 """mg mine - Display information about the current mind.
 
-Shows the mind name, location, startup context path, and role (if configured).
+Shows the mind name, location, work directory, and role (if configured).
 Requires MG_MIND environment variable to be set.
 """
 

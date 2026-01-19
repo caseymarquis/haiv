@@ -195,11 +195,12 @@ class TestOutput:
         output = capsys.readouterr().out
         assert "welcome.md" in output.lower()
 
-    def test_outputs_suggest_role_command(self, sandbox: Sandbox, capsys):
-        """Output includes suggest_role command."""
+    def test_outputs_role_instruction(self, sandbox: Sandbox, capsys):
+        """Output includes role assignment instruction."""
         sandbox.run("minds new --no-worktree --name robin")
         output = capsys.readouterr().out
-        assert "mg minds suggest_role" in output
+        assert "role" in output.lower()
+        assert "references.toml" in output
 
     def test_outputs_start_command(self, sandbox: Sandbox, capsys):
         """Output includes the start command."""

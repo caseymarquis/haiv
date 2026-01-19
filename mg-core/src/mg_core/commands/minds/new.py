@@ -1,7 +1,7 @@
 """mg minds new - Scaffold a new mind folder.
 
-Creates a new mind with proper startup structure in users/{user}/state/minds/_new/.
-Optionally creates a worktree for the mind to work in.
+Creates a new mind with proper structure (work/, home/, references.toml)
+in users/{user}/state/minds/_new/. Optionally creates a worktree for the mind.
 """
 
 from __future__ import annotations
@@ -122,6 +122,6 @@ def execute(ctx: cmd.Ctx) -> None:
 
     ctx.print()
     ctx.print("Next steps:")
-    ctx.print("1. Edit startup/welcome.md with task context for this mind")
-    ctx.print(f"2. Run: mg minds suggest_role --name {name}")
-    ctx.print(f'3. Start the mind: mg start {name} --tmux --task "description"')
+    ctx.print("1. Edit work/welcome.md with task description")
+    ctx.print("2. Assign a role in references.toml (see src/mg_project/__assets__/roles/)")
+    ctx.print(f'3. Start: mg start {name} --tmux --task "description"')
