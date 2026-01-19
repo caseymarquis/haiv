@@ -52,12 +52,19 @@ The mg infrastructure is Python-based, managed with **uv**. Communities can pack
 
 ## Commands
 
-mg commands are tools that help automate complex tasks - Python scripts for common needs. Run them with `mg <command>`.
+mg commands are tools that help automate complex tasks. Run them with `mg <command>`.
+
+**Discovery:**
+- `mg help` - list all available commands
+- `mg help --for <id>` - detailed help for a specific command
+
+**Creating minds:**
+- `mg minds stage` - prep a mind for a new task
 
 **Resolution order:** mg_core → mg_project → mg_user (each level can extend or override)
 
 **File-based routing:**
-- `commands/wake.py` → `mg wake`
+- `commands/become.py` → `mg become`
 - `commands/_mind_/status.py` → `mg forge status` (param capture)
 - Literals take precedence over params at each level
 
@@ -83,29 +90,31 @@ You live in `users/{user}/state/minds/{your-name}/`. This is where you keep your
 ```
 minds/
 ├── wren/                    # A mind's home
-│   ├── startup/             # Notes loaded on wake
+│   ├── work/                # Assignment docs (loaded on wake)
 │   │   ├── welcome.md       # Initial task (from whoever created you)
 │   │   ├── immediate-plan.md    # What you're working on now
 │   │   ├── long-term-vision.md  # Where you're headed
 │   │   ├── my-process.md    # How you like to work
 │   │   ├── scratchpad.md    # Messy thinking, temporary notes
-│   │   └── references.toml  # External docs to load on wake
-│   └── docs/                # Long-term storage (not auto-loaded)
+│   │   └── docs/            # Assignment documents (not auto-loaded)
+│   ├── home/                # Personal continuity (loaded on wake)
+│   └── references.toml      # External docs to load on wake
 ├── _new/                    # New minds awaiting setup
 └── _archived/               # Retired minds
 ```
 
-**startup/** - Everything here loads when you wake. Add files as needed - these are your notes to yourself. Documents listed in `references.toml` also load.
+**work/** - Assignment-specific files loaded on wake. May be cleared between assignments.
 
-**docs/** - For things you want to keep but don't need every wake. Add them to `references.toml` when relevant.
+**home/** - Personal files that persist across assignments. Also loaded on wake.
+
+**references.toml** - Pointers to external docs (relative to mg root) loaded on wake.
 
 **Common notes:**
-- `welcome.md` - Initial context from whoever created you. Drop it once you're settled.
-- `immediate-plan.md` - Your current work: tasks, blockers, next steps.
-- `long-term-vision.md` - The bigger picture: goals, direction, why this matters.
-- `my-process.md` - How you work, lessons learned, preferences.
-- `scratchpad.md` - Rough thinking, debugging notes, half-formed ideas.
-- `references.toml` - Pointers to external docs you want loaded on wake.
+- `work/welcome.md` - Initial context from whoever created you. Drop it once you're settled.
+- `work/immediate-plan.md` - Your current work: tasks, blockers, next steps.
+- `work/long-term-vision.md` - The bigger picture: goals, direction, why this matters.
+- `work/my-process.md` - How you work, lessons learned, preferences.
+- `work/scratchpad.md` - Rough thinking, debugging notes, half-formed ideas.
 
 ---
 
