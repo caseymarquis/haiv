@@ -1,10 +1,13 @@
-"""mg minds new - Scaffold a new mind folder.
+"""mg minds stage - Prep a mind for a new task.
 
-Creates a new mind with proper structure (work/, home/, references.toml)
+If minds exist without active sessions, one is selected at random for reuse.
+Otherwise creates a new mind with proper structure (work/, home/, references.toml)
 in users/{user}/state/minds/_new/. Optionally creates a worktree for the mind.
 """
 
 from __future__ import annotations
+
+import random
 
 from mg import cmd
 from mg.errors import CommandError
@@ -13,15 +16,17 @@ from mg.helpers.minds import (
     InvalidMindNameError,
     MindExistsError,
     generate_mind_name,
+    list_minds,
     list_mind_paths,
     scaffold_mind,
     validate_mind_name,
 )
+from mg.helpers.sessions import load_sessions
 
 
 def define() -> cmd.Def:
     return cmd.Def(
-        description="Scaffold a new mind folder",
+        description="Prep a mind for a new task",
         flags=[
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
             cmd.Flag(
@@ -60,18 +65,32 @@ def execute(ctx: cmd.Ctx) -> None:
             "  --no-worktree      Create mind only"
         )
 
+    # Check for available minds (no active session) when name not provided
+    reused_mind = None
+    if not ctx.args.has("name"):
+        all_minds = list_minds(minds_dir, ctx.paths.root)
+        sessions = load_sessions(ctx.paths.user.sessions_file)
+        minds_with_sessions = {s.mind for s in sessions}
+        available = [m for m in all_minds if m.name not in minds_with_sessions]
+
+        if available:
+            reused_mind = random.choice(available)
+
     # Get or generate mind name
-    if ctx.args.has("name"):
+    if reused_mind:
+        name = reused_mind.name
+    elif ctx.args.has("name"):
         name = ctx.args.get_one("name")
     else:
         existing = [n for n, _ in list_mind_paths(minds_dir)]
         name = generate_mind_name(existing)
 
-    # Validate name
-    try:
-        validate_mind_name(name)
-    except InvalidMindNameError as e:
-        raise CommandError(e.reason) from e
+    # Validate name (skip for reused minds)
+    if not reused_mind:
+        try:
+            validate_mind_name(name)
+        except InvalidMindNameError as e:
+            raise CommandError(e.reason) from e
 
     # Handle worktree creation
     worktree_name: str | None = None
@@ -106,15 +125,21 @@ def execute(ctx: cmd.Ctx) -> None:
         )
         location = f"worktrees/{worktree_name}/"
 
-    # Scaffold the mind
-    try:
-        mind = scaffold_mind(name, minds_dir, ctx.templates, location=location)
-    except MindExistsError as e:
-        raise CommandError(str(e)) from e
+    # Scaffold new mind or reuse existing
+    if reused_mind:
+        mind = reused_mind
+    else:
+        try:
+            mind = scaffold_mind(name, minds_dir, ctx.templates, location=location)
+        except MindExistsError as e:
+            raise CommandError(str(e)) from e
 
     # Output guidance
     rel_path = mind.paths.root.relative_to(ctx.paths.root)
-    ctx.print(f"Created mind: {name}")
+    if reused_mind:
+        ctx.print(f"Reusing mind: {name}")
+    else:
+        ctx.print(f"Created mind: {name}")
     ctx.print(f"Location: {rel_path}")
 
     if has_worktree:
