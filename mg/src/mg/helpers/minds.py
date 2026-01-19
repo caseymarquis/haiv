@@ -367,7 +367,13 @@ def mind_exists(name: str, minds_dir: Path) -> bool:
     return name in existing
 
 
-def scaffold_mind(name: str, minds_dir: Path, templates: TemplateRenderer) -> Mind:
+def scaffold_mind(
+    name: str,
+    minds_dir: Path,
+    templates: TemplateRenderer,
+    *,
+    location: str | None = None,
+) -> Mind:
     """Create a new mind folder with proper structure.
 
     Creates in _new/ organizational directory with:
@@ -383,6 +389,7 @@ def scaffold_mind(name: str, minds_dir: Path, templates: TemplateRenderer) -> Mi
         name: The mind name (must be validated first).
         minds_dir: Path to the minds/ directory.
         templates: TemplateRenderer for writing template files.
+        location: Optional worktree location (e.g., "worktrees/feature-x/").
 
     Returns:
         The created Mind object.
@@ -402,7 +409,7 @@ def scaffold_mind(name: str, minds_dir: Path, templates: TemplateRenderer) -> Mi
     paths.docs_dir.mkdir(parents=True)
 
     # Write template files
-    templates.write("minds/welcome.md.j2", paths.welcome_file)
+    templates.write("minds/welcome.md.j2", paths.welcome_file, location=location or "")
     templates.write("minds/references.toml.j2", paths.references_file)
     paths.immediate_plan_file.write_text("# Immediate Plan\n")
     paths.long_term_vision_file.write_text("# Long-Term Vision\n")
