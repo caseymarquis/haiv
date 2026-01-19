@@ -180,7 +180,7 @@ class TestStartSessionManagement:
             ctx.paths._mg_root = tmp_path
 
         with pytest.raises(CommandError) as exc_info:
-            test.execute("start wren --resume", resolve=mock_resolve, setup=setup)
+            test.execute("start wren --resume abc123", resolve=mock_resolve, setup=setup)
 
         assert "--task and --resume require --tmux" in str(exc_info.value)
 
@@ -257,36 +257,6 @@ class TestStartSessionManagement:
             cmds = [call[0][0] for call in mock_run.call_args_list]
             # Should have --session-id in the claude command
             assert any("send-keys" in cmd and "--session-id" in cmd for cmd in cmds)
-
-    def test_resume_without_id_uses_most_recent(self, tmp_path):
-        """--resume without ID uses most recent session."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-            # Create a session to resume
-            session = Session(
-                id="abc-123-def",
-                task="Previous task",
-                started=datetime.now(timezone.utc),
-            )
-            save_session(ctx.paths.user.sessions_file, session)
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            test.execute("start wren --tmux --resume", resolve=mock_resolve, setup=setup)
-
-            cmds = [call[0][0] for call in mock_run.call_args_list]
-            # Should have --resume with the session ID
-            assert any(
-                "send-keys" in cmd and "--resume abc-123-def" in cmd for cmd in cmds
-            )
 
     def test_resume_with_id_finds_session(self, tmp_path):
         """--resume with ID finds matching session."""
@@ -382,9 +352,9 @@ class TestStartSessionManagement:
 
             with pytest.raises(CommandError) as exc_info:
                 test.execute(
-                    "start wren --tmux --resume",
+                    "start wren --tmux --resume nonexistent-id",
                     resolve=mock_resolve,
                     setup=setup,
                 )
 
-            assert "No session found to resume" in str(exc_info.value)
+            assert "Session not found: nonexistent-id" in str(exc_info.value)

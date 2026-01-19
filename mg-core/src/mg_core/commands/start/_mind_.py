@@ -14,8 +14,7 @@ from mg.wrappers.tmux import Tmux
 from mg.helpers.minds import Mind
 from mg.helpers.sessions import (
     create_session,
-    find_session,
-    get_most_recent_session,
+    get_session,
 )
 
 
@@ -28,9 +27,7 @@ def define() -> cmd.Def:
             cmd.Flag(
                 "resume",
                 type=str,
-                min_args=0,
-                max_args=1,
-                description="Resume session (most recent if no ID)",
+                description="Resume session by short_id or UUID",
             ),
         ],
     )
@@ -80,7 +77,7 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     tmux = Tmux(ctx.paths.root)
 
     # Set environment in tmux session BEFORE creating window
-    # (so the shell inherits the vars when it spawns)
+    # (so the shell inherits the vars when it assigns)
     tmux.setenv("MG_MIND", mind.name)
     tmux.setenv("MG_ROOT", str(ctx.paths.root))
 
@@ -98,17 +95,14 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     sessions_file = ctx.paths.user.sessions_file
 
     if ctx.args.has("resume"):
-        # Resume existing session
-        resume_values = ctx.args.get_list("resume", default_value=[])
-        if resume_values:
-            session = find_session(sessions_file, resume_values[0])
-        else:
-            session = get_most_recent_session(sessions_file)
+        # Resume existing session - no prompt needed, context is restored
+        session_id = ctx.args.get_one("resume")
+        session = get_session(sessions_file, session_id)
 
         if not session:
-            raise CommandError("No session found to resume")
+            raise CommandError(f"Session not found: {session_id}")
 
-        window.send_keys(f'claude "{prompt}" --resume {session.id} {allowed}')
+        window.send_keys(f"claude --resume {session.id} {allowed}")
 
     elif ctx.args.has("task"):
         # Start new tracked session

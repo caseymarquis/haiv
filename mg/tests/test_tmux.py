@@ -304,6 +304,60 @@ class TestSetenv:
         assert "'\\''s a value" in cmd or "it'\\''s" in cmd
 
 
+class TestHasWindow:
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_has_window_returns_true_when_exists(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="bash\nwren\n", stderr="")
+
+        assert tmux.has_window("wren") is True
+
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_has_window_returns_false_when_missing(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="bash\nother\n", stderr="")
+
+        assert tmux.has_window("wren") is False
+
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_has_window_returns_false_when_empty(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        assert tmux.has_window("wren") is False
+
+
+class TestKillWindow:
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_kill_window_sends_correct_command(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+
+        tmux.kill_window("wren")
+
+        cmd = mock_run.call_args[0][0]
+        assert "kill-window" in cmd
+        assert "-t mind-games:wren" in cmd
+
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_kill_window_raises_on_failure(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(
+            returncode=1, stdout="", stderr="no such window"
+        )
+
+        with pytest.raises(TmuxError):
+            tmux.kill_window("nonexistent")
+
+
+class TestTmuxWindowKill:
+    @patch("mg.wrappers.tmux.subprocess.run")
+    def test_window_kill(self, mock_run, tmux):
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        window = TmuxWindow(tmux, "wren", created=True)
+
+        window.kill()
+
+        cmd = mock_run.call_args[0][0]
+        assert "kill-window" in cmd
+        assert "-t mind-games:wren" in cmd
+
+
 class TestTmuxWindow:
     @patch("mg.wrappers.tmux.subprocess.run")
     def test_window_send_keys(self, mock_run, tmux):

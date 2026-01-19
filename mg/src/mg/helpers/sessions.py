@@ -113,6 +113,23 @@ def get_most_recent_session(sessions_file: Path) -> Session | None:
     return sessions[0] if sessions else None
 
 
+def get_most_recent_session_for_mind(sessions_file: Path, mind_name: str) -> Session | None:
+    """Get the most recently started session for a specific mind.
+
+    Args:
+        sessions_file: Path to the sessions TOML file.
+        mind_name: The mind name to filter by.
+
+    Returns:
+        Most recent session for the mind, or None if not found.
+    """
+    sessions = load_sessions(sessions_file)
+    for session in sessions:
+        if session.mind == mind_name:
+            return session
+    return None
+
+
 def find_session(sessions_file: Path, session_id: str) -> Session | None:
     """Find session by full ID (or partial UUID match)."""
     sessions = load_sessions(sessions_file)

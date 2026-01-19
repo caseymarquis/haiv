@@ -66,6 +66,10 @@ class TmuxWindow:
         """
         return self.tmux.capture_pane(target=self.name, start=start, end=end)
 
+    def kill(self) -> None:
+        """Kill this window."""
+        self.tmux.kill_window(self.name)
+
 
 class Tmux:
     """Thin wrapper around tmux commands for a single session.
@@ -296,6 +300,29 @@ class Tmux:
             f"setenv {flag}-t {self.session} {var} '{escaped_value}'",
             intent=f"set {var} in session",
         )
+
+    def kill_window(self, name: str) -> None:
+        """Kill a window by name.
+
+        Args:
+            name: The window name to kill.
+        """
+        self.run(
+            f"kill-window -t {self.session}:{name}",
+            intent=f"kill window '{name}'",
+        )
+
+    def has_window(self, name: str) -> bool:
+        """Check if a window exists.
+
+        Args:
+            name: The window name to check.
+
+        Returns:
+            True if the window exists, False otherwise.
+        """
+        windows = self.list_windows(format="#{window_name}")
+        return name in windows
 
     def attach(self) -> None:
         """Attach to the session, replacing the current process.
