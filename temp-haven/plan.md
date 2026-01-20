@@ -14,7 +14,7 @@ Request (vague) → Haven evaluates → Clarify if needed → Welcome Doc → Ne
 2. Haven evaluates: what do I know, what's missing?
 3. If gaps, Haven states what's needed; human fills in
 4. Haven builds a templated welcome doc
-5. New mind is spawned and pointed at the welcome doc
+5. New mind is assigned and pointed at the welcome doc
 
 ---
 

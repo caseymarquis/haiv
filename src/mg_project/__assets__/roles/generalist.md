@@ -23,6 +23,12 @@ Discuss the approach, then write the skeleton:
 This is real code - importable, type-checkable - just no implementations yet.
 Iterate on this structure until approved.
 
+**When designing APIs** (helpers, modules, shared code):
+1. Find a real use case - identify actual calling code
+2. Write ideal calling code first - imagine the API exists and write what you *wish* you could write. Focus on clarity for the caller, not implementation
+3. Iterate on the surface until the calling code is exceptionally clear
+4. Then design the implementation to support that surface
+
 ### 3. Write Tests
 
 With the skeleton in place:

@@ -167,7 +167,7 @@ mg start wren --tmux
 ```
 
 Use this for:
-- Manager spawning a new worker
+- Manager assigning a new worker
 - Launching additional minds in parallel
 
 ### The `mg wake` Command

@@ -7,7 +7,7 @@
 
 ## Summary
 
-Added session tracking for manager minds spawning workers via tmux. When starting a worker with `--task "description"`, a UUID session is created and stored in `sessions.ig.toml`. Workers can be resumed later with `--resume [session_id]`. Also completed the mind management command suite: `mg start`, `mg become`, `mg mine`.
+Added session tracking for manager minds assigning workers via tmux. When starting a worker with `--task "description"`, a UUID session is created and stored in `sessions.ig.toml`. Workers can be resumed later with `--resume [session_id]`. Also completed the mind management command suite: `mg start`, `mg become`, `mg mine`.
 
 ---
 
@@ -41,7 +41,7 @@ Sessions are prepended to the file. `--resume` without an ID grabs the first ent
 Used `tomli_w` (already a dependency) instead of manual TOML building. Cleaner and handles edge cases.
 
 ### 5. Flags Require --tmux
-`--task` and `--resume` only make sense when spawning workers in tmux windows. Validation in `execute()` enforces this.
+`--task` and `--resume` only make sense when assigning workers in tmux windows. Validation in `execute()` enforces this.
 
 ### 6. get_list() for Optional Flag Values
 `--resume` with `min_args=0` produces an empty list when no ID given. Used `get_list()` instead of `get_one()` to handle this cleanly.
@@ -53,8 +53,8 @@ Used `tomli_w` (already a dependency) instead of manual TOML building. Cleaner a
 | Command | Purpose |
 |---------|---------|
 | `mg start {mind}` | Launch mind in current terminal |
-| `mg start {mind} --tmux` | Spawn worker in tmux window |
-| `mg start {mind} --tmux --task "desc"` | Spawn with tracked session |
+| `mg start {mind} --tmux` | Assign worker in tmux window |
+| `mg start {mind} --tmux --task "desc"` | Assign with tracked session |
 | `mg start {mind} --tmux --resume [id]` | Resume previous session |
 | `mg become {mind}` | Load mind's startup context |
 | `mg mine` | Display current mind info |
@@ -98,7 +98,7 @@ Total: 157 tests passing in mg-core.
 # Human starts manager mind
 mg start wren
 
-# Manager (wren) spawns tracked worker
+# Manager (wren) assigns tracked worker
 mg start robin --tmux --task "Implement authentication"
 
 # Later, resume the worker

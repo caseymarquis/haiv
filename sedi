@@ -1,0 +1,28 @@
+#!/bin/bash
+# sedi - safe in-place sed replacement with diff output
+# Usage: sedi 's/pattern/replacement/' file [file2 ...]
+
+if [ $# -lt 2 ]; then
+    echo "Usage: sedi 'sed-expression' file [file2 ...]"
+    exit 1
+fi
+
+expr="$1"
+shift
+
+for file in "$@"; do
+    if [ ! -f "$file" ]; then
+        echo "Error: $file not found"
+        exit 1
+    fi
+    tmpfile=$(mktemp)
+    if sed "$expr" "$file" > "$tmpfile"; then
+        # Show diff with no context (only changed lines)
+        diff -U0 "$file" "$tmpfile" | tail -n +3 | head -50
+        mv "$tmpfile" "$file"
+    else
+        rm -f "$tmpfile"
+        echo "Error processing $file"
+        exit 1
+    fi
+done
