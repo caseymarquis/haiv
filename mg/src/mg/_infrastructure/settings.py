@@ -58,7 +58,40 @@ PROJECT_SETTINGS_TEMPLATE = """\
 # User settings (users/{name}/mg.toml) override these values.
 
 # default_branch = "main"
+# wezterm_command = ["flatpak", "run", "org.wezfurlong.wezterm"]
 """
+
+
+def _load_settings(path: Path, default_text: str) -> MgSettings:
+    """Load settings from a TOML file.
+
+    Args:
+        path: Path to the settings file.
+        default_text: Text to write if file doesn't exist.
+
+    Returns:
+        MgSettings with loaded values.
+    """
+    if not path.exists():
+        path.write_text(default_text)
+        return MgSettings()
+
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+
+    # Build MgSettings from TOML data by matching field names.
+    # Field "_foo" is loaded from TOML key "foo".
+    from dataclasses import fields
+
+    kwargs = {}
+    for field in fields(MgSettings):
+        if not field.name.startswith("_"):
+            continue
+        toml_key = field.name[1:]  # strip leading underscore
+        if toml_key in data:
+            kwargs[field.name] = data[toml_key]
+
+    return MgSettings(**kwargs)
 
 
 def load_project_settings(path: Path) -> MgSettings:
@@ -73,16 +106,7 @@ def load_project_settings(path: Path) -> MgSettings:
     If file is missing, creates it with commented defaults and returns
     empty MgSettings.
     """
-    if not path.exists():
-        path.write_text(PROJECT_SETTINGS_TEMPLATE)
-        return MgSettings()
-
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
-
-    return MgSettings(
-        _default_branch=data.get("default_branch"),
-    )
+    return _load_settings(path, PROJECT_SETTINGS_TEMPLATE)
 
 
 def load_user_settings(path: Path) -> MgSettings:
@@ -96,16 +120,7 @@ def load_user_settings(path: Path) -> MgSettings:
 
     If file is missing, creates an empty file and returns empty MgSettings.
     """
-    if not path.exists():
-        path.write_text("")
-        return MgSettings()
-
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
-
-    return MgSettings(
-        _default_branch=data.get("default_branch"),
-    )
+    return _load_settings(path, "")
 
 
 # -----------------------------------------------------------------------------

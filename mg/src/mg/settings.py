@@ -14,8 +14,14 @@ class MgSettings:
     """
 
     _default_branch: str | None = None
+    _wezterm_command: list[str] | None = None
 
     @property
     def default_branch(self) -> str:
         """The default branch name. Falls back to 'main' if not set."""
         return self._default_branch if self._default_branch is not None else "main"
+
+    @property
+    def wezterm_command(self) -> list[str]:
+        """The command to invoke WezTerm CLI. Falls back to ['wezterm']."""
+        return self._wezterm_command if self._wezterm_command is not None else ["wezterm"]

@@ -10,6 +10,7 @@ from mg.paths import Paths
 from mg.settings import MgSettings
 from mg.templates import TemplateRenderer
 from mg.wrappers.git import Git
+from mg.wrappers.wezterm import WezTerm
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -175,6 +176,11 @@ class Ctx:
     def git(self) -> Git:
         """Get a Git instance for the project root."""
         return Git(self.paths.root)
+
+    @property
+    def wezterm(self) -> WezTerm:
+        """Get a WezTerm instance for the project."""
+        return WezTerm(self.paths.root, self.settings.wezterm_command)
 
     @property
     def templates(self) -> TemplateRenderer:
