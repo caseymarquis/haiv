@@ -14,9 +14,7 @@ Directory structure:
     │   ├── home/                # Personal continuity (persists)
     │   │   └── journal.md       # [loaded on wake]
     │   └── references.toml      # [loaded on wake] External doc refs
-    ├── _new/                    # Organizational dirs start with _
-    │   └── reed/
-    └── _archived/
+    └── _staging/                # Organizational dirs start with _
         └── old-worker/
 
 On wake, the mind receives: external docs from references.toml, plus all
@@ -418,7 +416,7 @@ def scaffold_mind(
 ) -> Mind:
     """Create a new mind folder with proper structure.
 
-    Creates in _new/ organizational directory with:
+    Creates at root level with:
     - work/welcome.md (template for creator to fill in)
     - work/immediate-plan.md
     - work/long-term-vision.md
@@ -443,8 +441,8 @@ def scaffold_mind(
     if mind_exists(name, minds_dir):
         raise MindExistsError(name)
 
-    # Create in _new/ organizational directory
-    mind_root = minds_dir / "_new" / name
+    # Create at root level
+    mind_root = minds_dir / name
     paths = MindPaths(root=mind_root)
 
     # Create directories

@@ -52,12 +52,19 @@ The mg infrastructure is Python-based, managed with **uv**. Communities can pack
 
 ## Commands
 
-mg commands are tools that help automate complex tasks - Python scripts for common needs. Run them with `mg <command>`.
+mg commands are tools that help automate complex tasks. Run them with `mg <command>`.
+
+**Discovery:**
+- `mg help` - list all available commands
+- `mg help --for <id>` - detailed help for a specific command
+
+**Creating minds:**
+- `mg minds new` - create a new mind (will prompt for required options)
 
 **Resolution order:** mg_core → mg_project → mg_user (each level can extend or override)
 
 **File-based routing:**
-- `commands/wake.py` → `mg wake`
+- `commands/become.py` → `mg become`
 - `commands/_mind_/status.py` → `mg forge status` (param capture)
 - Literals take precedence over params at each level
 
@@ -92,8 +99,6 @@ minds/
 │   │   └── docs/            # Assignment documents (not auto-loaded)
 │   ├── home/                # Personal continuity (loaded on wake)
 │   └── references.toml      # External docs to load on wake
-├── _new/                    # New minds awaiting setup
-└── _archived/               # Retired minds
 ```
 
 **work/** - Assignment-specific files loaded on wake. May be cleared between assignments.

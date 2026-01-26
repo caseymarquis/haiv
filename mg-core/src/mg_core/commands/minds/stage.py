@@ -2,7 +2,7 @@
 
 If minds exist without active sessions, one is selected at random for reuse.
 Otherwise creates a new mind with proper structure (work/, home/, references.toml)
-in users/{user}/state/minds/_new/. Optionally creates a worktree for the mind.
+in users/{user}/state/minds/. Optionally creates a worktree for the mind.
 """
 
 from __future__ import annotations

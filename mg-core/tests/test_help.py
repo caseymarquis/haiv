@@ -82,12 +82,11 @@ class TestHelpForPattern:
 
     def test_multiple_matches_shows_list(self, capsys):
         """--for with pattern matching multiple commands shows list."""
-        test.execute("help --for new")
+        test.execute("help --for session")
 
         captured = capsys.readouterr()
         assert "Multiple commands matching" in captured.out
-        assert "minds new" in captured.out
-        assert "users new" in captured.out
+        assert "sessions" in captured.out
 
     def test_no_matches_shows_error(self, capsys):
         """--for with no matches shows error."""

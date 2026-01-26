@@ -303,7 +303,7 @@ class TestListMindPaths:
         minds_dir = tmp_path / "minds"
         minds_dir.mkdir()
         (minds_dir / "_new" / "reed").mkdir(parents=True)
-        (minds_dir / "_archived" / "old-worker").mkdir(parents=True)
+        (minds_dir / "_staging" / "old-worker").mkdir(parents=True)
 
         result = list_mind_paths(minds_dir)
 
@@ -602,14 +602,14 @@ class TestScaffoldMind:
         pkg = PkgPaths.from_module(mg_core)
         return TemplateRenderer(pkg.assets_dir)
 
-    def test_creates_mind_in_new_folder(self, tmp_path, templates):
-        """Creates mind folder in _new/ organizational directory."""
+    def test_creates_mind_at_root_level(self, tmp_path, templates):
+        """Creates mind folder at root level of minds directory."""
         minds_dir = tmp_path / "minds"
 
         mind = scaffold_mind("robin", minds_dir, templates)
 
         assert mind.name == "robin"
-        assert mind.paths.root == minds_dir / "_new" / "robin"
+        assert mind.paths.root == minds_dir / "robin"
         assert mind.paths.work.root.is_dir()
         assert mind.paths.work.docs_dir.is_dir()
         assert mind.paths.home.root.is_dir()
