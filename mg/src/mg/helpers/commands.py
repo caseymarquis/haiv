@@ -68,7 +68,7 @@ def path_to_command_name(path: Path) -> str:
 
     Examples:
         minds/new.py -> "minds new"
-        start/__init__.py -> "start"
+        start/_index_.py -> "start"
         start/_mind_.py -> "start <mind>"
         _mind_/status.py -> "<mind> status"
 
@@ -82,8 +82,8 @@ def path_to_command_name(path: Path) -> str:
 
     # Handle the filename (last part)
     filename = parts[-1]
-    if filename == "__init__.py":
-        # __init__.py means the command is the directory itself
+    if filename == "_index_.py":
+        # _index_.py means the command is the directory itself
         parts = parts[:-1]
     else:
         # Remove .py extension and handle param patterns

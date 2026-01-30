@@ -30,13 +30,13 @@ class TestPathToCommandName:
         """Multiple levels of nesting."""
         assert path_to_command_name(Path("a/b/c.py")) == "a b c"
 
-    def test_init_in_directory(self):
-        """__init__.py becomes just the directory name."""
-        assert path_to_command_name(Path("start/__init__.py")) == "start"
+    def test_index_in_directory(self):
+        """_index_.py becomes just the directory name."""
+        assert path_to_command_name(Path("start/_index_.py")) == "start"
 
-    def test_init_nested(self):
-        """Nested __init__.py includes parent directories."""
-        assert path_to_command_name(Path("users/new/__init__.py")) == "users new"
+    def test_index_nested(self):
+        """Nested _index_.py includes parent directories."""
+        assert path_to_command_name(Path("users/new/_index_.py")) == "users new"
 
     def test_param_file(self):
         """Param file _name_.py becomes <name>."""
@@ -58,9 +58,9 @@ class TestPathToCommandName:
         """Param directory with explicit resolver uses param name."""
         assert path_to_command_name(Path("_target_as_mind_/status.py")) == "<target> status"
 
-    def test_root_init(self):
-        """Root __init__.py returns empty string."""
-        assert path_to_command_name(Path("__init__.py")) == ""
+    def test_root_index(self):
+        """Root _index_.py returns empty string."""
+        assert path_to_command_name(Path("_index_.py")) == ""
 
 
 class TestCommandInfo:
