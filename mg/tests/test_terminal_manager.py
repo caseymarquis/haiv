@@ -50,7 +50,7 @@ def wezterm():
 @pytest.fixture
 def manager(wezterm):
     """Create a TerminalManager with mocked WezTerm."""
-    return TerminalManager(wezterm, Path("/home/user/my-project"))
+    return TerminalManager(wezterm, Path("/home/user/my-project"), ["mg-tui"])
 
 
 class TestTabTitleNaming:
@@ -129,8 +129,10 @@ class TestEnsureWorkspace:
         with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
             manager.ensure_workspace()
 
-        # Created new window
-        wezterm.spawn.assert_any_call(new_window=True, cwd="/home/user/my-project")
+        # Created new window with TUI command
+        wezterm.spawn.assert_any_call(
+            new_window=True, cwd="/home/user/my-project", command=["mg-tui"],
+        )
         # Named hud tab
         wezterm.set_tab_title.assert_any_call("mg(my-project)", pane_id=10)
         # Split for mind pane

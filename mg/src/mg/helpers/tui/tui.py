@@ -14,7 +14,7 @@ class Tui:
 
     def __init__(self, mg_root: Path, settings: MgSettings) -> None:
         wezterm = WezTerm(settings.wezterm_command)
-        self._terminal = TerminalManager(wezterm, mg_root)
+        self._terminal = TerminalManager(wezterm, mg_root, settings.tui_command)
 
     def start(self) -> None:
         """Start the TUI."""

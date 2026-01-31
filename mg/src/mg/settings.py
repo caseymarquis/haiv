@@ -15,6 +15,7 @@ class MgSettings:
 
     _default_branch: str | None = None
     _wezterm_command: list[str] | None = None
+    _tui_command: list[str] | None = None
 
     @property
     def default_branch(self) -> str:
@@ -25,3 +26,8 @@ class MgSettings:
     def wezterm_command(self) -> list[str]:
         """The command to invoke WezTerm CLI. Falls back to ['wezterm']."""
         return self._wezterm_command if self._wezterm_command is not None else ["wezterm"]
+
+    @property
+    def tui_command(self) -> list[str]:
+        """The command to launch the TUI application. Falls back to ['mg-tui']."""
+        return self._tui_command if self._tui_command is not None else ["mg-tui"]

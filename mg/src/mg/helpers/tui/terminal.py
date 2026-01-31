@@ -18,9 +18,10 @@ class TerminalManager:
     projects sharing a single WezTerm instance.
     """
 
-    def __init__(self, wezterm: WezTerm, mg_root: Path) -> None:
+    def __init__(self, wezterm: WezTerm, mg_root: Path, tui_command: list[str]) -> None:
         self.wezterm = wezterm
         self.mg_root = mg_root
+        self.tui_command = tui_command
         self.project = mg_root.name
         self.hud_tab_title = f"mg({self.project})"
         self.buffer_tab_title = f"mg({self.project}):buffer"
@@ -75,8 +76,10 @@ class TerminalManager:
         """Create a new window with hud and buffer tabs."""
         cwd = str(self.mg_root)
 
-        # New window becomes the hud tab
-        hud_pane_id = self.wezterm.spawn(new_window=True, cwd=cwd)
+        # New window with TUI running in the hud pane
+        hud_pane_id = self.wezterm.spawn(
+            new_window=True, cwd=cwd, command=self.tui_command,
+        )
         self.wezterm.set_tab_title(self.hud_tab_title, pane_id=hud_pane_id)
 
         # Split right for mind pane
