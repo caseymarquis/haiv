@@ -6,11 +6,11 @@ from typing import Any, TypeVar, overload
 from punq import Container
 
 from mg._infrastructure.settings import SettingsCache, get_settings
+from mg.helpers.tui import Tui
 from mg.paths import Paths
 from mg.settings import MgSettings
 from mg.templates import TemplateRenderer
 from mg.wrappers.git import Git
-from mg.wrappers.wezterm import WezTerm
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -178,9 +178,9 @@ class Ctx:
         return Git(self.paths.root)
 
     @property
-    def wezterm(self) -> WezTerm:
-        """Get a WezTerm instance for the project."""
-        return WezTerm(self.paths.root, self.settings.wezterm_command)
+    def tui(self) -> Tui:
+        """Get a Tui instance for this project."""
+        return Tui(self.paths.root, self.settings)
 
     @property
     def templates(self) -> TemplateRenderer:

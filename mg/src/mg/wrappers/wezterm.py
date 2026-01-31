@@ -97,14 +97,12 @@ class WezTerm:
     """Thin wrapper around WezTerm CLI commands.
 
     Args:
-        mg_root: Path to the mg repository root.
         command: Base command to invoke WezTerm CLI (e.g., ["wezterm"] or
                  ["flatpak", "run", "org.wezfurlong.wezterm"]).
         quiet: If True, suppress output and Claude prompts.
     """
 
-    def __init__(self, mg_root: Path, command: list[str], quiet: bool = False):
-        self.mg_root = Path(mg_root)
+    def __init__(self, command: list[str], quiet: bool = False):
         self.command = list(command)
         self.quiet = quiet
 
@@ -122,6 +120,56 @@ class WezTerm:
             WezTermError: If the command fails.
         """
         full_cmd = self.command + ["cli"] + args
+        display_cmd = " ".join(full_cmd)
+
+        if not self.quiet:
+            print(f"→ {display_cmd}")
+
+        result = subprocess.run(
+            full_cmd,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            if not self.quiet:
+                if result.stderr.strip():
+                    print(result.stderr.rstrip())
+
+                if intent:
+                    print(f"\nWhile trying to: {intent}")
+
+                print(
+                    "\nAnalyze the above error, explain what happened, "
+                    "and suggest a fix."
+                )
+
+            raise WezTermError(
+                f"WezTerm command failed: {display_cmd}",
+                stderr=result.stderr,
+            )
+
+        return result.stdout
+
+    def run_external(self, args: list[str], *, intent: str | None = None) -> str:
+        """Run a WezTerm command outside the CLI context.
+
+        Unlike run(), this does NOT prepend 'cli'. Use this for commands
+        like 'wezterm start' that launch a new instance rather than
+        controlling an existing one. All other commands should use run(),
+        which requires being inside a WezTerm session.
+
+        Args:
+            args: Arguments after the base command (e.g., ["start", "--workspace", "x"]).
+            intent: Optional description of what we're trying to accomplish.
+
+        Returns:
+            stdout from the command.
+
+        Raises:
+            WezTermError: If the command fails.
+        """
+        full_cmd = self.command + args
         display_cmd = " ".join(full_cmd)
 
         if not self.quiet:
@@ -173,6 +221,7 @@ class WezTerm:
         command: list[str] | None = None,
         window_id: int | None = None,
         new_window: bool = False,
+        workspace: str | None = None,
     ) -> int:
         """Spawn a new pane in a window or tab.
 
@@ -181,6 +230,7 @@ class WezTerm:
             command: Command to run (default: shell).
             window_id: Target window (default: current window).
             new_window: If True, spawn in a new window.
+            workspace: Workspace name for new window (requires new_window=True).
 
         Returns:
             The pane_id of the newly created pane.
@@ -193,6 +243,8 @@ class WezTerm:
             args.extend(["--window-id", str(window_id)])
         if new_window:
             args.append("--new-window")
+        if workspace:
+            args.extend(["--workspace", workspace])
         if command:
             args.append("--")
             args.extend(command)

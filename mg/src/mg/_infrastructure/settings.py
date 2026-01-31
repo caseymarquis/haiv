@@ -73,6 +73,7 @@ def _load_settings(path: Path, default_text: str) -> MgSettings:
         MgSettings with loaded values.
     """
     if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(default_text)
         return MgSettings()
 
