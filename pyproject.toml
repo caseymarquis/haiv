@@ -10,7 +10,7 @@ authors = [
 ]
 
 [tool.uv.workspace]
-members = ["mg", "mg-core", "mg-cli"]
+members = ["mg", "mg-core", "mg-cli", "mg-tui"]
 
 [dependency-groups]
 dev = [

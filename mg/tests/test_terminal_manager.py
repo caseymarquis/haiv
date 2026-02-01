@@ -129,9 +129,9 @@ class TestEnsureWorkspace:
         with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
             manager.ensure_workspace()
 
-        # Created new window with TUI command
+        # Created new window with TUI command + project name
         wezterm.spawn.assert_any_call(
-            new_window=True, cwd="/home/user/my-project", command=["mg-tui"],
+            new_window=True, cwd="/home/user/my-project", command=["mg-tui", "my-project"],
         )
         # Named hud tab
         wezterm.set_tab_title.assert_any_call("mg(my-project)", pane_id=10)

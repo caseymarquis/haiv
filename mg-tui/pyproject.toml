@@ -18,7 +18,12 @@ classifiers = [
 ]
 dependencies = [
     "textual",
+    "mg",
+    "blinker",
 ]
+
+[tool.uv.sources]
+mg = { workspace = true }
 
 [project.scripts]
 mg-tui = "mg_tui:main"

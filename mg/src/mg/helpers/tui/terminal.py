@@ -78,7 +78,7 @@ class TerminalManager:
 
         # New window with TUI running in the hud pane
         hud_pane_id = self.wezterm.spawn(
-            new_window=True, cwd=cwd, command=self.tui_command,
+            new_window=True, cwd=cwd, command=self.tui_command + [self.project],
         )
         self.wezterm.set_tab_title(self.hud_tab_title, pane_id=hud_pane_id)
 

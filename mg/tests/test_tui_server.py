@@ -154,3 +154,78 @@ class TestServerReadWrite:
         future = server.submit(WriteRequest(model=stale_model))
         with pytest.raises(ConcurrencyError):
             future.result(timeout=1)
+
+
+class TestOnChange:
+    """on_change callback behavior."""
+
+    def test_on_change_fires_on_successful_write(self, tmp_path):
+        """on_change callback is called after a successful write."""
+        calls = []
+        project = f"test-{tmp_path.name}"
+        srv = TuiServer(project, on_change=lambda: calls.append(1))
+        srv.start()
+        try:
+            future = srv.submit(ReadRequest())
+            model = future.result(timeout=1)
+            model.hud.role = "COO"
+            future = srv.submit(WriteRequest(model=model))
+            future.result(timeout=1)
+            assert len(calls) == 1
+        finally:
+            srv.stop()
+
+    def test_on_change_does_not_fire_on_failed_write(self, tmp_path):
+        """on_change callback is NOT called when write fails."""
+        calls = []
+        project = f"test-{tmp_path.name}"
+        srv = TuiServer(project, on_change=lambda: calls.append(1))
+        srv.start()
+        try:
+            # Do a write to advance the version
+            future = srv.submit(ReadRequest())
+            model = future.result(timeout=1)
+            model.hud.role = "COO"
+            future = srv.submit(WriteRequest(model=model))
+            future.result(timeout=1)
+            assert len(calls) == 1
+
+            # Attempt a stale write
+            stale_model = TuiModel(hud=HudSection(role="CTO", _version=0))
+            future = srv.submit(WriteRequest(model=stale_model))
+            with pytest.raises(ConcurrencyError):
+                future.result(timeout=1)
+
+            # Callback should not have been called again
+            assert len(calls) == 1
+        finally:
+            srv.stop()
+
+    def test_on_change_exception_does_not_kill_server(self, tmp_path):
+        """If on_change raises, the server continues operating."""
+        def bad_callback():
+            raise RuntimeError("callback boom")
+
+        project = f"test-{tmp_path.name}"
+        srv = TuiServer(project, on_change=bad_callback)
+        srv.start()
+        try:
+            # First write — callback raises but server should survive
+            future = srv.submit(ReadRequest())
+            model = future.result(timeout=1)
+            model.hud.role = "COO"
+            future = srv.submit(WriteRequest(model=model))
+            future.result(timeout=1)
+
+            # Server still works — second write succeeds
+            future = srv.submit(ReadRequest())
+            model = future.result(timeout=1)
+            model.hud.summary = "Still alive"
+            future = srv.submit(WriteRequest(model=model))
+            future.result(timeout=1)
+
+            future = srv.submit(ReadRequest())
+            updated = future.result(timeout=1)
+            assert updated.hud.summary == "Still alive"
+        finally:
+            srv.stop()

@@ -55,6 +55,7 @@ import queue
 import random
 import threading
 from multiprocessing.connection import Client, Listener
+from typing import Callable
 
 from ._TuiIpc import (
     ConcurrencyError,
@@ -76,11 +77,17 @@ class TuiServer:
     touched by the model thread.
     """
 
-    def __init__(self, project: str, model: TuiModel | None = None) -> None:
+    def __init__(
+        self,
+        project: str,
+        model: TuiModel | None = None,
+        on_change: Callable[[], None] | None = None,
+    ) -> None:
         self._address = pipe_address(project)
         # Double-underscore for name mangling — discourages accidental
         # access from outside TuiServer.
         self.__model = model or TuiModel()
+        self._on_change = on_change
         self._queue: queue.Queue[tuple[Request, concurrent.futures.Future]] = queue.Queue()
         self._stop_event = threading.Event()
         self._ipc_listener: TuiIpcListener | None = None
@@ -194,6 +201,11 @@ class TuiServer:
                 elif isinstance(request, WriteRequest):
                     self._apply_write(request.model)
                     future.set_result(None)
+                    if self._on_change:
+                        try:
+                            self._on_change()
+                        except Exception:
+                            pass  # Don't let callback errors kill the model thread
             except Exception as e:
                 future.set_exception(e)
 
