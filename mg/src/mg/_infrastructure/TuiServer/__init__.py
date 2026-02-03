@@ -5,7 +5,8 @@ External callers import from this package — internal modules are prefixed
 with underscore.
 """
 
-from mg._infrastructure.TuiServer._freeze import TuiModelSection, freeze_model
+from mg._infrastructure.TuiServer._freeze import freeze_model
+from mg.helpers.tui._base import TuiModelSection
 from mg._infrastructure.TuiServer._TuiIpc import (
     RESTART_EXIT_CODE,
     ConcurrencyError,

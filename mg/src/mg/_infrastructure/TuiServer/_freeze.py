@@ -1,7 +1,4 @@
-"""TUI model base class and deep-freeze helpers.
-
-TuiModelSection lives here because the version field is an infrastructure
-concern (optimistic concurrency), not part of the user-facing data contract.
+"""Deep-freeze helpers for TUI model snapshots.
 
 freeze_model() is used by TuiClient and TuiLocalClient to produce
 immutable read() responses.
@@ -11,28 +8,12 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, TypeVar
+
+from mg.helpers.tui._base import TuiModelSection
 
 if TYPE_CHECKING:
     from mg.helpers.tui.TuiModel import TuiModel
-
-
-# ---------------------------------------------------------------------------
-# Base section
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class TuiModelSection:
-    """Base class for all TUI model sections.
-
-    Carries a version integer used for optimistic concurrency control.
-    Version is managed exclusively by the server — clients should never
-    set it directly.
-    """
-
-    _version: int = field(default=0, repr=False)
 
 
 # ---------------------------------------------------------------------------

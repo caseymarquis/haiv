@@ -12,7 +12,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from mg._infrastructure.TuiServer._freeze import TuiModelSection
+from mg.helpers.tui._base import TuiModelSection
+
+
+# ---------------------------------------------------------------------------
+# Data types
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SessionEntry:
+    """A session displayed in the TUI sidebar."""
+
+    mind: str = ""
+    task: str = ""
+    short_id: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -28,6 +42,20 @@ class HudSection(TuiModelSection):
     worktree: str | None = None
     summary: str | None = None
     session: str | None = None
+
+
+@dataclass
+class SessionsSection(TuiModelSection):
+    """Active sessions for the sidebar tree."""
+
+    entries: list[SessionEntry] = field(default_factory=list)
+
+
+@dataclass
+class ErrorsSection(TuiModelSection):
+    """Errors to display in the TUI."""
+
+    messages: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -46,3 +74,5 @@ class TuiModel:
     """
 
     hud: HudSection = field(default_factory=HudSection)
+    sessions: SessionsSection = field(default_factory=SessionsSection)
+    errors: ErrorsSection = field(default_factory=ErrorsSection)

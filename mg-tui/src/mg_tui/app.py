@@ -1,18 +1,30 @@
 """mg-tui: Terminal UI for mind-games.
 
-Owns the TuiServer lifecycle. On mount, starts the server with an
-on_change callback that reads a fresh snapshot via TuiLocalClient and
-pushes it through the TuiStore for per-section signal dispatch.
+Owns the TuiServer lifecycle. On mount, starts the server and a poll
+loop that reads model snapshots and pushes them through the TuiStore
+for per-section signal dispatch. The poll model avoids cross-thread
+callbacks — the Textual thread pulls state, the model thread never
+calls back into Textual.
 """
+
+from __future__ import annotations
+
+from collections import deque
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Header, Footer, Static, Tree
+from textual.widgets import Header, Footer, Static
 
 from mg._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
+from mg.helpers.tui import helpers
+from mg.paths import Paths
 
 from mg_tui.store import TuiStore
 from mg_tui.widgets.hud import HudWidget
+from mg_tui.widgets.sessions import SessionsWidget
+
+MAX_INTERNAL_ERRORS = 5
+POLL_INTERVAL = 0.1
 
 
 class MindGamesApp(App):
@@ -38,36 +50,41 @@ class MindGamesApp(App):
         ("t", "toggle_sidebar", "Toggle Sidebar"),
     ]
 
-    def __init__(self, project: str) -> None:
+    def __init__(self, project: str, paths: Paths | None = None) -> None:
         super().__init__()
         self.project = project
-        self.store = TuiStore()
-        self._server = TuiServer(project, on_change=self._on_server_change)
+        self.paths = paths
+        self.internal_errors: deque[str] = deque(maxlen=MAX_INTERNAL_ERRORS)
+        self.store = TuiStore(error_sink=self.internal_errors.append)
+        self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
 
-    def _on_server_change(self) -> None:
-        """Called from the model thread after a successful write.
-
-        Reads a frozen snapshot via the local client and schedules
-        a store update on Textual's main thread.
-        """
-        snapshot = self.tui_client.read()
-        self.call_from_thread(self.store.update, snapshot)
-
     def on_mount(self) -> None:
-        """Start the TUI server when the app mounts."""
+        """Start the TUI server and load initial state."""
         self._server.start()
-        # Push initial state through the store
-        snapshot = self.tui_client.read()
-        self.store.update(snapshot)
+
+        if self.paths is None:
+            helpers.errors_append(self.tui_client, "No user identity found. Run 'mg users new --name <name>'.")
+        else:
+            helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file)
+
+        # Immediate first read, then start polling
+        self._poll_model()
+        self.set_interval(POLL_INTERVAL, self._poll_model)
+
+    def _poll_model(self) -> None:
+        """Read model snapshot and push through store for dispatch."""
+        try:
+            snapshot = self.tui_client.read()
+            self.store.update(snapshot)
+        except Exception as e:
+            self.internal_errors.append(f"poll: {e}")
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal():
             with Vertical(id="sidebar"):
-                tree = Tree("Sessions", id="session-tree")
-                tree.root.expand()
-                yield tree
+                yield SessionsWidget(id="session-tree")
             with Vertical(id="main"):
                 yield HudWidget(id="hud")
                 yield Static("[Terminal area - to be implemented]", id="terminal-area")

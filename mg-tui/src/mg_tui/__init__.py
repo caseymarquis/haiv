@@ -16,11 +16,21 @@ def _reload_packages():
 
 
 def main():
-    project = sys.argv[1] if len(sys.argv) > 1 else Path.cwd().name
+    from mg._infrastructure.identity import detect_user
+    from mg.paths import Paths, get_mg_root
+
+    mg_root = get_mg_root(Path.cwd())
+    project = sys.argv[1] if len(sys.argv) > 1 else mg_root.name
+
+    user = detect_user(mg_root / "users")
+    paths = None
+    if user is not None:
+        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name)
+
     while True:
         from mg_tui.app import MindGamesApp
 
-        app = MindGamesApp(project)
+        app = MindGamesApp(project, paths=paths)
         app.run()
         app.shutdown()
         if (app.return_code or 0) != RESTART_EXIT_CODE:

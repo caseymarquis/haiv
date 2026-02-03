@@ -14,6 +14,7 @@ from mg.wrappers.tmux import Tmux
 from mg.helpers.minds import Mind
 from mg.helpers.sessions import (
     create_session,
+    get_most_recent_session_for_mind,
     get_session,
 )
 
@@ -23,6 +24,7 @@ def define() -> cmd.Def:
         description="Launch a mind",
         flags=[
             cmd.Flag("tmux", type=bool, description="Start in a new tmux window"),
+            cmd.Flag("tui", type=bool, description="Start as a TUI session"),
             cmd.Flag("task", type=str, description="Task description for new session"),
             cmd.Flag(
                 "resume",
@@ -36,12 +38,17 @@ def define() -> cmd.Def:
 def execute(ctx: cmd.Ctx) -> None:
     mind = ctx.args.get_one("mind", type=Mind)
     use_tmux = ctx.args.has("tmux")
+    use_tui = ctx.args.has("tui")
     has_task = ctx.args.has("task")
     has_resume = ctx.args.has("resume")
 
-    # Validate: --task and --resume require --tmux
-    if (has_task or has_resume) and not use_tmux:
-        raise CommandError("--task and --resume require --tmux")
+    # Validate: --tmux and --tui are mutually exclusive
+    if use_tmux and use_tui:
+        raise CommandError("Cannot use --tmux and --tui together")
+
+    # Validate: --task and --resume require --tmux or --tui
+    if (has_task or has_resume) and not (use_tmux or use_tui):
+        raise CommandError("--task and --resume require --tmux or --tui")
 
     # Validate: --task and --resume are mutually exclusive
     if has_task and has_resume:
@@ -49,6 +56,8 @@ def execute(ctx: cmd.Ctx) -> None:
 
     if use_tmux:
         _start_in_tmux(ctx, mind)
+    elif use_tui:
+        _start_in_tui(ctx, mind)
     else:
         _start_in_terminal(ctx, mind)
 
@@ -114,3 +123,31 @@ def _start_in_tmux(ctx: cmd.Ctx, mind: Mind) -> None:
     else:
         # Untracked session (existing behavior)
         window.send_keys(f'claude "{prompt}" {allowed}')
+
+
+def _start_in_tui(ctx: cmd.Ctx, mind: Mind) -> None:
+    """Start a mind as a TUI session."""
+    sessions_file = ctx.paths.user.sessions_file
+
+    # Find or create session for this mind
+    session = get_most_recent_session_for_mind(sessions_file, mind.name)
+
+    if not session:
+        task = ctx.args.get_one("task") if ctx.args.has("task") else "No Task"
+        session = create_session(sessions_file, task, mind.name)
+
+    # Set environment
+    os.environ["MG_MIND"] = mind.name
+    if not os.environ.get("MG_ROOT"):
+        os.environ["MG_ROOT"] = str(ctx.paths.root)
+
+    os.system("clear")
+
+    # Replace this process with claude, bound to the session
+    prompt = f"Run `mg become {mind.name}`"
+    allowed = f"Bash(mg become {mind.name})"
+    os.execlp(
+        "claude", "claude", prompt,
+        "--session-id", session.id,
+        "--allowedTools", allowed,
+    )
