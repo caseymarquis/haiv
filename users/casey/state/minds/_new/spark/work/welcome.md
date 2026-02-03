@@ -1,121 +1,103 @@
 # Task Assignment
 
-**PM: Mind Folder Structure Migration**
+**Build WezTerm CLI Wrapper**
 
-You are a Project Manager coordinating the migration from `startup/` to `work/` + `home/` folder structure for minds.
+Create a Python wrapper for WezTerm's CLI in mg-core, similar to existing wrappers for git and tmux.
 
 ---
 
 ## Context
 
-We've restructured how minds organize their files:
+We're building a TUI for mind-games that will run inside WezTerm. We need programmatic control over WezTerm panes, tabs, and windows. WezTerm has a CLI (`wezterm cli ...`) that provides this.
 
-**Old structure (what the code expects):**
-```
-minds/{mind}/
-├── startup/           # Everything loads on wake
-│   ├── welcome.md
-│   ├── immediate-plan.md
-│   ├── long-term-vision.md
-│   ├── my-process.md
-│   ├── scratchpad.md
-│   └── references.toml
-└── docs/
-```
+On this system, WezTerm is installed via Flatpak: `flatpak run org.wezfurlong.wezterm cli ...`
 
-**New structure (what wren and sage already have):**
-```
-minds/{mind}/
-├── work/              # All assignment/role docs (cleared between assignments)
-│   ├── welcome.md
-│   ├── immediate-plan.md
-│   ├── long-term-vision.md
-│   ├── my-process.md
-│   ├── scratchpad.md
-│   └── docs/          # Assignment-related documents
-├── home/              # Personal continuity (persists, mind-owned, structure is up to the mind)
-└── references.toml    # At root level now
-```
-
-**Current state:**
-- wren and sage are ALREADY on the new structure
-- The code still expects the old `startup/` structure
-- `mg become wren` is currently broken until code is updated
+The WezTerm command should be read from `mg.toml` configuration, not hardcoded. This allows different systems (Flatpak, native, custom path) to configure their own command.
 
 ---
 
-## Work Packages
+## Deliverable
 
-### WP1: Update MindPaths (code change)
-**Location:** `worktrees/main/mg/src/mg/paths.py`
+**Location:** `worktrees/main/mg-core/src/mg_core/helpers/wezterm.py`
 
-Update the `MindPaths` class to use new paths:
-- `startup_dir` → `work_dir`
-- `references_file` → at root level (not in startup/)
-- Add `home_dir` property
-- Add `journal_file` property
+### Dataclass for Pane
 
-### WP2: Update minds helper (code change)
-**Location:** `worktrees/main/mg/src/mg/helpers/minds.py`
+The `wezterm cli list --format json` command returns detailed pane info. Create a dataclass:
 
-Update functions:
-- `get_startup_files()` → load from both `work/` and `home/`
-- `ensure_structure()` → check for `work/` + `home/` instead of `startup/`
-- `scaffold_mind()` → create new structure
+```python
+@dataclass
+class Pane:
+    window_id: int
+    tab_id: int
+    pane_id: int
+    workspace: str
+    rows: int
+    cols: int
+    pixel_width: int
+    pixel_height: int
+    title: str
+    cwd: str
+    tab_title: str
+    is_active: bool
+    is_zoomed: bool
+    # ... other fields from JSON
+```
 
-### WP3: Update tests
-**Location:** `worktrees/main/mg/tests/`, `worktrees/main/mg-core/tests/`
+### WezTerm Class
 
-Update tests to expect new structure.
+Wrap the CLI commands:
 
-### WP4: Verify commands work
-Test that `mg become`, `mg start`, `mg minds stage` all work with the new structure.
+```python
+class WezTerm:
+    def __init__(self, command: list[str] | None = None):
+        # Read from mg.toml if not provided
+        # Config key: [tools.wezterm] command = ["flatpak", "run", "org.wezfurlong.wezterm"]
+
+    def list_panes(self) -> list[Pane]
+    def spawn(self, cwd: str = None, command: list[str] = None,
+              window_id: int = None, new_window: bool = False) -> int  # returns pane_id
+    def split_pane(self, pane_id: int, direction: str = "right",
+                   percent: int = 50, move_pane_id: int = None) -> int
+    def move_pane_to_new_tab(self, pane_id: int, window_id: int = None)
+    def send_text(self, pane_id: int, text: str)
+    def get_text(self, pane_id: int) -> str
+    def set_tab_title(self, pane_id: int, title: str)
+    def activate_pane(self, pane_id: int)
+    def kill_pane(self, pane_id: int)
+    def zoom_pane(self, pane_id: int, toggle: bool = True)
+```
 
 ---
 
-## Requirements
+## Reference
 
-- No data loss for existing minds (wren, sage)
-- All mind-related commands continue to work
-- New minds created with `mg minds stage` get the new structure
+Look at existing wrappers for patterns:
+- `worktrees/main/mg-core/src/mg_core/helpers/git.py`
+- `worktrees/main/mg-core/src/mg_core/helpers/tmux.py`
+
+WezTerm CLI help:
+```bash
+flatpak run org.wezfurlong.wezterm cli --help
+flatpak run org.wezfurlong.wezterm cli list --help
+flatpak run org.wezfurlong.wezterm cli spawn --help
+# etc.
+```
+
+---
+
+## Tests
+
+Write tests in `worktrees/main/mg-core/tests/helpers/test_wezterm.py`
+
+Focus on:
+- Dataclass parsing from JSON
+- Command construction (don't need to actually call WezTerm in unit tests)
 
 ---
 
 ## Success Criteria
 
-- `mg become wren` works and loads files from `work/` + `home/`
-- `mg minds stage` creates minds with new structure
-- All tests pass
-
----
-
-## Verification
-
-```bash
-# Test become works
-mg become wren
-
-# Test new mind creation
-mg minds stage --no-worktree
-# Check it has work/ and home/ directories
-
-# Run tests
-cd worktrees/main/mg && uv run pytest
-cd worktrees/main/mg-core && uv run pytest
-```
-
----
-
-## Process
-
-1. Assign worker for WP1+WP2 (paths and helper changes)
-2. Review changes, run tests
-3. Assign worker for WP3 if tests need updating
-4. Verify all commands work end-to-end
-5. Write AAR documenting the migration
-
----
-
-## Role Reference
-
-See `src/mg_project/__assets__/roles/project-manager.md` for PM guidance.
+- Clean wrapper that matches the style of git.py and tmux.py
+- All WezTerm CLI commands wrapped
+- Pane dataclass with all relevant fields
+- Basic test coverage

@@ -4,3 +4,6 @@
 
 [[references]]
 path = "src/mg_project/__assets__/roles/generalist.md"
+
+[[references]]
+path = "src/mg_project/__assets__/roles/mg-python-dev.md"

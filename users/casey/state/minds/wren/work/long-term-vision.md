@@ -43,7 +43,58 @@ Level 4: Workers
 
 **Key insight**: The human collaborates at every level, not just the top. They advise explorers, guide planners, unblock workers. This means after time away, they're resuming multiple conversations at multiple levels simultaneously - making context preservation critical.
 
-**UI principle**: Push tmux and CLI as far as possible before building a TUI. We need to fully understand what we need by hitting real limits, not imagined ones. Only build a TUI (or web UI) when tmux genuinely can't provide what's required.
+**UI direction**: Building a TUI to solve the human resumption problem.
+
+**The problem:** The human can work with 6+ minds in parallel effectively. But after time away (days/weeks), they can't resume - there's no way to quickly see what each mind was doing, what decisions are pending, what's blocked. Minds get `mg become` for context recovery. The human gets nothing.
+
+**The solution:** A Textual-based TUI running inside WezTerm.
+
+**Why WezTerm over tmux:**
+- Cross-platform (Windows support - tmux is Unix-only)
+- Rich CLI for programmatic control (`wezterm cli`)
+- Can set tab titles, move panes between tabs, read pane content
+- Supports user vars and metadata on panes
+
+**Architecture:**
+```
+┌─────────────────────────────────────────┐
+│ WezTerm window                          │
+├──────────┬──────────────────────────────┤
+│ mg-hud   │ Active mind pane             │
+│ (TUI)    │                              │
+│          │ $ claude ...                 │
+│ Tree:    │                              │
+│ • wren   │                              │
+│ • sage   │                              │
+│          │                              │
+│ HUD:     │                              │
+│ Role,    │                              │
+│ summary, │                              │
+│ files... │                              │
+└──────────┴──────────────────────────────┘
+
+mg-buffer tab (hidden): Inactive mind panes parked here
+```
+
+**Tab management pattern:**
+- `mg-hud` tab: Left split = Textual dashboard, Right split = active mind
+- `mg-buffer` tab: Hidden staging area for inactive minds (preserves terminal state)
+- Switching minds: Move current mind to buffer, pull selected mind from buffer into hud
+
+**Pane identification:** Tab titles end with `mg(N)` where N is the mg session ID (integer). Parse to correlate WezTerm panes with mg state.
+
+**Session data insight:** Claude Code stores session summaries in `~/.claude/projects/.../sessions-index.json`. We can read these for automatic "what was happening" summaries - no manual journaling needed.
+
+**What's built:**
+- `worktrees/main/mg-tui/` - Textual app skeleton (basic layout works)
+- `mg_core.helpers.wezterm` - WezTerm CLI wrapper, accessible via `ctx.wezterm`
+- WezTerm command configurable via `mg.toml`
+
+**What's not built:**
+- Tab management logic (ensure mg-hud/mg-buffer exist, swap panes)
+- TUI wired to WezTerm wrapper
+- Session data integration
+- Mind tree population from actual state
 
 ---
 
