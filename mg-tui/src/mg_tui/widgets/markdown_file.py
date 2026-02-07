@@ -12,7 +12,7 @@ from pathlib import Path
 
 from textual.message import Message
 from textual.widgets import MarkdownViewer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
@@ -60,15 +60,28 @@ class MarkdownFileWidget(MarkdownViewer):
 
 
 class _FileChangeHandler(FileSystemEventHandler):
-    """Watchdog handler — reads file on watcher thread, posts message."""
+    """Watchdog handler — reads file on watcher thread, posts message.
+
+    Handles modified, created, and moved events to catch both direct
+    writes and atomic writes (write-to-temp then rename).
+    """
 
     def __init__(self, widget: MarkdownFileWidget) -> None:
         self._widget = widget
 
-    def on_modified(self, event: FileModifiedEvent) -> None:
-        if Path(event.src_path).resolve() == self._widget.file_path:
+    def _handle_change(self, path: str) -> None:
+        if Path(path).resolve() == self._widget.file_path:
             try:
                 content = self._widget.file_path.read_text()
             except Exception as e:
                 content = f"*{e}*"
             self._widget.post_message(MarkdownFileWidget.FileChanged(content))
+
+    def on_modified(self, event) -> None:
+        self._handle_change(event.src_path)
+
+    def on_created(self, event) -> None:
+        self._handle_change(event.src_path)
+
+    def on_moved(self, event) -> None:
+        self._handle_change(event.dest_path)
