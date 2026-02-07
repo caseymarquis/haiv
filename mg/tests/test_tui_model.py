@@ -25,7 +25,7 @@ class TestTuiModelStructure:
         """TuiModel is frozen — section slots can't be reassigned."""
         model = TuiModel()
         with pytest.raises(dataclasses.FrozenInstanceError):
-            model.hud = HudSection()
+            setattr(model, "hud", HudSection())
 
 
 class TestTuiModelFreeze:

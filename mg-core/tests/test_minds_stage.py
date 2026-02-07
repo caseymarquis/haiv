@@ -16,6 +16,7 @@ import pytest
 
 from mg import test
 from mg.errors import CommandError
+from mg.helpers.sessions import load_sessions
 from mg.test import Sandbox
 from mg.wrappers.git import Git
 
@@ -76,7 +77,7 @@ class TestNameHandling:
 
     def test_uses_provided_name(self, sandbox: Sandbox):
         """Uses --name when provided."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_generates_name_when_not_provided(self, sandbox: Sandbox):
@@ -84,7 +85,7 @@ class TestNameHandling:
         with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
-            sandbox.run("minds stage --no-worktree")
+            sandbox.run('minds stage --no-worktree --task "test"')
         # Check that a mind folder was created
         minds_dir = sandbox.ctx.paths.user.minds_dir
         assert minds_dir.exists()
@@ -95,13 +96,13 @@ class TestNameHandling:
         # Create existing mind
         (sandbox.ctx.paths.user.minds_dir / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
-            sandbox.run("minds stage --no-worktree --name robin")
+            sandbox.run('minds stage --no-worktree --name robin --task "test"')
 
     def test_rejects_duplicate_in_organizational_folder(self, sandbox: Sandbox):
         """Rejects name that exists in organizational folder like _staging/."""
         (sandbox.ctx.paths.user.minds_dir / "_staging" / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
-            sandbox.run("minds stage --no-worktree --name robin")
+            sandbox.run('minds stage --no-worktree --name robin --task "test"')
 
 
 # =============================================================================
@@ -114,27 +115,27 @@ class TestDirectoryStructure:
 
     def test_creates_at_root_level(self, sandbox: Sandbox):
         """Creates mind folder at root level of minds directory."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_creates_work_directory(self, sandbox: Sandbox):
         """Creates work/ directory."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "work").is_dir()
 
     def test_creates_home_directory(self, sandbox: Sandbox):
         """Creates home/ directory."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "home").is_dir()
 
     def test_creates_work_docs_directory(self, sandbox: Sandbox):
         """Creates work/docs/ directory."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "docs").is_dir()
 
     def test_creates_welcome_md(self, sandbox: Sandbox):
         """Creates work/welcome.md template."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         assert path.is_file()
         content = path.read_text()
@@ -142,31 +143,31 @@ class TestDirectoryStructure:
 
     def test_creates_immediate_plan_md(self, sandbox: Sandbox):
         """Creates work/immediate-plan.md template."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "immediate-plan.md"
         assert path.is_file()
 
     def test_creates_long_term_vision_md(self, sandbox: Sandbox):
         """Creates work/long-term-vision.md template."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "long-term-vision.md"
         assert path.is_file()
 
     def test_creates_my_process_md(self, sandbox: Sandbox):
         """Creates work/my-process.md template."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "my-process.md"
         assert path.is_file()
 
     def test_creates_scratchpad_md(self, sandbox: Sandbox):
         """Creates work/scratchpad.md template."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "scratchpad.md"
         assert path.is_file()
 
     def test_creates_references_toml(self, sandbox: Sandbox):
         """Creates references.toml at root level."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "references.toml"
         assert path.is_file()
         content = path.read_text()
@@ -183,26 +184,26 @@ class TestOutput:
 
     def test_outputs_mind_name(self, sandbox: Sandbox, capsys):
         """Output includes the mind name."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         output = capsys.readouterr().out
         assert "robin" in output
 
     def test_outputs_welcome_edit_instruction(self, sandbox: Sandbox, capsys):
         """Output instructs to edit welcome.md."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         output = capsys.readouterr().out
         assert "welcome.md" in output.lower()
 
     def test_outputs_role_instruction(self, sandbox: Sandbox, capsys):
         """Output includes role assignment instruction."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         output = capsys.readouterr().out
         assert "role" in output.lower()
         assert "references.toml" in output
 
     def test_outputs_start_command(self, sandbox: Sandbox, capsys):
         """Output includes the start command."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         output = capsys.readouterr().out
         assert "mg start robin" in output
 
@@ -219,19 +220,19 @@ class TestEdgeCases:
         """Creates minds/ directory if it doesn't exist."""
         # Ensure minds dir doesn't exist
         assert not sandbox.ctx.paths.user.minds_dir.exists()
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         assert sandbox.ctx.paths.user.minds_dir.exists()
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_name_validation_lowercase(self, sandbox: Sandbox):
         """Name must be lowercase."""
         with pytest.raises(CommandError, match="lowercase"):
-            sandbox.run("minds stage --no-worktree --name Robin")
+            sandbox.run('minds stage --no-worktree --name Robin --task "test"')
 
     def test_name_validation_no_underscore_start(self, sandbox: Sandbox):
         """Name cannot start with underscore."""
         with pytest.raises(CommandError, match="underscore"):
-            sandbox.run("minds stage --no-worktree --name _robin")
+            sandbox.run('minds stage --no-worktree --name _robin --task "test"')
 
 
 # =============================================================================
@@ -245,16 +246,16 @@ class TestWorktreeFlags:
     def test_requires_worktree_flag(self, sandbox: Sandbox):
         """Error when neither --worktree nor --no-worktree provided."""
         with pytest.raises(CommandError, match="Must specify --worktree or --no-worktree"):
-            sandbox.run("minds stage --name robin")
+            sandbox.run('minds stage --name robin --task "test"')
 
     def test_rejects_both_flags(self, sandbox: Sandbox):
         """Error when both --worktree and --no-worktree provided."""
         with pytest.raises(CommandError, match="Cannot use both"):
-            sandbox.run("minds stage --worktree --no-worktree --name robin")
+            sandbox.run('minds stage --worktree --no-worktree --name robin --task "test"')
 
     def test_no_worktree_creates_mind_only(self, sandbox: Sandbox):
         """--no-worktree creates mind without worktree."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         # Mind exists
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
         # No worktree created
@@ -262,7 +263,7 @@ class TestWorktreeFlags:
 
     def test_no_worktree_welcome_has_no_location(self, sandbox: Sandbox):
         """welcome.md has no location line when --no-worktree used."""
-        sandbox.run("minds stage --no-worktree --name robin")
+        sandbox.run('minds stage --no-worktree --name robin --task "test"')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:**" not in content
@@ -278,7 +279,7 @@ class TestWorktreeCreation:
 
     def test_worktree_creates_mind_and_worktree(self, git_sandbox: Sandbox):
         """--worktree creates both mind and worktree."""
-        git_sandbox.run("minds stage --worktree --name robin")
+        git_sandbox.run('minds stage --worktree --name robin --task "test"')
         # Mind exists
         assert (git_sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
         # Worktree exists
@@ -286,12 +287,12 @@ class TestWorktreeCreation:
 
     def test_worktree_uses_mind_name_by_default(self, git_sandbox: Sandbox):
         """Worktree name defaults to mind name."""
-        git_sandbox.run("minds stage --worktree --name robin")
+        git_sandbox.run('minds stage --worktree --name robin --task "test"')
         assert (git_sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
 
     def test_worktree_custom_name(self, git_sandbox: Sandbox):
         """--worktree with value uses custom worktree name."""
-        git_sandbox.run("minds stage --worktree feature-x --name robin")
+        git_sandbox.run('minds stage --worktree feature-x --name robin --task "test"')
         # Mind still named robin
         assert (git_sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
         # Worktree named feature-x
@@ -299,14 +300,14 @@ class TestWorktreeCreation:
 
     def test_worktree_welcome_has_location(self, git_sandbox: Sandbox):
         """welcome.md has location populated when --worktree used."""
-        git_sandbox.run("minds stage --worktree --name robin")
+        git_sandbox.run('minds stage --worktree --name robin --task "test"')
         path = git_sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:** `worktrees/robin/`" in content
 
     def test_worktree_custom_name_in_welcome(self, git_sandbox: Sandbox):
         """welcome.md has custom worktree name when provided."""
-        git_sandbox.run("minds stage --worktree feature-x --name robin")
+        git_sandbox.run('minds stage --worktree feature-x --name robin --task "test"')
         path = git_sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:** `worktrees/feature-x/`" in content
@@ -319,11 +320,11 @@ class TestWorktreeCreation:
         (worktree_dir / "some-file.txt").write_text("content")
 
         with pytest.raises(CommandError, match="already exists and is not empty"):
-            sandbox.run("minds stage --worktree --name robin")
+            sandbox.run('minds stage --worktree --name robin --task "test"')
 
     def test_outputs_worktree_location(self, git_sandbox: Sandbox, capsys):
         """Output includes worktree location."""
-        git_sandbox.run("minds stage --worktree --name robin")
+        git_sandbox.run('minds stage --worktree --name robin --task "test"')
         output = capsys.readouterr().out
         assert "worktrees/robin/" in output
 
@@ -345,7 +346,7 @@ class TestMindReuse:
         (minds_dir / "robin" / "references.toml").write_text("")
 
         # Run minds stage - should reuse robin, not create new
-        sandbox.run("minds stage --no-worktree")
+        sandbox.run('minds stage --no-worktree --task "test"')
         output = capsys.readouterr().out
 
         assert "robin" in output
@@ -372,7 +373,7 @@ class TestMindReuse:
         with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
-            sandbox.run("minds stage --no-worktree")
+            sandbox.run('minds stage --no-worktree --task "test"')
 
         # Should have created sparrow
         assert (minds_dir / "sparrow").is_dir()
@@ -390,7 +391,7 @@ class TestMindReuse:
 
         # Seed random for determinism
         random.seed(42)
-        sandbox.run("minds stage --no-worktree")
+        sandbox.run('minds stage --no-worktree --task "test"')
 
         # One of them should have been selected (no new mind created)
         mind_dirs = [d for d in minds_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
@@ -413,8 +414,77 @@ class TestMindReuse:
         create_session(sessions_file, "working on stuff", "busy")
 
         # Run minds stage - should only pick "idle"
-        sandbox.run("minds stage --no-worktree")
+        sandbox.run('minds stage --no-worktree --task "test"')
         output = capsys.readouterr().out
 
         assert "idle" in output
         assert "busy" not in output
+
+
+# =============================================================================
+# Session Tests
+# =============================================================================
+
+
+class TestSessionCreation:
+    """Test session lifecycle during staging."""
+
+    def test_task_flag_required(self, sandbox: Sandbox):
+        """Error when --task not provided."""
+        with pytest.raises(CommandError, match="--task is required"):
+            sandbox.run("minds stage --no-worktree --name robin")
+
+    def test_creates_session_with_staged_status(self, sandbox: Sandbox):
+        """Session is created with status 'staged'."""
+        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert len(sessions) == 1
+        assert sessions[0].status == "staged"
+
+    def test_session_has_task(self, sandbox: Sandbox):
+        """Session stores the --task value."""
+        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].task == "build feature"
+
+    def test_session_has_mind(self, sandbox: Sandbox):
+        """Session is linked to the mind."""
+        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].mind == "robin"
+
+    def test_session_has_description(self, sandbox: Sandbox):
+        """Session stores --description when provided."""
+        sandbox.run(
+            'minds stage --no-worktree --name robin --task "build feature"'
+            ' --description "Detailed requirements here"'
+        )
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].description == "Detailed requirements here"
+
+    def test_session_description_empty_by_default(self, sandbox: Sandbox):
+        """Session description is empty when --description not provided."""
+        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].description == ""
+
+    def test_session_parent_from_env(self, sandbox: Sandbox):
+        """Session parent is set from MG_SESSION env var."""
+        with patch.dict("os.environ", {"MG_SESSION": "parent-session-123"}):
+            sandbox.run('minds stage --no-worktree --name robin --task "sub-task"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].parent == "parent-session-123"
+
+    def test_session_parent_empty_without_env(self, sandbox: Sandbox):
+        """Session parent is empty when MG_SESSION not set."""
+        with patch.dict("os.environ", {}, clear=True):
+            sandbox.run('minds stage --no-worktree --name robin --task "root task"')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].parent == ""
+
+    def test_output_includes_session_id(self, sandbox: Sandbox, capsys):
+        """Output shows the session short_id."""
+        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        output = capsys.readouterr().out
+        assert "staged" in output
+

@@ -15,9 +15,12 @@ not use this class. This keeps the app decoupled from the dependency bag.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 from mg.helpers.tui import helpers
+from mg.helpers.tui.TuiClient import TuiClient
+from mg.helpers.tui.TuiModel import TuiModel
 from mg.helpers.tui.terminal import TerminalManager
 from mg.settings import MgSettings
 from mg.wrappers.wezterm import WezTerm
@@ -28,24 +31,44 @@ class Tui:
 
     Pre-loads dependencies at construction so call sites are simple.
     See module docstring — no logic belongs here.
+
+    Client methods (read, write, sessions_refresh) require a client.
+    All errors propagate to the caller.
     """
 
     def __init__(
         self,
         mg_root: Path,
         settings: MgSettings,
-        client=None,
-        sessions_file: Path | None = None,
+        client: TuiClient | None,
+        sessions_file: Path,
     ) -> None:
         wezterm = WezTerm(settings.wezterm_command)
         self._terminal = TerminalManager(wezterm, mg_root, settings.tui_command)
         self._client = client
         self._sessions_file = sessions_file
 
+    def _require_client(self) -> TuiClient:
+        if self._client is None:
+            raise RuntimeError("Tui client is required but was not provided")
+        return self._client
+
     def start(self) -> None:
         """Start the TUI workspace."""
         self._terminal.ensure_workspace()
 
+    def read(self) -> TuiModel:
+        """Read the current TUI state."""
+        return self._require_client().read()
+
+    def write(self, mutator: Callable[[TuiModel], None]) -> None:
+        """Apply a mutation to the TUI state."""
+        self._require_client().write(mutator)
+
     def sessions_refresh(self) -> None:
         """Read sessions from disk and push into the TUI model."""
-        helpers.sessions_refresh(self._client, self._sessions_file)
+        helpers.sessions_refresh(self._require_client(), self._sessions_file)
+
+    def launch_in_mind_pane(self, env: dict[str, str], commands: list[str]) -> None:
+        """Spawn a pane in buffer, swap into hud mind slot, send commands."""
+        self._terminal.launch_in_mind_pane(env, commands)

@@ -7,6 +7,7 @@ from punq import Container
 
 from mg._infrastructure.settings import SettingsCache, get_settings
 from mg.helpers.tui import Tui
+from mg.helpers.tui.TuiClient import TuiClient
 from mg.paths import Paths
 from mg.settings import MgSettings
 from mg.templates import TemplateRenderer
@@ -166,6 +167,7 @@ class Ctx:
     paths: Paths
     container: Container = field(default_factory=Container)
     _settings_cache: SettingsCache = field(default_factory=SettingsCache)
+    _tui: Tui | None = field(default=None, repr=False)
 
     @property
     def settings(self) -> MgSettings:
@@ -180,7 +182,14 @@ class Ctx:
     @property
     def tui(self) -> Tui:
         """Get a Tui instance for this project."""
-        return Tui(self.paths.root, self.settings)
+        if self._tui is None:
+            self._tui = Tui(
+                self.paths.root,
+                self.settings,
+                client=TuiClient(self.paths.root.name),
+                sessions_file=self.paths.user.sessions_file,
+            )
+        return self._tui
 
     @property
     def templates(self) -> TemplateRenderer:

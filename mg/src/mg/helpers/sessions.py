@@ -1,8 +1,9 @@
 """Session management for minds.
 
-Sessions track Claude Code conversations. Each mind stores its sessions in
-sessions.ig.toml (git-ignored). Sessions have a rolling integer short_id for
-easy user reference - internally everything uses the full UUID.
+Sessions track mind assignments. Each session represents a unit of delegated
+work — who's doing it, what they're doing, and who asked for it.
+
+Stored in sessions.ig.toml (git-ignored). One active session per mind.
 """
 
 from __future__ import annotations
@@ -10,7 +11,8 @@ from __future__ import annotations
 import uuid
 import tomllib
 import tomli_w
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,13 +22,18 @@ MAX_SESSIONS = 20
 
 @dataclass
 class Session:
-    """A tracked Claude session for a mind."""
+    """A tracked session for a mind."""
 
-    id: str
-    task: str
+    id: str  # mg session UUID
+    task: str  # Short summary (commit title convention)
     started: datetime
-    mind: str = ""  # Mind name (empty for backwards compatibility)
+    mind: str = ""
     short_id: int = 0  # Rolling integer for easy user reference
+    status: str = "started"  # staged / started
+    parent: str = ""  # Parent mg session id (empty = human root)
+    description: str = ""  # Long-form body (commit body convention)
+    claude_session_id: str = ""  # Current Claude session id
+    old_claude_session_ids: list[str] = field(default_factory=list)
 
 
 def load_sessions(sessions_file: Path) -> list[Session]:
@@ -49,6 +56,11 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 started=entry["started"],
                 mind=entry.get("mind", ""),
                 short_id=entry.get("short_id", 0),
+                status=entry.get("status", "started"),
+                parent=entry.get("parent", ""),
+                description=entry.get("description", ""),
+                claude_session_id=entry.get("claude_session_id", ""),
+                old_claude_session_ids=entry.get("old_claude_session_ids", []),
             )
         )
     return sessions
@@ -61,6 +73,14 @@ def get_next_short_id(sessions: list[Session]) -> int:
     return max(s.short_id for s in sessions) + 1
 
 
+def _write_sessions(sessions_file: Path, sessions: list[Session]) -> None:
+    """Write a full session list to disk."""
+    data = {"sessions": [_session_to_dict(s) for s in sessions]}
+    sessions_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(sessions_file, "wb") as f:
+        tomli_w.dump(data, f)
+
+
 def save_session(sessions_file: Path, session: Session) -> None:
     """Prepend a new session to the file (most recent first).
 
@@ -68,42 +88,64 @@ def save_session(sessions_file: Path, session: Session) -> None:
     """
     existing = load_sessions(sessions_file)
     all_sessions = [session] + existing
-
-    # Keep only the most recent MAX_SESSIONS
     all_sessions = all_sessions[:MAX_SESSIONS]
+    _write_sessions(sessions_file, all_sessions)
 
-    data = {
-        "sessions": [
-            {
-                "id": s.id,
-                "task": s.task,
-                "started": s.started,
-                "mind": s.mind,
-                "short_id": s.short_id,
-            }
-            for s in all_sessions
-        ]
+
+def _session_to_dict(s: Session) -> dict:
+    """Convert a Session to a TOML-serializable dict."""
+    d = {
+        "id": s.id,
+        "task": s.task,
+        "started": s.started,
+        "mind": s.mind,
+        "short_id": s.short_id,
+        "status": s.status,
     }
+    if s.parent:
+        d["parent"] = s.parent
+    if s.description:
+        d["description"] = s.description
+    if s.claude_session_id:
+        d["claude_session_id"] = s.claude_session_id
+    if s.old_claude_session_ids:
+        d["old_claude_session_ids"] = s.old_claude_session_ids
+    return d
 
-    sessions_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(sessions_file, "wb") as f:
-        tomli_w.dump(data, f)
 
-
-def create_session(sessions_file: Path, task: str, mind: str) -> Session:
+def create_session(
+    sessions_file: Path,
+    task: str,
+    mind: str,
+    *,
+    status: str = "started",
+    parent: str = "",
+    description: str = "",
+) -> Session:
     """Create and save a new session.
 
-    Generates UUID, calculates next short_id, saves to file, and returns the session.
+    Generates UUID, calculates next short_id, saves to file, and returns
+    the session. If the mind already has an active session, it is removed
+    first (one active session per mind).
     """
     existing = load_sessions(sessions_file)
+
+    # Enforce one active session per mind — remove any existing
+    existing = [s for s in existing if s.mind != mind]
+
     session = Session(
         id=str(uuid.uuid4()),
         task=task,
         started=datetime.now(timezone.utc),
         mind=mind,
         short_id=get_next_short_id(existing),
+        status=status,
+        parent=parent,
+        description=description,
     )
-    save_session(sessions_file, session)
+    all_sessions = [session] + existing
+    all_sessions = all_sessions[:MAX_SESSIONS]
+    _write_sessions(sessions_file, all_sessions)
     return session
 
 
@@ -178,6 +220,44 @@ def get_session(sessions_file: Path, identifier: str) -> Session | None:
     return None
 
 
+def update_session(
+    sessions_file: Path,
+    session_id: str,
+    mutator: Callable[[Session], None],
+) -> Session:
+    """Update an existing session via mutator callback.
+
+    Loads all sessions, finds the target by ID, calls mutator(session),
+    and writes back to disk. Automatically rotates old claude_session_id
+    if the mutator changes it.
+
+    Raises:
+        KeyError: If no session matches the given ID.
+    """
+    sessions = load_sessions(sessions_file)
+
+    target = None
+    for s in sessions:
+        if s.id == session_id:
+            target = s
+            break
+
+    if target is None:
+        raise KeyError(f"Session not found: {session_id}")
+
+    # Snapshot claude_session_id before mutation for rotation
+    old_claude_id = target.claude_session_id
+
+    mutator(target)
+
+    # Rotate claude_session_id if it changed
+    if old_claude_id and target.claude_session_id != old_claude_id:
+        target.old_claude_session_ids.append(old_claude_id)
+
+    _write_sessions(sessions_file, sessions)
+    return target
+
+
 def remove_session(sessions_file: Path, session_id: str) -> bool:
     """Remove a session by full ID (or partial UUID match).
 
@@ -194,20 +274,5 @@ def remove_session(sessions_file: Path, session_id: str) -> bool:
     if len(sessions) == original_count:
         return False
 
-    data = {
-        "sessions": [
-            {
-                "id": s.id,
-                "task": s.task,
-                "started": s.started,
-                "mind": s.mind,
-                "short_id": s.short_id,
-            }
-            for s in sessions
-        ]
-    }
-
-    with open(sessions_file, "wb") as f:
-        tomli_w.dump(data, f)
-
+    _write_sessions(sessions_file, sessions)
     return True

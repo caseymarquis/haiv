@@ -1,6 +1,8 @@
 """Tests for TuiServer."""
 
 import socket
+import threading
+from typing import cast
 
 import pytest
 
@@ -69,7 +71,8 @@ class TestServerShutdown:
         srv = TuiServer(project)
         srv.start()
         srv.stop()
-        assert not srv._TuiServer__model_thread.is_alive()
+        thread = cast(threading.Thread, getattr(srv, "_TuiServer__model_thread"))
+        assert not thread.is_alive()
 
 
 class TestServerReadWrite:

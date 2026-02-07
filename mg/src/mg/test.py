@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
+from unittest.mock import MagicMock
 
 from punq import Container
 
@@ -240,6 +241,7 @@ def execute(
     if setup is not None:
         setup(ctx)
 
+    ctx._tui = MagicMock()
     command.execute(ctx)
 
     return ExecuteResult(ctx=ctx)
@@ -380,6 +382,7 @@ class Sandbox:
         if setup:
             loaded_command.setup(ctx)
 
+        ctx._tui = MagicMock()
         try:
             loaded_command.execute(ctx)
         finally:

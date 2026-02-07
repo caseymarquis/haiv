@@ -34,6 +34,7 @@ class SessionPreview(Static):
         self.update(
             f"Task: {entry.task}\n"
             f"Mind: {entry.mind}\n"
+            f"Status: {entry.status or 'none'}\n"
             f"Session: {entry.short_id}"
         )
 
@@ -72,7 +73,8 @@ class SessionsWidget(Vertical):
         tree = self.query_one(Tree)
         tree.root.remove_children()
         for entry in sessions.entries:
-            label = f"{entry.task} ({entry.mind})"
+            status = entry.status or "none"
+            label = f"[{status}] {entry.task} ({entry.mind})"
             tree.root.add_leaf(label, data=entry)
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:

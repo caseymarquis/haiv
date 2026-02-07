@@ -1,17 +1,47 @@
-"""Tests for mg start command."""
+"""Tests for mg start {mind} command."""
 
-import pytest
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, patch, call
+from typing import cast
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from mg import test
 from mg._infrastructure.args import ResolveRequest
 from mg.errors import CommandError
-
 from mg.helpers.minds import Mind, MindPaths
-from mg.helpers.sessions import Session, save_session
+from mg.helpers.sessions import create_session, load_sessions
+
+
+# =============================================================================
+# Helpers
+# =============================================================================
+
+
+def _mind(tmp_path: Path) -> Mind:
+    mind_dir = tmp_path / "wren"
+    mind_dir.mkdir(exist_ok=True)
+    return Mind(paths=MindPaths(root=mind_dir))
+
+
+def _resolve(tmp_path: Path):
+    def resolve(req: ResolveRequest) -> Any:
+        if req.resolver == "mind":
+            return _mind(tmp_path)
+        return req.value
+    return resolve
+
+
+def _setup(tmp_path: Path):
+    def setup(ctx):
+        ctx.paths._mg_root = tmp_path
+    return setup
+
+
+# =============================================================================
+# Routing Tests
+# =============================================================================
 
 
 class TestStartRouting:
@@ -29,11 +59,10 @@ class TestStartRouting:
         assert "mind" in match.params
         assert match.params["mind"].value == "wren"
 
-    def test_routes_with_tmux_flag(self):
-        """'start wren --tmux' routes correctly."""
-        match = test.require_routes_to("start wren --tmux")
-        assert match.file.name == "_mind_.py"
-        assert "--tmux" in match.raw_flags
+
+# =============================================================================
+# Parsing Tests
+# =============================================================================
 
 
 class TestStartParsing:
@@ -47,314 +76,118 @@ class TestStartParsing:
         ctx = test.parse("start wren", resolve=mock_resolve)
         assert ctx.args.get_one("mind") == "wren"
 
-    def test_parses_tmux_flag(self):
-        """--tmux flag is parsed."""
+    def test_parses_task_flag(self):
+        """--task flag is parsed."""
         def mock_resolve(req: ResolveRequest) -> Any:
             return req.value
 
-        ctx = test.parse("start wren --tmux", resolve=mock_resolve)
-        assert ctx.args.has("tmux")
-        assert ctx.args.get_one("tmux") is True
-
-    def test_tmux_flag_defaults_to_absent(self):
-        """--tmux flag is absent by default."""
-        def mock_resolve(req: ResolveRequest) -> Any:
-            return req.value
-
-        ctx = test.parse("start wren", resolve=mock_resolve)
-        assert not ctx.args.has("tmux")
+        ctx = test.parse("start wren --task 'Fix bug'", resolve=mock_resolve)
+        assert ctx.args.has("task")
 
 
-class TestStartExecution:
-    """Test start command execution."""
-
-    def test_starts_in_current_terminal_without_tmux(self, tmp_path):
-        """Without --tmux, starts claude in current terminal."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        with patch("mg_core.commands.start._mind_.os.execlp") as mock_exec, \
-             patch("mg_core.commands.start._mind_.os.system") as mock_system:
-
-            test.execute("start wren", resolve=mock_resolve, setup=setup)
-
-            # Should clear terminal
-            mock_system.assert_called_once_with("clear")
-
-            # Should exec claude with prompt first, then allowedTools
-            mock_exec.assert_called_once()
-            args = mock_exec.call_args[0]
-            assert args[0] == "claude"
-            assert args[1] == "claude"
-            assert "mg become wren" in args[2]  # prompt is first after claude
-            assert "--allowedTools" in args
-            assert "Bash(mg become wren)" in args
-
-    def test_starts_in_tmux_with_flag(self, tmp_path):
-        """With --tmux, creates new tmux window."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        # Patch at subprocess level (like Tmux class tests)
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            test.execute("start wren --tmux", resolve=mock_resolve, setup=setup)
-
-            # Collect all tmux commands that were run
-            cmds = [call[0][0] for call in mock_run.call_args_list]
-
-            # Should check/create session
-            assert any("has-session" in cmd or "new-session" in cmd for cmd in cmds)
-
-            # Should create window named 'wren'
-            assert any("new-window" in cmd and "-n wren" in cmd for cmd in cmds)
-
-            # Should set MG_MIND environment
-            assert any("setenv" in cmd and "MG_MIND" in cmd for cmd in cmds)
-
-            # Should send keys to start claude
-            assert any("send-keys" in cmd and "claude" in cmd for cmd in cmds)
-
-    def test_sets_mg_mind_env_var(self, tmp_path):
-        """MG_MIND environment variable is set."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        with patch("mg_core.commands.start._mind_.os.execlp"), \
-             patch("mg_core.commands.start._mind_.os.system"), \
-             patch.dict("os.environ", {}, clear=False) as mock_env:
-
-            test.execute("start wren", resolve=mock_resolve, setup=setup)
-
-            # Environment should be set before exec
-            # (We can't easily test this since execlp replaces process)
+# =============================================================================
+# Session Flow Tests
+# =============================================================================
 
 
-class TestStartSessionManagement:
-    """Test session management flags."""
+class TestSessionFlow:
+    """Test session-aware launch flow."""
 
-    def test_task_flag_requires_tmux(self, tmp_path):
-        """--task without --tmux raises error."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        with pytest.raises(CommandError) as exc_info:
-            test.execute("start wren --task 'Fix bug'", resolve=mock_resolve, setup=setup)
-
-        assert "--task and --resume require --tmux" in str(exc_info.value)
-
-    def test_resume_flag_requires_tmux(self, tmp_path):
-        """--resume without --tmux raises error."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        with pytest.raises(CommandError) as exc_info:
-            test.execute("start wren --resume abc123", resolve=mock_resolve, setup=setup)
-
-        assert "--task and --resume require --tmux" in str(exc_info.value)
-
-    def test_task_and_resume_mutually_exclusive(self, tmp_path):
-        """--task and --resume together raises error."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-
-        with pytest.raises(CommandError) as exc_info:
+    def test_error_without_session_or_task(self, tmp_path):
+        """Error when no staged session and no --task."""
+        with pytest.raises(CommandError, match="No staged session"):
             test.execute(
-                "start wren --tmux --task 'Fix bug' --resume abc123",
-                resolve=mock_resolve,
-                setup=setup,
+                "start wren",
+                resolve=_resolve(tmp_path),
+                setup=_setup(tmp_path),
             )
 
-        assert "Cannot use --task and --resume together" in str(exc_info.value)
-
-    def test_task_creates_session_entry(self, tmp_path):
-        """--task creates a session in sessions.ig.toml."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
+    def test_transitions_staged_session_to_started(self, tmp_path):
+        """Existing staged session is transitioned to started."""
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            result = test.execute(
-                "start wren --tmux --task 'Fix authentication bug'",
-                resolve=mock_resolve,
-                setup=setup,
+            create_session(
+                ctx.paths.user.sessions_file, "staged task", "wren",
+                status="staged",
             )
 
-        # Session file should exist at user level
-        sessions_file = result.ctx.paths.user.sessions_file
-        assert sessions_file.exists()
+        test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
 
-        # Should contain the task
-        content = sessions_file.read_text()
-        assert "Fix authentication bug" in content
+        # Reload sessions from the path that setup used
+        from mg.paths import Paths
+        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
+        sessions = load_sessions(paths.user.sessions_file)
+        assert len(sessions) == 1
+        assert sessions[0].status == "started"
+        assert sessions[0].claude_session_id != ""
 
-    def test_task_passes_session_id_to_claude(self, tmp_path):
-        """--task passes --session-id to claude."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
+    def test_task_creates_started_session(self, tmp_path):
+        """--task creates a new session with status started."""
+        test.execute(
+            'start wren --task "Fix bug"',
+            resolve=_resolve(tmp_path),
+            setup=_setup(tmp_path),
+        )
 
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
+        from mg.paths import Paths
+        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
+        sessions = load_sessions(paths.user.sessions_file)
+        assert len(sessions) == 1
+        assert sessions[0].task == "Fix bug"
+        assert sessions[0].status == "started"
+        assert sessions[0].mind == "wren"
+        assert sessions[0].claude_session_id != ""
 
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
+    def test_task_session_parent_from_env(self, tmp_path):
+        """Session parent is set from MG_SESSION env var."""
+        with patch.dict("os.environ", {"MG_SESSION": "parent-123"}):
             test.execute(
-                "start wren --tmux --task 'Implement feature'",
-                resolve=mock_resolve,
-                setup=setup,
+                'start wren --task "Sub-task"',
+                resolve=_resolve(tmp_path),
+                setup=_setup(tmp_path),
             )
 
-            cmds = [call[0][0] for call in mock_run.call_args_list]
-            # Should have --session-id in the claude command
-            assert any("send-keys" in cmd and "--session-id" in cmd for cmd in cmds)
+        from mg.paths import Paths
+        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
+        sessions = load_sessions(paths.user.sessions_file)
+        assert sessions[0].parent == "parent-123"
 
-    def test_resume_with_id_finds_session(self, tmp_path):
-        """--resume with ID finds matching session."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
+    def test_calls_sessions_refresh(self, tmp_path):
+        """Pushes session state to TUI after session update."""
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-            # Create multiple sessions
-            sessions_file = ctx.paths.user.sessions_file
-            session1 = Session(
-                id="xyz-789-ghi",
-                task="Older task",
-                started=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            )
-            session2 = Session(
-                id="abc-123-def",
-                task="Newer task",
-                started=datetime(2026, 1, 5, tzinfo=timezone.utc),
-            )
-            save_session(sessions_file, session1)
-            save_session(sessions_file, session2)
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            # Resume the older session by ID
-            test.execute(
-                "start wren --tmux --resume xyz-789-ghi",
-                resolve=mock_resolve,
-                setup=setup,
+            create_session(
+                ctx.paths.user.sessions_file, "task", "wren",
+                status="staged",
             )
 
-            cmds = [call[0][0] for call in mock_run.call_args_list]
-            assert any(
-                "send-keys" in cmd and "--resume xyz-789-ghi" in cmd for cmd in cmds
-            )
+        result = test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        mock_tui.sessions_refresh.assert_called_once()
 
-    def test_resume_with_partial_id_matches(self, tmp_path):
-        """--resume with partial ID finds matching session."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
-
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
+    def test_calls_launch_in_mind_pane(self, tmp_path):
+        """Launches claude in the mind pane."""
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-            # Create session to resume
-            session = Session(
-                id="abc-123-def-456-ghi",
-                task="Task",
-                started=datetime.now(timezone.utc),
-            )
-            save_session(ctx.paths.user.sessions_file, session)
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            # Resume with partial ID
-            test.execute(
-                "start wren --tmux --resume abc-123",
-                resolve=mock_resolve,
-                setup=setup,
+            create_session(
+                ctx.paths.user.sessions_file, "task", "wren",
+                status="staged",
             )
 
-            cmds = [call[0][0] for call in mock_run.call_args_list]
-            # Should resume with full session ID
-            assert any(
-                "send-keys" in cmd and "--resume abc-123-def-456-ghi" in cmd
-                for cmd in cmds
-            )
+        result = test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        mock_tui.launch_in_mind_pane.assert_called_once()
 
-    def test_resume_nonexistent_session_errors(self, tmp_path):
-        """--resume with nonexistent session raises error."""
-        mind_dir = tmp_path / "wren"
-        mind_dir.mkdir()
+        # Check env vars passed
+        call_args = mock_tui.launch_in_mind_pane.call_args
+        env = call_args.kwargs["env"]
+        assert env["MG_MIND"] == "wren"
+        assert "MG_SESSION" in env
+        assert "MG_ROOT" in env
 
-        def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir))
-
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            ctx.paths._user_name = "testuser"
-
-        with patch("mg.wrappers.tmux.subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
-
-            with pytest.raises(CommandError) as exc_info:
-                test.execute(
-                    "start wren --tmux --resume nonexistent-id",
-                    resolve=mock_resolve,
-                    setup=setup,
-                )
-
-            assert "Session not found: nonexistent-id" in str(exc_info.value)
+        # Check commands passed
+        commands = call_args.kwargs["commands"]
+        assert len(commands) == 1
+        assert "claude" in commands[0]
+        assert "mg become wren" in commands[0]
+        assert "--session-id" in commands[0]

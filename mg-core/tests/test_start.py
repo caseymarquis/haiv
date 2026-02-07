@@ -1,6 +1,7 @@
 """Tests for mg start command (no args)."""
 
-from unittest.mock import MagicMock, patch
+from typing import cast
+from unittest.mock import MagicMock
 
 from mg import test
 
@@ -34,10 +35,6 @@ class TestStartExecution:
         def setup(ctx):
             ctx.paths._mg_root = tmp_path
 
-        with patch("mg.cmd.Tui") as mock_tui_class:
-            mock_tui = MagicMock()
-            mock_tui_class.return_value = mock_tui
-
-            test.execute("start", setup=setup)
-
-            mock_tui.start.assert_called_once()
+        result = test.execute("start", setup=setup)
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        mock_tui.start.assert_called_once()

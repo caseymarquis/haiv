@@ -33,7 +33,7 @@ def sessions_refresh(client: ModelClient, sessions_file: Path) -> None:
     """
     sessions = load_sessions(sessions_file)
     entries = [
-        SessionEntry(mind=s.mind, task=s.task, short_id=s.short_id)
+        SessionEntry(mind=s.mind, task=s.task, short_id=s.short_id, status=s.status)
         for s in sessions
     ]
     client.write(lambda m: _set_entries(m, entries))

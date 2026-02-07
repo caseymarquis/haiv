@@ -3,13 +3,18 @@
 If minds exist without active sessions, one is selected at random for reuse.
 Otherwise creates a new mind with proper structure (work/, home/, references.toml)
 in users/{user}/state/minds/. Optionally creates a worktree for the mind.
+
+Creates a session with status "staged" so the TUI can display the mind
+before it's started.
 """
 
 from __future__ import annotations
 
+import os
 import random
 
 from mg import cmd
+from mg._infrastructure.env import MG_SESSION
 from mg.errors import CommandError
 
 from mg.helpers.minds import (
@@ -21,13 +26,15 @@ from mg.helpers.minds import (
     scaffold_mind,
     validate_mind_name,
 )
-from mg.helpers.sessions import load_sessions
+from mg.helpers.sessions import create_session, load_sessions
 
 
 def define() -> cmd.Def:
     return cmd.Def(
         description="Prep a mind for a new task",
         flags=[
+            cmd.Flag("task", type=str, description="Task summary (required)"),
+            cmd.Flag("description", type=str, min_args=0, max_args=1, description="Long-form description"),
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
             cmd.Flag(
                 "worktree",
@@ -50,6 +57,13 @@ def define() -> cmd.Def:
 
 def execute(ctx: cmd.Ctx) -> None:
     minds_dir = ctx.paths.user.minds_dir
+
+    # --task is required
+    if not ctx.args.has("task"):
+        raise CommandError("--task is required\n\n  mg minds stage --task \"description\" --worktree")
+
+    task = ctx.args.get_one("task")
+    description = ctx.args.get_one("description") if ctx.args.has("description") else ""
 
     # Check worktree flags (mutually exclusive, one required)
     has_worktree = ctx.args.has("worktree")
@@ -134,6 +148,20 @@ def execute(ctx: cmd.Ctx) -> None:
         except MindExistsError as e:
             raise CommandError(str(e)) from e
 
+    # Create session with status "staged"
+    parent = os.environ.get(MG_SESSION, "")
+    session = create_session(
+        ctx.paths.user.sessions_file,
+        task,
+        name,
+        status="staged",
+        parent=parent,
+        description=description,
+    )
+
+    # Push to TUI
+    ctx.tui.sessions_refresh()
+
     # Output guidance
     rel_path = mind.paths.root.relative_to(ctx.paths.root)
     if reused_mind:
@@ -141,12 +169,14 @@ def execute(ctx: cmd.Ctx) -> None:
     else:
         ctx.print(f"Created mind: {name}")
     ctx.print(f"Location: {rel_path}")
+    ctx.print(f"Task: {task}")
+    ctx.print(f"Session: {session.short_id} (staged)")
 
     if has_worktree:
         ctx.print(f"Worktree: worktrees/{worktree_name}/")
 
     ctx.print()
     ctx.print("Next steps:")
-    ctx.print("1. Edit work/welcome.md with task description")
+    ctx.print("1. Edit work/welcome.md with task details")
     ctx.print("2. Assign a role in references.toml (see src/mg_project/__assets__/roles/)")
-    ctx.print(f'3. Start: mg start {name} --tmux --task "description"')
+    ctx.print(f"3. Start: mg start {name}")
