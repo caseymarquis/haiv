@@ -46,11 +46,22 @@ class MindGamesApp(App):
     }
     """
 
+    # Keybinding IDs follow a dotted namespace convention:
+    #   app.*        - application lifecycle (quit, restart)
+    #   nav.*        - navigation between tabs/views
+    #   sessions.*   - session tree actions
+    #
+    # Users can remap any binding via [keybindings] in mg.toml:
+    #   [keybindings]
+    #   "nav.next_tab" = "l,tab"
+    #
+    # TODO: load [keybindings] from mg.toml and call set_keymap() on mount.
+    # Textual's set_keymap() merges overrides — unlisted bindings keep defaults.
     BINDINGS = [
-        Binding("ctrl+q", "quit", "Quit"),
-        Binding("ctrl+r", "restart", "Restart"),
-        Binding("tab", "next_tab", "Next Tab", priority=True),
-        Binding("shift+tab", "previous_tab", "Previous Tab", priority=True),
+        Binding("ctrl+q", "quit", "Quit", id="app.quit"),
+        Binding("ctrl+r", "restart", "Restart", id="app.restart"),
+        Binding("tab", "next_tab", "Next Tab", priority=True, id="nav.next_tab"),
+        Binding("shift+tab", "previous_tab", "Previous Tab", priority=True, id="nav.previous_tab"),
     ]
 
     def __init__(self, project: str) -> None:
