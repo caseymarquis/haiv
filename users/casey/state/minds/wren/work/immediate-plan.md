@@ -4,100 +4,66 @@
 
 ---
 
-## Current Focus: Session-Aware Delegation
+## Current Focus: TUI Launch UX & Session Completion
 
-Redesigning `mg minds stage` and `mg start` so that sessions track the full delegation lifecycle. The TUI reflects state changes in real time via TuiClient.
-
----
-
-## Design Decisions (agreed with Casey)
-
-### Session as assignment tracker
-- Sessions track assignments, not Claude conversations
-- One active session per mind (staged or started)
-- Old sessions get archived when replaced
-- Mind status is inferred from session state — no separate mind status field
-
-### Session data model changes
-- Add `status`: staged / started (archived for old sessions)
-- Add `parent`: mg session ID of whoever staged this (null = human root)
-- Add `description`: long-form body (task is the short title)
-- Add `claude_session_id`: current Claude session ID (decoupled from mg session `id`)
-- Add `old_claude_session_ids`: history of previous Claude session IDs
-- `task` stays as short summary (commit title convention)
-
-### `mg minds stage` changes
-- Add `--task` flag (required — the delegation intent)
-- Add `--description` flag (optional — long-form body)
-- Create session with `status=staged`, `parent=MG_SESSION` env var
-- Archive any existing active session for that mind
-- Write to disk + `ctx.tui.write()` to update TUI live
-- Keep `--worktree`/`--no-worktree` as-is (orthogonal concern)
-
-### `mg start <mind>` changes
-- Remove `--tmux` flag (deprecated, fully committed to WezTerm)
-- Remove `--tui` flag (TUI is always running, default behavior)
-- Keep `--task` for quick-start without staging
-- Remove `--resume` (resuming native Claude sessions is opt-in special case only)
-- Flow:
-  - Session exists for mind → transition to started, generate new `claude_session_id`
-  - No session + `--task` → create session with `status=started`
-  - No session + no `--task` → error ("stage first or use --task")
-- Set `MG_MIND` and `MG_SESSION` env vars on launched process
-- Write to disk + `ctx.tui.write()` to update TUI live
-- Spawn WezTerm pane
-
-### Claude session handling
-- Always launch fresh `claude` process with `mg become`
-- No auto-resume of native Claude sessions (corruption risk)
-- New `claude_session_id` generated each time `mg start` runs
-- Old IDs tracked for potential manual recovery
-- `--session-id` still passed to Claude for tracking/correlation
-
-### Env var chain for delegation
-```
-Human starts wren (no MG_SESSION set)
-  └─ wren runs, MG_SESSION=<wren's mg session id>
-      └─ wren: mg minds stage --task "file watching"
-         └─ session created: parent=<wren's mg session id>
-         └─ wren: mg start spark
-            └─ spark runs, MG_SESSION=<spark's mg session id>
-```
-
-### TUI updates via TuiClient (not file watching)
-- Commands use `ctx.tui.write()` to push changes directly
-- More reliable than file watching, extends to non-disk data
-- TuiModel's `SessionEntry` extended to match new fields
+The session-aware delegation model is built and the pane management is verified working. Next priorities are making the TUI the primary control surface for launching/switching minds, and adding session completion so test sessions can be cleaned up.
 
 ---
 
-## What's Next (implementation order)
+## Priority 1: TUI-Driven Mind Switching
 
-### 1. Session data model
-- Extend `Session` dataclass with new fields
-- Extend `SessionEntry` in TuiModel
-- Update `create_session`, `save_session`, `load_sessions` helpers
-- Add archive logic (separate store for old sessions)
+The TUI sessions list should let the human interact with minds directly.
 
-### 2. Update `mg minds stage`
-- Add `--task` and `--description` flags
-- Create session at stage time with `status=staged`
-- Read `MG_SESSION` for parent link
-- Archive existing session if re-staging
-- Push to TUI via `ctx.tui.write()`
+**Actions from session list:**
+- **Enter on staged session** → start it (transition session, spawn pane, switch to it)
+- **Enter on started session** → switch to it (find parked tab, swap into hud)
+- **Detection:** if a started session's pane is gone from WezTerm, it's dead — offer restart
 
-### 3. Update `mg start <mind>`
-- Remove `--tmux`, `--tui`, `--resume` flags
-- Find existing session or create with `--task`
-- Transition staged → started
-- Generate new `claude_session_id`, track old
-- Set `MG_SESSION` env var
-- Push to TUI via `ctx.tui.write()`
-- Spawn WezTerm pane
+**Pane identity:** Per-mind tabs with naming convention:
+- `mg({project}):mind` — active in hud
+- `~mind` — parked
 
-### 4. TUI display updates
-- Update SessionsSection widget to show status
-- Show delegation tree (parent relationships)
+Tab titles are queryable via `wezterm cli list`. No user vars needed (not in list output for our WezTerm version).
+
+**Implementation path:**
+- TUI needs to call `switch_to_mind()` or trigger `mg start` when user selects a session
+- `switch_to_mind()` already exists in `TerminalManager` — needs wiring to TUI actions
+- For "start staged": TUI could shell out to `mg start <mind>` or call the underlying Python directly
+
+**Open question:** Should the TUI shell out to `mg start` (clean separation, domain logic stays in command) or call TerminalManager directly (avoids subprocess, but domain logic leaks)?
+
+## Priority 2: Session Completion
+
+Sessions currently have two states: `staged` and `started`. No way to mark them done.
+
+**Needed:**
+- A `completed` status (or similar)
+- A way to trigger it: `mg sessions complete`? Mind marks itself done? Parent reviews?
+- TUI filtering: hide completed sessions by default, show on demand
+- Enables cleanup of test sessions that accumulate
+
+## Priority 3: TUI Delegation Tree
+
+Display parent relationships in the sessions widget. Data is already there (`parent` field). The Tree widget is already in use. Straightforward once priorities 1-2 are stable.
+
+## Priority 4: Session Detail Pane
+
+Richer preview when selecting a session: description, parent's task, claude_session_id, time info. Not urgent — current preview is functional.
+
+---
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `mg/src/mg/helpers/tui/terminal.py` | WezTerm pane management, tab naming, launch/switch/park |
+| `mg/src/mg/helpers/tui/tui.py` | Thin facade: `launch_in_mind_pane()`, `switch_to_mind()`, `sessions_refresh()` |
+| `mg/src/mg/helpers/sessions.py` | Session model, CRUD, `update_session` mutator pattern |
+| `mg/src/mg/cmd.py` | `Ctx.tui` wired with TuiClient and sessions_file |
+| `mg-core/src/mg_core/commands/start/_mind_.py` | Session-aware launch flow |
+| `mg-core/src/mg_core/commands/minds/stage.py` | Creates staged sessions |
+| `mg-core/src/mg_core/commands/tui/debug.py` | `mg tui debug` — WezTerm layout inspector |
+| `mg-tui/src/mg_tui/widgets/sessions.py` | Sessions tree widget + preview |
 
 ---
 
@@ -105,6 +71,7 @@ Human starts wren (no MG_SESSION set)
 
 - **MarkdownViewer scroll lag** — Occasional hitches during scroll. Likely Textual rendering overhead. Living with it for now.
 - **TUI crash recovery** — If the TUI pane crashes, `mg start` should detect and restart it. Currently requires manual restart.
+- **Test sessions accumulate** — No completion mechanism yet. Priority 2.
 
 ---
 
@@ -112,6 +79,5 @@ Human starts wren (no MG_SESSION set)
 
 | Mind | Task | Status |
 |------|------|--------|
-| wren | Session-aware delegation redesign | Active (this session) |
-| spark | WezTerm wrapper | Staged in `_new/`, ready to start |
+| wren | TUI launch UX and session lifecycle | Active (this session) |
 | sage | `mg minds suggest_role` | Paused, WIP committed |

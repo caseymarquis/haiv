@@ -6,24 +6,28 @@ Rough thinking, debugging notes, half-formed ideas.
 
 ## Current Session Notes
 
-### Session redesign thinking (2026-02-07)
+### WezTerm pane management findings (2026-02-07)
 
-Key insight from Casey: **derive, don't store.** Mind status is inferred from session state — no separate mind status field that can go stale. Commands naturally transition session states (stage creates, start activates), so the lifecycle is maintained by the tools themselves.
+Live-tested the full launch flow with Casey. Bugs found and fixed:
 
-Session staleness is bounded: a staged session that never starts is visible in the TUI as something the human can investigate. Better than a hidden status buried in a file.
+1. **`spawn(window_id=...)` creates a new tab**, not a pane in an existing tab. Use `split_pane` to create within a tab.
+2. **`send_text` uses bracketed paste** by default — newline doesn't trigger Enter. Use `no_paste=True`.
+3. **No `activate_pane` call** — focus stayed on whichever tab was last touched. Must explicitly activate.
+4. **`move_pane_to_new_tab` always creates a new tab** — can't move into an existing tab. Drove the switch from buffer-tab to per-mind-tab design.
+5. **Focus flash on spawn** — `spawn` auto-focuses the new tab. Fixed by splitting the existing mind pane instead of spawning a staging tab. No tab creation = no focus jump.
 
-**One session per mind** simplifies everything. `mg start spark` just finds spark's session. No ambiguity. `mg minds stage` already only picks minds without active sessions, so the constraint is naturally respected.
+**Final working flow (no-flash):**
+- If mind pane exists: split it → new pane appears in hud, move old pane out to `~mind` tab
+- If no mind pane: split TUI pane directly
+- `send_text --no-paste` for commands, `activate_pane` to ensure focus, `set_tab_title` for naming
 
-**Why not auto-resume Claude sessions:** Casey has experienced corruption issues with native Claude session resume. When a session is corrupted, auto-resume creates nasty loops. Safer to always start fresh with `mg become` loading the mind's notes. Manual `/resume` available when the user knows the session is clean.
+**User vars don't work** for pane identity on this WezTerm version — `wezterm cli list --format json` doesn't include them. Per-mind tab titles solve the same problem.
 
-**TuiClient, not file watching for session updates:** Commands push changes directly via `ctx.tui.write()`. More consistent when we start working with data that doesn't live on disk. File watching (watchdog) still used for other things, but session state goes through the TuiClient.
+### Open questions
 
-### Open questions / things to figure out during implementation
-
-- **Archive storage:** Separate file (`sessions-archive.ig.toml`)? Or same file with status=archived filtered out of active views? Separate file is cleaner for the one-session-per-mind constraint.
-- **Session completion:** How does a session end normally? Mind marks itself done? Parent reviews AAR and archives? Need a `mg sessions complete` or similar. Not blocking for initial implementation — can add later.
-- **WezTerm pane spawning from `mg start`:** Need to figure out the exact wezterm CLI calls. `ctx.wezterm` helper exists but need to check what it supports.
-- **What happens if TUI isn't running when `mg start` is called?** The `ctx.tui.write()` will raise `ConnectionError`. Should we catch and warn, or require TUI? Casey said "we should always have a TUI up" — so probably error is fine.
+- **Session completion:** How does a session end normally? Mind marks itself done? Parent reviews AAR and archives? Need a `mg sessions complete` or similar. Second priority after TUI actions.
+- **TUI action model:** Should the TUI shell out to `mg start` or call TerminalManager directly? Shelling out keeps domain logic in commands. Calling directly avoids subprocess overhead.
+- **Archiving:** Deferred. Currently `create_session` just removes old session for the mind. If we need history, design archiving later.
 
 ## Architecture Decisions Made
 
@@ -38,6 +42,9 @@ Session staleness is bounded: a staged session that never starts is visible in t
 - **Focus-mode via tabs**: Each tab owns the full viewport. Switching tabs is the focus mode. No resizable split panes.
 - **Thin main()**: `__init__.py:main()` is just the restart loop. All logic in MindGamesApp so Ctrl+R picks up changes.
 - **File watching**: watchdog for event-driven filesystem monitoring. Watcher thread reads file, posts Textual message, widget updates on UI thread. No polling.
+- **Tab naming convention**: `mg({project}):mind` for hud with active mind, `~mind` for parked. Project prefix only needed on hud (parked tabs found by window_id). `:` = active, `~` = parked.
+- **No buffer tab**: Each parked mind gets its own tab. Simpler than a shared buffer, and tab titles give identity for free.
+- **Split-in-place for no-flash swap**: Split the current mind pane to create the new one (stays in hud), then move old pane out. Avoids spawning a staging tab which auto-focuses.
 
 ## Things to Remember
 
@@ -45,3 +52,6 @@ Session staleness is bounded: a staged session that never starts is visible in t
 - AARs go in `temp-aar/`
 - Can skip formal process for simple/urgent tasks, write welcome docs directly
 - `flatpak run org.wezfurlong.wezterm` is the wezterm command on this system
+- `mg tui debug` shows WezTerm pane layout — useful during pane management work
+- WezTerm `send_text` needs `--no-paste` for commands to execute
+- WezTerm user vars not in `list --format json` output (at least on flatpak version)

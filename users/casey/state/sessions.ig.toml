@@ -1,6 +1,25 @@
 [[sessions]]
+id = "65ec1fca-9a3f-435d-8379-5aac480f9757"
+task = "test session management"
+started = 2026-02-07 16:09:30.462054+00:00
+mind = "sage"
+short_id = 3
+status = "started"
+parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
+claude_session_id = "6842acb8-5a50-4114-9de2-c215a8b41ed4"
+old_claude_session_ids = [
+    "ddd4d58e-85d9-416d-9613-a96a0d4fcd75",
+]
+
+[[sessions]]
 id = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
 task = "Figure out how to start delegating again"
 started = 2026-02-01 23:23:22.092324+00:00
 mind = "wren"
 short_id = 2
+status = "started"
+claude_session_id = "8144d5ce-e814-4d06-8908-d9dde30f8a2d"
+old_claude_session_ids = [
+    "308f9093-f00f-4197-bda0-ae264fdb4e99",
+    "30e3033f-ebbc-4d56-be94-4884fad44a26",
+]
