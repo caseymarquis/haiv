@@ -16,21 +16,16 @@ def _reload_packages():
 
 
 def main():
-    from mg._infrastructure.identity import detect_user
-    from mg.paths import Paths, get_mg_root
-
-    mg_root = get_mg_root(Path.cwd())
-    project = sys.argv[1] if len(sys.argv) > 1 else mg_root.name
-
-    user = detect_user(mg_root / "users")
-    paths = None
-    if user is not None:
-        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name)
+    # Keep this function THIN. Ctrl+R reloads mg and mg_tui modules,
+    # but main() itself is already executing and won't be reloaded.
+    # All logic that should respond to code changes must live in
+    # modules imported inside the loop (e.g. MindGamesApp, helpers).
+    project = sys.argv[1] if len(sys.argv) > 1 else Path.cwd().name
 
     while True:
         from mg_tui.app import MindGamesApp
 
-        app = MindGamesApp(project, paths=paths)
+        app = MindGamesApp(project)
         app.run()
         app.shutdown()
         if (app.return_code or 0) != RESTART_EXIT_CODE:

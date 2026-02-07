@@ -20,6 +20,7 @@ dependencies = [
     "textual",
     "mg",
     "blinker",
+    "watchdog>=6.0.0",
 ]
 
 [tool.uv.sources]
