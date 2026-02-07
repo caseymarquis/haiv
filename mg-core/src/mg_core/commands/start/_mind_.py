@@ -85,6 +85,7 @@ def execute(ctx: cmd.Ctx) -> None:
 
     # Launch in mind pane
     ctx.tui.launch_in_mind_pane(
+        mind.name,
         env={
             MG_MIND: mind.name,
             MG_SESSION: session.id,

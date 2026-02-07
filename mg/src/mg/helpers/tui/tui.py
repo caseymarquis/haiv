@@ -69,6 +69,10 @@ class Tui:
         """Read sessions from disk and push into the TUI model."""
         helpers.sessions_refresh(self._require_client(), self._sessions_file)
 
-    def launch_in_mind_pane(self, env: dict[str, str], commands: list[str]) -> None:
-        """Spawn a pane in buffer, swap into hud mind slot, send commands."""
-        self._terminal.launch_in_mind_pane(env, commands)
+    def launch_in_mind_pane(self, mind: str, env: dict[str, str], commands: list[str]) -> None:
+        """Swap a new pane into the hud mind slot, send commands."""
+        self._terminal.launch_in_mind_pane(mind, env, commands)
+
+    def switch_to_mind(self, mind: str) -> None:
+        """Switch the hud to a parked mind."""
+        self._terminal.switch_to_mind(mind)

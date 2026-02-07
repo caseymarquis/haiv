@@ -178,8 +178,11 @@ class TestSessionFlow:
         mock_tui = cast(MagicMock, result.ctx.tui)
         mock_tui.launch_in_mind_pane.assert_called_once()
 
-        # Check env vars passed
+        # Check mind name passed
         call_args = mock_tui.launch_in_mind_pane.call_args
+        assert call_args.args[0] == "wren"
+
+        # Check env vars passed
         env = call_args.kwargs["env"]
         assert env["MG_MIND"] == "wren"
         assert "MG_SESSION" in env
