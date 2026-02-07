@@ -16,6 +16,7 @@ class MgSettings:
     _default_branch: str | None = None
     _wezterm_command: list[str] | None = None
     _tui_command: list[str] | None = None
+    _keybindings: dict[str, str] | None = None
 
     @property
     def default_branch(self) -> str:
@@ -31,3 +32,8 @@ class MgSettings:
     def tui_command(self) -> list[str]:
         """The command to launch the TUI application. Falls back to ['mg-tui']."""
         return self._tui_command if self._tui_command is not None else ["mg-tui"]
+
+    @property
+    def keybindings(self) -> dict[str, str]:
+        """User keybinding overrides. Maps binding IDs to key strings."""
+        return self._keybindings if self._keybindings is not None else {}

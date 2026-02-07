@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from textual.binding import Binding
 from textual.message import Message
 from textual.widgets import MarkdownViewer
 from watchdog.events import FileSystemEventHandler
@@ -22,6 +23,27 @@ class MarkdownFileWidget(MarkdownViewer):
     Extends MarkdownViewer for built-in scrolling (arrow keys, page up/down,
     home/end). Table of contents is hidden by default.
     """
+
+    SCROLL_LINES = 3
+
+    BINDINGS = [
+        Binding("j,down", "scroll_down_lines", "Scroll Down", show=False, id="scroll.down"),
+        Binding("k,up", "scroll_up_lines", "Scroll Up", show=False, id="scroll.up"),
+        Binding("ctrl+d", "scroll_half_page_down", "Half Page Down", show=False, id="scroll.half_page_down"),
+        Binding("ctrl+u", "scroll_half_page_up", "Half Page Up", show=False, id="scroll.half_page_up"),
+    ]
+
+    def action_scroll_down_lines(self) -> None:
+        self.scroll_to(y=self.scroll_target_y + self.SCROLL_LINES, animate=False)
+
+    def action_scroll_up_lines(self) -> None:
+        self.scroll_to(y=self.scroll_target_y - self.SCROLL_LINES, animate=False)
+
+    def action_scroll_half_page_down(self) -> None:
+        self.scroll_to(y=self.scroll_target_y + self.scrollable_content_region.height // 2, animate=False)
+
+    def action_scroll_half_page_up(self) -> None:
+        self.scroll_to(y=self.scroll_target_y - self.scrollable_content_region.height // 2, animate=False)
 
     class FileChanged(Message):
         """Posted from the watcher thread with new file contents."""

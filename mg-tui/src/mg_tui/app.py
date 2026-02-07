@@ -22,8 +22,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
 from mg._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
 from mg.helpers.tui import helpers
-from mg.paths import Paths
-
+from mg_tui.init import init as init_mg_deps
 from mg_tui.store import TuiStore
 from mg_tui.widgets.errors import ErrorsWidget
 from mg_tui.widgets.hud import HudWidget
@@ -55,7 +54,6 @@ class MindGamesApp(App):
     #   [keybindings]
     #   "nav.next_tab" = "l,tab"
     #
-    # TODO: load [keybindings] from mg.toml and call set_keymap() on mount.
     # Textual's set_keymap() merges overrides — unlisted bindings keep defaults.
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", id="app.quit"),
@@ -68,36 +66,19 @@ class MindGamesApp(App):
         super().__init__()
         self.project = project
         self.internal_errors: deque[str] = deque(maxlen=MAX_INTERNAL_ERRORS)
-        self.paths = self._resolve_paths()
+        deps = init_mg_deps(on_error=self.internal_errors.append)
+        self.paths = deps.paths
+        self.settings = deps.settings
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
         self._last_write_counter = -1
 
-    def _resolve_paths(self) -> Paths | None:
-        """Detect user identity and build Paths, or None with an error."""
-        from mg._infrastructure.identity import detect_user
-        from mg.paths import get_mg_root
-
-        try:
-            mg_root = get_mg_root(Path.cwd())
-        except ValueError as e:
-            self.internal_errors.append(f"paths: {e}")
-            return None
-
-        user = detect_user(mg_root / "users")
-        if user is None:
-            self.internal_errors.append(
-                f"No user identity found (mg_root={mg_root}). "
-                "Run 'mg users new --name <name>'."
-            )
-            return None
-
-        return Paths(_called_from=None, _pkg_root=None, _mg_root=mg_root, _user_name=user.name)
-
     def on_mount(self) -> None:
         """Start the TUI server and load initial state."""
         self._server.start()
+        if self.settings.keybindings:
+            self.set_keymap(self.settings.keybindings)
 
         if self.paths is not None:
             helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file)
@@ -158,6 +139,13 @@ class MindGamesApp(App):
 
     def action_previous_tab(self) -> None:
         self.query_one(TabbedContent).query_one(Tabs).action_previous_tab()
+
+    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        """Focus the first focusable child in the newly activated tab."""
+        for child in event.pane.query("*"):
+            if child.can_focus:
+                child.focus()
+                return
 
     def action_restart(self) -> None:
         """Exit with restart code — main() handles cleanup and relaunch."""

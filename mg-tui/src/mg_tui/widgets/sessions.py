@@ -8,6 +8,7 @@ below. Pressing Enter switches to the Session tab for that session.
 from __future__ import annotations
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Vertical
 from textual.widgets import Static, TabbedContent, Tree
 
@@ -39,6 +40,17 @@ class SessionPreview(Static):
 
 class SessionsWidget(Vertical):
     """Sessions tab — tree with inline preview."""
+
+    BINDINGS = [
+        Binding("j", "cursor_down", "Cursor Down", show=False, id="sessions.cursor_down"),
+        Binding("k", "cursor_up", "Cursor Up", show=False, id="sessions.cursor_up"),
+    ]
+
+    def action_cursor_down(self) -> None:
+        self.query_one(Tree).action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        self.query_one(Tree).action_cursor_up()
 
     def compose(self) -> ComposeResult:
         yield Tree[SessionEntry]("Sessions", id="sessions-tree")
