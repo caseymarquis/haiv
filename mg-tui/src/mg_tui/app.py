@@ -31,7 +31,7 @@ from mg_tui.widgets.markdown_file import MarkdownFileWidget
 from mg_tui.widgets.sessions import SessionsWidget
 
 MAX_INTERNAL_ERRORS = 5
-POLL_INTERVAL = 0.5
+POLL_INTERVAL = 0.1
 
 
 class MindGamesApp(App):
@@ -61,6 +61,7 @@ class MindGamesApp(App):
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
+        self._last_write_counter = -1
 
     def _resolve_paths(self) -> Paths | None:
         """Detect user identity and build Paths, or None with an error."""
@@ -96,6 +97,11 @@ class MindGamesApp(App):
 
     def _poll_model(self) -> None:
         """Read model snapshot and push through store for dispatch."""
+        current_counter = self._server.get_write_counter()
+        if current_counter == self._last_write_counter:
+            return
+        self._last_write_counter = current_counter
+
         try:
             snapshot = self.tui_client.read()
             self.store.update(snapshot)

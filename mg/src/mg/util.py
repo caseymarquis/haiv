@@ -1,7 +1,11 @@
 """General utilities for mg."""
 
+import threading
 from pathlib import Path
 from types import ModuleType
+from typing import Callable, Generic, TypeVar
+
+T = TypeVar("T")
 
 
 def module_to_file(module: ModuleType) -> Path:
@@ -14,3 +18,39 @@ def module_to_file(module: ModuleType) -> Path:
 def module_to_folder(module: ModuleType) -> Path:
     """Get a module's parent directory, raising if unavailable."""
     return module_to_file(module).parent
+
+
+class Atom(Generic[T]):
+    """Thread-safe wrapper for a single value.
+
+    Encapsulates a lock so callers can't forget to acquire/release.
+    Use for values shared across threads.
+
+    Usage:
+        counter = Atom(0)
+        counter.value = 5           # atomic write
+        x = counter.value           # atomic read
+        y = counter.modify(lambda n: n + 1)  # atomic read-modify-write
+    """
+
+    def __init__(self, value: T) -> None:
+        self._lock = threading.Lock()
+        self._value = value
+
+    @property
+    def value(self) -> T:
+        """Read the value atomically."""
+        with self._lock:
+            return self._value
+
+    @value.setter
+    def value(self, new_value: T) -> None:
+        """Write the value atomically."""
+        with self._lock:
+            self._value = new_value
+
+    def modify(self, fn: Callable[[T], T]) -> T:
+        """Apply a transformation atomically, returning the new value."""
+        with self._lock:
+            self._value = fn(self._value)
+            return self._value

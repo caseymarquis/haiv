@@ -64,6 +64,7 @@ from ._TuiIpc import (
 )
 from ._TuiIpcListener import TuiIpcListener
 from mg.helpers.tui.TuiModel import TuiModel
+from mg.util import Atom
 
 
 class TuiServer:
@@ -88,6 +89,7 @@ class TuiServer:
         self._stop_event = threading.Event()
         self._ipc_listener: TuiIpcListener | None = None
         self.__model_thread: threading.Thread | None = None
+        self._write_counter_atom: Atom[int] = Atom(0)
 
     def start(self) -> None:
         """Bind the IPC socket and start both threads.
@@ -130,6 +132,10 @@ class TuiServer:
             os.unlink(self._address)
         except (OSError, FileNotFoundError):
             pass
+
+    def get_write_counter(self) -> int:
+        """Number of writes applied. Use to skip reads when unchanged."""
+        return self._write_counter_atom.value
 
     def submit(self, request: Request) -> concurrent.futures.Future:
         """Submit a request to the model thread's message queue.
@@ -206,6 +212,7 @@ class TuiServer:
         Per section: if incoming version matches, apply non-None fields
         and rotate version. If mismatch, raise ConcurrencyError.
         """
+        self._write_counter_atom.modify(lambda n: n + 1)
         for f in dataclasses.fields(TuiModel):
             inc_section = getattr(incoming, f.name)
             cur_section = getattr(self.__model, f.name)
