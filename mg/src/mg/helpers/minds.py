@@ -26,6 +26,7 @@ organizational and can contain minds.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import tomllib
@@ -382,6 +383,7 @@ def generate_mind_name(existing: list[str]) -> str:
         ],
         capture_output=True,
         text=True,
+        env={**os.environ, "DISABLE_PROMPT_CACHING": "1"},
     )
 
     if result.returncode != 0:
