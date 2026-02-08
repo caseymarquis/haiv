@@ -1,5 +1,27 @@
 """mg-tui: Terminal UI for mind-games.
 
+Architecture
+------------
+The TUI and mg commands share the same helper functions but access them
+differently. mg commands use the Tui class (tui.py) as a thin facade that
+holds pre-loaded dependencies. This app does NOT use tui.py. Instead, it
+calls helpers.py functions directly, passing only the dependencies each
+function needs. This keeps the app decoupled from the command-side
+dependency bag.
+
+    mg commands:  ctx.tui.mind_switch(mind)       # facade assembles deps
+    TUI app:      helpers.mind_switch(term, mind)  # app passes deps directly
+
+All domain logic for TUI operations lives in helpers.py as standalone
+functions with explicit parameters. If you're adding a new capability,
+put it in helpers.py first. The Tui class and this app are both callers.
+
+terminal.py (TerminalManager) encapsulates WezTerm specifics — tab naming
+conventions, pane splitting, parking. Helpers may take a TerminalManager as
+a dependency but should not leak WezTerm details to their own callers.
+
+Runtime
+-------
 Owns the TuiServer lifecycle. On mount, starts the server and a poll
 loop that reads model snapshots and pushes them through the TuiStore
 for per-section signal dispatch. The poll model avoids cross-thread

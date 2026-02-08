@@ -9,9 +9,7 @@ import pytest
 
 from mg import test
 from mg._infrastructure.args import ResolveRequest
-from mg.errors import CommandError
 from mg.helpers.minds import Mind, MindPaths
-from mg.helpers.sessions import create_session, load_sessions
 
 
 # =============================================================================
@@ -86,111 +84,66 @@ class TestStartParsing:
 
 
 # =============================================================================
-# Session Flow Tests
+# Execution Tests
 # =============================================================================
 
 
-class TestSessionFlow:
-    """Test session-aware launch flow."""
+class TestStartExecution:
+    """Test that execute() delegates to ctx.tui.mind_launch()."""
 
-    def test_error_without_session_or_task(self, tmp_path):
-        """Error when no staged session and no --task."""
-        with pytest.raises(CommandError, match="No staged session"):
-            test.execute(
-                "start wren",
-                resolve=_resolve(tmp_path),
-                setup=_setup(tmp_path),
-            )
+    def test_calls_mind_launch(self, tmp_path):
+        """Calls mind_launch with the mind name."""
+        result = test.execute(
+            "start wren",
+            resolve=_resolve(tmp_path),
+            setup=_setup(tmp_path),
+        )
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        mock_tui.mind_launch.assert_called_once()
+        assert mock_tui.mind_launch.call_args[0][0] == "wren"
 
-    def test_transitions_staged_session_to_started(self, tmp_path):
-        """Existing staged session is transitioned to started."""
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            create_session(
-                ctx.paths.user.sessions_file, "staged task", "wren",
-                status="staged",
-            )
-
-        test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
-
-        # Reload sessions from the path that setup used
-        from mg.paths import Paths
-        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
-        sessions = load_sessions(paths.user.sessions_file)
-        assert len(sessions) == 1
-        assert sessions[0].status == "started"
-        assert sessions[0].claude_session_id != ""
-
-    def test_task_creates_started_session(self, tmp_path):
-        """--task creates a new session with status started."""
-        test.execute(
+    def test_passes_task_when_provided(self, tmp_path):
+        """Task flag is forwarded to mind_launch."""
+        result = test.execute(
             'start wren --task "Fix bug"',
             resolve=_resolve(tmp_path),
             setup=_setup(tmp_path),
         )
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        kwargs = mock_tui.mind_launch.call_args[1]
+        assert kwargs["task"] == "Fix bug"
 
-        from mg.paths import Paths
-        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
-        sessions = load_sessions(paths.user.sessions_file)
-        assert len(sessions) == 1
-        assert sessions[0].task == "Fix bug"
-        assert sessions[0].status == "started"
-        assert sessions[0].mind == "wren"
-        assert sessions[0].claude_session_id != ""
+    def test_passes_none_task_when_omitted(self, tmp_path):
+        """Task is None when --task flag not provided."""
+        result = test.execute(
+            "start wren",
+            resolve=_resolve(tmp_path),
+            setup=_setup(tmp_path),
+        )
+        mock_tui = cast(MagicMock, result.ctx.tui)
+        kwargs = mock_tui.mind_launch.call_args[1]
+        assert kwargs["task"] is None
 
-    def test_task_session_parent_from_env(self, tmp_path):
-        """Session parent is set from MG_SESSION env var."""
+    def test_passes_parent_from_env(self, tmp_path):
+        """Parent session id is read from MG_SESSION env var."""
         with patch.dict("os.environ", {"MG_SESSION": "parent-123"}):
-            test.execute(
-                'start wren --task "Sub-task"',
+            result = test.execute(
+                "start wren",
                 resolve=_resolve(tmp_path),
                 setup=_setup(tmp_path),
             )
-
-        from mg.paths import Paths
-        paths = Paths(_called_from=None, _pkg_root=None, _mg_root=tmp_path, _user_name="testinius")
-        sessions = load_sessions(paths.user.sessions_file)
-        assert sessions[0].parent == "parent-123"
-
-    def test_calls_sessions_refresh(self, tmp_path):
-        """Pushes session state to TUI after session update."""
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            create_session(
-                ctx.paths.user.sessions_file, "task", "wren",
-                status="staged",
-            )
-
-        result = test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
         mock_tui = cast(MagicMock, result.ctx.tui)
-        mock_tui.sessions_refresh.assert_called_once()
+        kwargs = mock_tui.mind_launch.call_args[1]
+        assert kwargs["parent"] == "parent-123"
 
-    def test_calls_launch_in_mind_pane(self, tmp_path):
-        """Launches claude in the mind pane."""
-        def setup(ctx):
-            ctx.paths._mg_root = tmp_path
-            create_session(
-                ctx.paths.user.sessions_file, "task", "wren",
-                status="staged",
+    def test_passes_empty_parent_when_no_env(self, tmp_path):
+        """Parent is empty string when MG_SESSION not set."""
+        with patch.dict("os.environ", {}, clear=True):
+            result = test.execute(
+                "start wren",
+                resolve=_resolve(tmp_path),
+                setup=_setup(tmp_path),
             )
-
-        result = test.execute("start wren", resolve=_resolve(tmp_path), setup=setup)
         mock_tui = cast(MagicMock, result.ctx.tui)
-        mock_tui.launch_in_mind_pane.assert_called_once()
-
-        # Check mind name passed
-        call_args = mock_tui.launch_in_mind_pane.call_args
-        assert call_args.args[0] == "wren"
-
-        # Check env vars passed
-        env = call_args.kwargs["env"]
-        assert env["MG_MIND"] == "wren"
-        assert "MG_SESSION" in env
-        assert "MG_ROOT" in env
-
-        # Check commands passed
-        commands = call_args.kwargs["commands"]
-        assert len(commands) == 1
-        assert "claude" in commands[0]
-        assert "mg become wren" in commands[0]
-        assert "--session-id" in commands[0]
+        kwargs = mock_tui.mind_launch.call_args[1]
+        assert kwargs["parent"] == ""

@@ -7,6 +7,7 @@ from mg.helpers.sessions import (
     Session,
     create_session,
     load_sessions,
+    resolve_session,
     save_session,
     update_session,
     get_session,
@@ -321,6 +322,84 @@ class TestCreateSession:
         assert session.status == "staged"
         assert session.parent == "parent-123"
         assert session.description == "Details"
+
+
+class TestResolveSession:
+    """Tests for resolve_session()."""
+
+    def test_transitions_staged_to_started(self, tmp_path):
+        """Existing staged session is transitioned to started."""
+        sessions_file = tmp_path / "sessions.toml"
+        create_session(sessions_file, "staged task", "wren", status="staged")
+
+        session = resolve_session(sessions_file, "wren")
+
+        assert session.status == "started"
+        assert session.claude_session_id != ""
+        assert session.task == "staged task"
+
+    def test_restarts_existing_started_session(self, tmp_path):
+        """Existing started session gets a new claude_session_id."""
+        sessions_file = tmp_path / "sessions.toml"
+        original = create_session(sessions_file, "running task", "wren")
+        update_session(
+            sessions_file, original.id,
+            lambda s: setattr(s, "claude_session_id", "old-claude-id"),
+        )
+
+        session = resolve_session(sessions_file, "wren")
+
+        assert session.status == "started"
+        assert session.claude_session_id != "old-claude-id"
+        assert "old-claude-id" in session.old_claude_session_ids
+
+    def test_creates_session_with_task(self, tmp_path):
+        """Creates a new started session when task is provided and no session exists."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        session = resolve_session(sessions_file, "wren", task="new task")
+
+        assert session.status == "started"
+        assert session.task == "new task"
+        assert session.mind == "wren"
+        assert session.claude_session_id != ""
+
+    def test_creates_session_with_empty_task_when_none(self, tmp_path):
+        """Creates session with empty task when task is None and no session exists."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        session = resolve_session(sessions_file, "wren")
+
+        assert session.status == "started"
+        assert session.task == ""
+        assert session.mind == "wren"
+        assert session.claude_session_id != ""
+
+    def test_preserves_existing_task(self, tmp_path):
+        """Does not overwrite the task on an existing session."""
+        sessions_file = tmp_path / "sessions.toml"
+        create_session(sessions_file, "original task", "wren", status="staged")
+
+        session = resolve_session(sessions_file, "wren", task="different task")
+
+        assert session.task == "original task"
+
+    def test_sets_parent_on_new_session(self, tmp_path):
+        """Parent is set when creating a new session."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        session = resolve_session(sessions_file, "wren", task="child task", parent="parent-123")
+
+        assert session.parent == "parent-123"
+
+    def test_preserves_session_identity(self, tmp_path):
+        """Transitioning a session preserves its id."""
+        sessions_file = tmp_path / "sessions.toml"
+        original = create_session(sessions_file, "task", "wren", status="staged")
+
+        session = resolve_session(sessions_file, "wren")
+
+        assert session.id == original.id
 
 
 class TestUpdateSession:

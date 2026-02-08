@@ -258,6 +258,54 @@ def update_session(
     return target
 
 
+def resolve_session(
+    sessions_file: Path,
+    mind_name: str,
+    *,
+    task: str | None = None,
+    parent: str = "",
+) -> Session:
+    """Ensure a mind has a started session, creating one if needed.
+
+    If the mind has an existing session, transitions it to started and
+    assigns a new claude_session_id. If no session exists, creates one
+    (using the provided task, or "" if task is None).
+
+    Args:
+        sessions_file: Path to the sessions TOML file.
+        mind_name: The mind to resolve a session for.
+        task: Task description for new sessions. If None and no existing
+              session, creates one with an empty task.
+        parent: Parent session id (for delegation chains).
+
+    Returns:
+        A session in 'started' status with a claude_session_id set.
+    """
+    session = get_most_recent_session_for_mind(sessions_file, mind_name)
+
+    if session is not None:
+        # Transition staged → started (or re-start an existing session)
+        claude_session_id = str(uuid.uuid4())
+
+        def transition(s: Session) -> None:
+            s.status = "started"
+            s.claude_session_id = claude_session_id
+
+        return update_session(sessions_file, session.id, transition)
+
+    # No existing session — create one
+    claude_session_id = str(uuid.uuid4())
+    session = create_session(
+        sessions_file, task or "", mind_name,
+        status="started", parent=parent,
+    )
+
+    def set_claude_id(s: Session) -> None:
+        s.claude_session_id = claude_session_id
+
+    return update_session(sessions_file, session.id, set_claude_id)
+
+
 def remove_session(sessions_file: Path, session_id: str) -> bool:
     """Remove a session by full ID (or partial UUID match).
 

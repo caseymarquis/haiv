@@ -2,7 +2,7 @@
 
 This class exists purely for ergonomics. It holds pre-loaded dependencies
 (client, paths, settings) so command authors can write simple calls like
-ctx.tui.refresh_sessions() without assembling dependencies themselves.
+ctx.tui.mind_launch(mind) without assembling dependencies themselves.
 
 ALL real logic lives in helpers.py. Every method here should be a one-line
 passthrough that forwards to a helpers.py function with the appropriate
@@ -11,6 +11,10 @@ first, then add a passthrough here.
 
 The TUI application (mg-tui) calls helpers.py functions directly — it does
 not use this class. This keeps the app decoupled from the dependency bag.
+
+terminal.py (TerminalManager) encapsulates WezTerm specifics — tab naming
+conventions, pane splitting, parking. Helpers may take a TerminalManager as
+a dependency but should not leak WezTerm details to their own callers.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from mg.helpers.sessions import Session
 from mg.helpers.tui import helpers
 from mg.helpers.tui.TuiClient import TuiClient
 from mg.helpers.tui.TuiModel import TuiModel
@@ -31,9 +36,6 @@ class Tui:
 
     Pre-loads dependencies at construction so call sites are simple.
     See module docstring — no logic belongs here.
-
-    Client methods (read, write, sessions_refresh) require a client.
-    All errors propagate to the caller.
     """
 
     def __init__(
@@ -45,6 +47,7 @@ class Tui:
     ) -> None:
         wezterm = WezTerm(settings.wezterm_command)
         self._terminal = TerminalManager(wezterm, mg_root, settings.tui_command)
+        self._mg_root = mg_root
         self._client = client
         self._sessions_file = sessions_file
 
@@ -54,8 +57,8 @@ class Tui:
         return self._client
 
     def start(self) -> None:
-        """Start the TUI workspace."""
-        self._terminal.ensure_workspace()
+        """Ensure the mg workspace exists."""
+        helpers.workspace_start(self._terminal)
 
     def read(self) -> TuiModel:
         """Read the current TUI state."""
@@ -69,10 +72,16 @@ class Tui:
         """Read sessions from disk and push into the TUI model."""
         helpers.sessions_refresh(self._require_client(), self._sessions_file)
 
-    def launch_in_mind_pane(self, mind: str, env: dict[str, str], commands: list[str]) -> None:
-        """Swap a new pane into the hud mind slot, send commands."""
-        self._terminal.launch_in_mind_pane(mind, env, commands)
+    def mind_launch(
+        self,
+        mind_name: str,
+        *,
+        task: str | None = None,
+        parent: str = "",
+    ) -> Session:
+        """Put a mind in the hud — switching, launching, or restarting as needed."""
+        return helpers.mind_launch(
+            self._terminal, self._require_client(), self._sessions_file,
+            mind_name, self._mg_root, task=task, parent=parent,
+        )
 
-    def switch_to_mind(self, mind: str) -> None:
-        """Switch the hud to a parked mind."""
-        self._terminal.switch_to_mind(mind)

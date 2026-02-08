@@ -185,7 +185,17 @@ class TerminalManager:
         self.wezterm.activate_pane(hud_pane.pane_id)
         print(f"mg window for '{self.project}' is ready.")
 
-    # -- Queries --
+    # -- Queries (public) --
+
+    def is_mind_active(self, mind: str) -> bool:
+        """True if mind is currently showing in the hud."""
+        return self._active_mind_name() == mind
+
+    def is_mind_parked(self, mind: str) -> bool:
+        """True if mind has a parked pane."""
+        return self._find_parked_mind(mind) is not None
+
+    # -- Queries (private) --
 
     def _in_wezterm(self) -> bool:
         """Check if we're running inside a WezTerm session."""
