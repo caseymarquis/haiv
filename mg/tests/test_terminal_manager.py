@@ -54,11 +54,17 @@ def manager(wezterm):
 
 
 class TestTabTitleNaming:
-    def test_hud_tab_title(self, manager):
-        assert manager.hud_tab_title == "mg(my-project)"
+    def test_hud_tab_prefix(self, manager):
+        assert manager.hud_tab_prefix == "mg(my-project)"
 
-    def test_buffer_tab_title(self, manager):
-        assert manager.buffer_tab_title == "mg(my-project):buffer"
+    def test_hud_tab_title_with_mind(self, manager):
+        assert manager._hud_tab_title("wren") == "mg(my-project):wren"
+
+    def test_hud_tab_title_without_mind(self, manager):
+        assert manager._hud_tab_title() == "mg(my-project)"
+
+    def test_parked_tab_title(self, manager):
+        assert manager._parked_tab_title("wren") == "~wren"
 
 
 class TestFindHudPane:
@@ -117,31 +123,26 @@ class TestEnsureWorkspace:
 
     def test_in_wezterm_no_window_creates_one(self, manager, wezterm):
         """Inside WezTerm, no mg window — create new window with layout."""
-        wezterm.list_panes.side_effect = [
+        wezterm.list_panes.return_value = [
             # _find_hud_pane — not found
-            [make_pane(pane_id=0, tab_title="")],
-            # window_id lookup after spawn + split
-            [make_pane(pane_id=10, window_id=5)],
+            make_pane(pane_id=0, tab_title=""),
         ]
-        wezterm.spawn.side_effect = [10, 12]  # hud window pane, buffer tab pane
+        wezterm.spawn.return_value = 10  # hud window pane
         wezterm.split_pane.return_value = 11
 
         with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
             manager.ensure_workspace()
 
         # Created new window with TUI command + project name
-        wezterm.spawn.assert_any_call(
+        wezterm.spawn.assert_called_once_with(
             new_window=True, cwd="/home/user/my-project", command=["mg-tui", "my-project"],
         )
         # Named hud tab
-        wezterm.set_tab_title.assert_any_call("mg(my-project)", pane_id=10)
-        # Split for mind pane
+        wezterm.set_tab_title.assert_called_once_with("mg(my-project)", pane_id=10)
+        # Split right for mind pane
         wezterm.split_pane.assert_called_once_with(
-            10, direction="right", percent=50, cwd="/home/user/my-project"
+            10, direction="right", percent=50, cwd="/home/user/my-project",
         )
-        # Created and named buffer tab
-        wezterm.spawn.assert_any_call(window_id=5, cwd="/home/user/my-project")
-        wezterm.set_tab_title.assert_any_call("mg(my-project):buffer", pane_id=12)
         # Focused hud pane
         wezterm.activate_pane.assert_called_with(10)
 
