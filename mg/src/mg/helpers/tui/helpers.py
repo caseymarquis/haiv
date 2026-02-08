@@ -110,6 +110,10 @@ def mind_launch(
     if terminal.is_mind_active(mind_name):
         session = get_most_recent_session_for_mind(sessions_file, mind_name)
         if session is not None:
+            print(
+                f"Mind '{mind_name}' is already active in the hud.\n"
+                f"To relaunch here: mg start {mind_name} --here"
+            )
             sessions_refresh(client, sessions_file)
             return session
 
@@ -127,17 +131,20 @@ def mind_launch(
     sessions_refresh(client, sessions_file)
 
     # Build claude command and launch
-    claude_cmd = _build_claude_command(mind_name, session.claude_session_id)
-    env = _build_env(mind_name, session.id, mg_root)
+    claude_cmd = build_claude_command(mind_name, session.claude_session_id)
+    env = build_env(mind_name, session.id, mg_root)
     terminal.launch_in_mind_pane(mind_name, env, [claude_cmd])
 
     return session
 
 
-# -- Internal helpers --
+# -- Claude launch helpers --
+# These aren't really TUI concerns — they're about constructing the claude
+# invocation. They live here for now because mind_launch is the primary
+# consumer, but they should move if a better home emerges.
 
 
-def _build_claude_command(mind_name: str, claude_session_id: str) -> str:
+def build_claude_command(mind_name: str, claude_session_id: str) -> str:
     """Build the claude CLI command for launching a mind."""
     prompt = f"Run `mg become {mind_name}`"
     allowed = f"Bash(mg become {mind_name})"
@@ -148,7 +155,7 @@ def _build_claude_command(mind_name: str, claude_session_id: str) -> str:
     )
 
 
-def _build_env(mind_name: str, session_id: str, mg_root: Path) -> dict[str, str]:
+def build_env(mind_name: str, session_id: str, mg_root: Path) -> dict[str, str]:
     """Build environment variables for a mind pane."""
     from mg._infrastructure.env import MG_MIND, MG_ROOT, MG_SESSION
 
@@ -157,6 +164,9 @@ def _build_env(mind_name: str, session_id: str, mg_root: Path) -> dict[str, str]
         MG_SESSION: session_id,
         MG_ROOT: str(mg_root),
     }
+
+
+# -- Internal helpers --
 
 
 def _set_entries(model: TuiModel, entries: list[SessionEntry]) -> None:
