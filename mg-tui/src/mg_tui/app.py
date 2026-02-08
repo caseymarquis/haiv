@@ -91,6 +91,7 @@ class MindGamesApp(App):
         deps = init_mg_deps(on_error=self.internal_errors.append)
         self.paths = deps.paths
         self.settings = deps.settings
+        self.terminal = deps.terminal
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)

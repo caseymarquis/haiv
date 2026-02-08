@@ -12,6 +12,7 @@ from textual.binding import Binding
 from textual.containers import Vertical
 from textual.widgets import Static, TabbedContent, Tree
 
+from mg.helpers.tui import helpers
 from mg.helpers.tui.TuiModel import SessionEntry
 
 
@@ -83,7 +84,23 @@ class SessionsWidget(Vertical):
         preview.render_preview(event.node.data)
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Switch to Session tab on Enter."""
-        if event.node.data is not None:
-            tabbed = self.app.query_one(TabbedContent)
-            tabbed.active = "session"
+        """Launch the selected mind and switch to Session tab."""
+        entry: SessionEntry | None = event.node.data
+        if entry is None:
+            return
+
+        app = self.app
+        if app.terminal is not None and app.paths is not None:
+            try:
+                helpers.mind_launch(
+                    app.terminal,
+                    app.tui_client,
+                    app.paths.user.sessions_file,
+                    entry.mind,
+                    app.paths.root,
+                )
+            except Exception as e:
+                app.internal_errors.append(f"mind_launch: {e}")
+
+        tabbed = app.query_one(TabbedContent)
+        tabbed.active = "session"

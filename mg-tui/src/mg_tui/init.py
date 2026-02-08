@@ -10,8 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from mg.helpers.tui.terminal import TerminalManager
 from mg.paths import Paths
 from mg.settings import MgSettings
+from mg.wrappers.wezterm import WezTerm
 
 
 def resolve_paths(on_error: Callable[[str], None]) -> Paths | None:
@@ -53,10 +55,18 @@ class MgDeps:
 
     paths: Paths | None
     settings: MgSettings
+    terminal: TerminalManager | None
 
 
 def init(on_error: Callable[[str], None]) -> MgDeps:
     """Resolve all mg dependencies in one shot."""
     paths = resolve_paths(on_error)
     settings = load_settings(paths, on_error) if paths else MgSettings()
-    return MgDeps(paths=paths, settings=settings)
+
+    if paths is not None:
+        wezterm = WezTerm(settings.wezterm_command)
+        terminal = TerminalManager(wezterm, paths.root, settings.tui_command)
+    else:
+        terminal = None
+
+    return MgDeps(paths=paths, settings=settings, terminal=terminal)
