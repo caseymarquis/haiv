@@ -2,7 +2,7 @@
 
 If minds exist without active sessions, one is selected at random for reuse.
 Otherwise creates a new mind with proper structure (work/, home/, references.toml)
-in users/{user}/state/minds/. Optionally creates a worktree for the mind.
+in users/{user}/state/minds/. Creates a worktree for the mind.
 
 Creates a session with status "staged" so the TUI can display the mind
 before it's started.
@@ -26,7 +26,7 @@ from mg.helpers.minds import (
     scaffold_mind,
     validate_mind_name,
 )
-from mg.helpers.sessions import create_session, load_sessions
+from mg.helpers.sessions import create_session, find_session, load_sessions
 
 
 def define() -> cmd.Def:
@@ -37,19 +37,11 @@ def define() -> cmd.Def:
             cmd.Flag("description", type=str, min_args=0, max_args=1, description="Long-form description"),
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
             cmd.Flag(
-                "worktree",
-                type=str,
-                min_args=0,
-                max_args=1,
-                description="Create worktree (optional name, defaults to mind name)",
-            ),
-            cmd.Flag("no-worktree", type=bool, description="Create mind only"),
-            cmd.Flag(
                 "from-branch",
                 type=str,
                 min_args=0,
                 max_args=1,
-                description="Base branch for worktree (defaults to project default)",
+                description="Base branch for worktree (defaults to parent's branch or project default)",
             ),
         ],
     )
@@ -60,24 +52,10 @@ def execute(ctx: cmd.Ctx) -> None:
 
     # --task is required
     if not ctx.args.has("task"):
-        raise CommandError("--task is required\n\n  mg minds stage --task \"description\" --worktree")
+        raise CommandError("--task is required\n\n  mg minds stage --task \"description\"")
 
     task = ctx.args.get_one("task")
     description = ctx.args.get_one("description") if ctx.args.has("description") else ""
-
-    # Check worktree flags (mutually exclusive, one required)
-    has_worktree = ctx.args.has("worktree")
-    has_no_worktree = ctx.args.has("no-worktree")
-
-    if has_worktree and has_no_worktree:
-        raise CommandError("Cannot use both --worktree and --no-worktree")
-
-    if not has_worktree and not has_no_worktree:
-        raise CommandError(
-            "Must specify --worktree or --no-worktree\n\n"
-            "  --worktree [name]  Create mind AND worktree (recommended)\n"
-            "  --no-worktree      Create mind only"
-        )
 
     # Check for available minds (no active session) when name not provided
     reused_mind = None
@@ -106,38 +84,26 @@ def execute(ctx: cmd.Ctx) -> None:
         except InvalidMindNameError as e:
             raise CommandError(e.reason) from e
 
-    # Handle worktree creation
-    worktree_name: str | None = None
-    location: str | None = None
+    # Determine base branch
+    if ctx.args.has("from-branch"):
+        base_branch = ctx.args.get_one("from-branch")
+    else:
+        base_branch = _detect_base_branch(ctx)
 
-    if has_worktree:
-        # Get worktree name (from --worktree value, or default to mind name)
-        worktree_values = ctx.args.get_list("worktree", default_value=[])
-        if worktree_values:
-            worktree_name = worktree_values[0]
-        else:
-            worktree_name = name
-
-        # Check if worktree directory already exists and has contents
-        worktree_path = ctx.paths.root / "worktrees" / worktree_name
-        if worktree_path.exists() and any(worktree_path.iterdir()):
-            raise CommandError(
-                f"Worktree directory already exists and is not empty: worktrees/{worktree_name}/\n"
-                f"Use a different worktree name or remove the existing directory."
-            )
-
-        # Get base branch
-        if ctx.args.has("from-branch"):
-            base_branch = ctx.args.get_one("from-branch")
-        else:
-            base_branch = ctx.settings.default_branch
-
-        # Create the worktree
-        ctx.git.run(
-            f"worktree add -b {worktree_name} worktrees/{worktree_name} {base_branch}",
-            intent=f"create worktree for mind '{name}'",
+    # Check if worktree directory already exists and has contents
+    worktree_path = ctx.paths.root / "worktrees" / name
+    if worktree_path.exists() and any(worktree_path.iterdir()):
+        raise CommandError(
+            f"Worktree directory already exists and is not empty: worktrees/{name}/\n"
+            f"Use --name to choose a different mind name."
         )
-        location = f"worktrees/{worktree_name}/"
+
+    # Create the worktree
+    ctx.git.run(
+        f"worktree add -b {name} worktrees/{name} {base_branch}",
+        intent=f"create worktree for mind '{name}'",
+    )
+    location = f"worktrees/{name}/"
 
     # Scaffold new mind or reuse existing
     if reused_mind:
@@ -156,6 +122,8 @@ def execute(ctx: cmd.Ctx) -> None:
         name,
         status="staged",
         parent=parent,
+        branch=name,
+        base_branch=base_branch,
         description=description,
     )
 
@@ -172,11 +140,32 @@ def execute(ctx: cmd.Ctx) -> None:
     ctx.print(f"Task: {task}")
     ctx.print(f"Session: {session.short_id} (staged)")
 
-    if has_worktree:
-        ctx.print(f"Worktree: worktrees/{worktree_name}/")
+    ctx.print(f"Worktree: worktrees/{name}/")
 
     ctx.print()
     ctx.print("Next steps:")
     ctx.print("1. Edit work/welcome.md with task details")
     ctx.print("2. Assign a role in references.toml (see src/mg_project/__assets__/roles/)")
     ctx.print(f"3. Start: mg start {name}")
+
+
+def _detect_base_branch(ctx: cmd.Ctx) -> str:
+    """Detect base branch from the parent session.
+
+    Looks up the parent session via MG_SESSION env var. If the parent
+    has a branch recorded, uses that. If the parent has no branch (top-level),
+    falls back to default_branch. Raises CommandError if MG_SESSION is not set.
+    """
+    parent_id = os.environ.get(MG_SESSION, "")
+    if not parent_id:
+        raise CommandError(
+            "MG_SESSION is not set — cannot detect base branch.\n\n"
+            "  Set it to your session ID:  export MG_SESSION=<your-session-id>\n"
+            "  Or specify explicitly:      --from-branch <branch>"
+        )
+
+    parent_session = find_session(ctx.paths.user.sessions_file, parent_id)
+    if parent_session and parent_session.branch:
+        return parent_session.branch
+
+    return ctx.settings.default_branch

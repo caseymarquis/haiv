@@ -9,7 +9,6 @@ Tests the full execute() behavior including:
 - Worktree creation
 """
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -28,13 +27,7 @@ from mg.wrappers.git import Git
 
 @pytest.fixture
 def sandbox():
-    """Sandbox for minds stage tests."""
-    return test.create_sandbox()
-
-
-@pytest.fixture
-def git_sandbox():
-    """Sandbox with git repo initialized for worktree tests."""
+    """Sandbox with git repo initialized."""
     sb = test.create_sandbox()
     root = sb.ctx.paths.root
     git = Git(root, quiet=True)
@@ -77,7 +70,7 @@ class TestNameHandling:
 
     def test_uses_provided_name(self, sandbox: Sandbox):
         """Uses --name when provided."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_generates_name_when_not_provided(self, sandbox: Sandbox):
@@ -85,7 +78,7 @@ class TestNameHandling:
         with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
-            sandbox.run('minds stage --no-worktree --task "test"')
+            sandbox.run('minds stage --task "test" --from-branch main')
         # Check that a mind folder was created
         minds_dir = sandbox.ctx.paths.user.minds_dir
         assert minds_dir.exists()
@@ -96,13 +89,13 @@ class TestNameHandling:
         # Create existing mind
         (sandbox.ctx.paths.user.minds_dir / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
-            sandbox.run('minds stage --no-worktree --name robin --task "test"')
+            sandbox.run('minds stage --name robin --task "test" --from-branch main')
 
     def test_rejects_duplicate_in_organizational_folder(self, sandbox: Sandbox):
         """Rejects name that exists in organizational folder like _staging/."""
         (sandbox.ctx.paths.user.minds_dir / "_staging" / "robin").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
-            sandbox.run('minds stage --no-worktree --name robin --task "test"')
+            sandbox.run('minds stage --name robin --task "test" --from-branch main')
 
 
 # =============================================================================
@@ -115,27 +108,27 @@ class TestDirectoryStructure:
 
     def test_creates_at_root_level(self, sandbox: Sandbox):
         """Creates mind folder at root level of minds directory."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_creates_work_directory(self, sandbox: Sandbox):
         """Creates work/ directory."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "work").is_dir()
 
     def test_creates_home_directory(self, sandbox: Sandbox):
         """Creates home/ directory."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "home").is_dir()
 
     def test_creates_work_docs_directory(self, sandbox: Sandbox):
         """Creates work/docs/ directory."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "docs").is_dir()
 
     def test_creates_welcome_md(self, sandbox: Sandbox):
         """Creates work/welcome.md template."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         assert path.is_file()
         content = path.read_text()
@@ -143,31 +136,31 @@ class TestDirectoryStructure:
 
     def test_creates_immediate_plan_md(self, sandbox: Sandbox):
         """Creates work/immediate-plan.md template."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "immediate-plan.md"
         assert path.is_file()
 
     def test_creates_long_term_vision_md(self, sandbox: Sandbox):
         """Creates work/long-term-vision.md template."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "long-term-vision.md"
         assert path.is_file()
 
     def test_creates_my_process_md(self, sandbox: Sandbox):
         """Creates work/my-process.md template."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "my-process.md"
         assert path.is_file()
 
     def test_creates_scratchpad_md(self, sandbox: Sandbox):
         """Creates work/scratchpad.md template."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "scratchpad.md"
         assert path.is_file()
 
     def test_creates_references_toml(self, sandbox: Sandbox):
         """Creates references.toml at root level."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         path = sandbox.ctx.paths.user.minds_dir / "robin" / "references.toml"
         assert path.is_file()
         content = path.read_text()
@@ -184,26 +177,26 @@ class TestOutput:
 
     def test_outputs_mind_name(self, sandbox: Sandbox, capsys):
         """Output includes the mind name."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
         assert "robin" in output
 
     def test_outputs_welcome_edit_instruction(self, sandbox: Sandbox, capsys):
         """Output instructs to edit welcome.md."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
         assert "welcome.md" in output.lower()
 
     def test_outputs_role_instruction(self, sandbox: Sandbox, capsys):
         """Output includes role assignment instruction."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
         assert "role" in output.lower()
         assert "references.toml" in output
 
     def test_outputs_start_command(self, sandbox: Sandbox, capsys):
         """Output includes the start command."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
         assert "mg start robin" in output
 
@@ -218,55 +211,21 @@ class TestEdgeCases:
 
     def test_creates_minds_dir_if_not_exists(self, sandbox: Sandbox):
         """Creates minds/ directory if it doesn't exist."""
-        # Ensure minds dir doesn't exist
         assert not sandbox.ctx.paths.user.minds_dir.exists()
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert sandbox.ctx.paths.user.minds_dir.exists()
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
     def test_name_validation_lowercase(self, sandbox: Sandbox):
         """Name must be lowercase."""
         with pytest.raises(CommandError, match="lowercase"):
-            sandbox.run('minds stage --no-worktree --name Robin --task "test"')
+            sandbox.run('minds stage --name Robin --task "test" --from-branch main')
 
     def test_name_validation_no_underscore_start(self, sandbox: Sandbox):
         """Name cannot start with underscore."""
         with pytest.raises(CommandError, match="underscore"):
-            sandbox.run('minds stage --no-worktree --name _robin --task "test"')
+            sandbox.run('minds stage --name _robin --task "test" --from-branch main')
 
-
-# =============================================================================
-# Worktree Flag Tests
-# =============================================================================
-
-
-class TestWorktreeFlags:
-    """Test --worktree and --no-worktree flag handling."""
-
-    def test_requires_worktree_flag(self, sandbox: Sandbox):
-        """Error when neither --worktree nor --no-worktree provided."""
-        with pytest.raises(CommandError, match="Must specify --worktree or --no-worktree"):
-            sandbox.run('minds stage --name robin --task "test"')
-
-    def test_rejects_both_flags(self, sandbox: Sandbox):
-        """Error when both --worktree and --no-worktree provided."""
-        with pytest.raises(CommandError, match="Cannot use both"):
-            sandbox.run('minds stage --worktree --no-worktree --name robin --task "test"')
-
-    def test_no_worktree_creates_mind_only(self, sandbox: Sandbox):
-        """--no-worktree creates mind without worktree."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
-        # Mind exists
-        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
-        # No worktree created
-        assert not (sandbox.ctx.paths.root / "worktrees" / "robin").exists()
-
-    def test_no_worktree_welcome_has_no_location(self, sandbox: Sandbox):
-        """welcome.md has no location line when --no-worktree used."""
-        sandbox.run('minds stage --no-worktree --name robin --task "test"')
-        path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
-        content = path.read_text()
-        assert "**Location:**" not in content
 
 
 # =============================================================================
@@ -275,56 +234,33 @@ class TestWorktreeFlags:
 
 
 class TestWorktreeCreation:
-    """Test worktree creation with --worktree flag."""
+    """Test worktree creation."""
 
-    def test_worktree_creates_mind_and_worktree(self, git_sandbox: Sandbox):
-        """--worktree creates both mind and worktree."""
-        git_sandbox.run('minds stage --worktree --name robin --task "test"')
-        # Mind exists
-        assert (git_sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
-        # Worktree exists
-        assert (git_sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
+    def test_creates_mind_and_worktree(self, sandbox: Sandbox):
+        """Creates both mind and worktree."""
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
+        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
+        assert (sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
 
-    def test_worktree_uses_mind_name_by_default(self, git_sandbox: Sandbox):
-        """Worktree name defaults to mind name."""
-        git_sandbox.run('minds stage --worktree --name robin --task "test"')
-        assert (git_sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
-
-    def test_worktree_custom_name(self, git_sandbox: Sandbox):
-        """--worktree with value uses custom worktree name."""
-        git_sandbox.run('minds stage --worktree feature-x --name robin --task "test"')
-        # Mind still named robin
-        assert (git_sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
-        # Worktree named feature-x
-        assert (git_sandbox.ctx.paths.root / "worktrees" / "feature-x").is_dir()
-
-    def test_worktree_welcome_has_location(self, git_sandbox: Sandbox):
-        """welcome.md has location populated when --worktree used."""
-        git_sandbox.run('minds stage --worktree --name robin --task "test"')
-        path = git_sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
+    def test_welcome_has_location(self, sandbox: Sandbox):
+        """welcome.md has location populated."""
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
+        path = sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
         content = path.read_text()
         assert "**Location:** `worktrees/robin/`" in content
 
-    def test_worktree_custom_name_in_welcome(self, git_sandbox: Sandbox):
-        """welcome.md has custom worktree name when provided."""
-        git_sandbox.run('minds stage --worktree feature-x --name robin --task "test"')
-        path = git_sandbox.ctx.paths.user.minds_dir / "robin" / "work" / "welcome.md"
-        content = path.read_text()
-        assert "**Location:** `worktrees/feature-x/`" in content
-
     def test_rejects_existing_nonempty_worktree_dir(self, sandbox: Sandbox):
         """Error when worktree directory exists and is not empty."""
-        # Create non-empty directory (no git needed for this test)
         worktree_dir = sandbox.ctx.paths.root / "worktrees" / "robin"
         worktree_dir.mkdir(parents=True)
         (worktree_dir / "some-file.txt").write_text("content")
 
         with pytest.raises(CommandError, match="already exists and is not empty"):
-            sandbox.run('minds stage --worktree --name robin --task "test"')
+            sandbox.run('minds stage --name robin --task "test" --from-branch main')
 
-    def test_outputs_worktree_location(self, git_sandbox: Sandbox, capsys):
+    def test_outputs_worktree_location(self, sandbox: Sandbox, capsys):
         """Output includes worktree location."""
-        git_sandbox.run('minds stage --worktree --name robin --task "test"')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
         assert "worktrees/robin/" in output
 
@@ -339,18 +275,15 @@ class TestMindReuse:
 
     def test_reuses_mind_without_session(self, sandbox: Sandbox, capsys):
         """Reuses existing mind that has no active session."""
-        # Create an existing mind
         minds_dir = sandbox.ctx.paths.user.minds_dir
         (minds_dir / "robin" / "work").mkdir(parents=True)
         (minds_dir / "robin" / "home").mkdir(parents=True)
         (minds_dir / "robin" / "references.toml").write_text("")
 
-        # Run minds stage - should reuse robin, not create new
-        sandbox.run('minds stage --no-worktree --task "test"')
+        sandbox.run('minds stage --task "test" --from-branch main')
         output = capsys.readouterr().out
 
         assert "robin" in output
-        # Should NOT have created any new mind folders
         mind_dirs = [d for d in minds_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
         assert len(mind_dirs) == 1
         assert mind_dirs[0].name == "robin"
@@ -359,41 +292,34 @@ class TestMindReuse:
         """Creates new mind when all existing minds have active sessions."""
         from mg.helpers.sessions import create_session
 
-        # Create existing mind
         minds_dir = sandbox.ctx.paths.user.minds_dir
         (minds_dir / "robin" / "work").mkdir(parents=True)
         (minds_dir / "robin" / "home").mkdir(parents=True)
         (minds_dir / "robin" / "references.toml").write_text("")
 
-        # Create session for robin
         sessions_file = sandbox.ctx.paths.user.sessions_file
         create_session(sessions_file, "test task", "robin")
 
-        # Run minds stage - should create new since robin has session
         with patch("mg.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
-            sandbox.run('minds stage --no-worktree --task "test"')
+            sandbox.run('minds stage --task "test" --from-branch main')
 
-        # Should have created sparrow
         assert (minds_dir / "sparrow").is_dir()
 
     def test_reuses_random_from_multiple_available(self, sandbox: Sandbox):
         """Picks randomly from multiple available minds."""
         import random
 
-        # Create multiple minds without sessions
         minds_dir = sandbox.ctx.paths.user.minds_dir
         for name in ["alpha", "beta", "gamma"]:
             (minds_dir / name / "work").mkdir(parents=True)
             (minds_dir / name / "home").mkdir(parents=True)
             (minds_dir / name / "references.toml").write_text("")
 
-        # Seed random for determinism
         random.seed(42)
-        sandbox.run('minds stage --no-worktree --task "test"')
+        sandbox.run('minds stage --task "test" --from-branch main')
 
-        # One of them should have been selected (no new mind created)
         mind_dirs = [d for d in minds_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
         assert set(d.name for d in mind_dirs) == {"alpha", "beta", "gamma"}
 
@@ -403,18 +329,15 @@ class TestMindReuse:
 
         minds_dir = sandbox.ctx.paths.user.minds_dir
 
-        # Create two minds
         for name in ["busy", "idle"]:
             (minds_dir / name / "work").mkdir(parents=True)
             (minds_dir / name / "home").mkdir(parents=True)
             (minds_dir / name / "references.toml").write_text("")
 
-        # Give "busy" a session
         sessions_file = sandbox.ctx.paths.user.sessions_file
         create_session(sessions_file, "working on stuff", "busy")
 
-        # Run minds stage - should only pick "idle"
-        sandbox.run('minds stage --no-worktree --task "test"')
+        sandbox.run('minds stage --task "test" --from-branch main')
         output = capsys.readouterr().out
 
         assert "idle" in output
@@ -432,31 +355,43 @@ class TestSessionCreation:
     def test_task_flag_required(self, sandbox: Sandbox):
         """Error when --task not provided."""
         with pytest.raises(CommandError, match="--task is required"):
-            sandbox.run("minds stage --no-worktree --name robin")
+            sandbox.run("minds stage --name robin")
 
     def test_creates_session_with_staged_status(self, sandbox: Sandbox):
         """Session is created with status 'staged'."""
-        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert len(sessions) == 1
         assert sessions[0].status == "staged"
 
     def test_session_has_task(self, sandbox: Sandbox):
         """Session stores the --task value."""
-        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].task == "build feature"
 
     def test_session_has_mind(self, sandbox: Sandbox):
         """Session is linked to the mind."""
-        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].mind == "robin"
+
+    def test_session_has_branch(self, sandbox: Sandbox):
+        """Session records the mind's branch."""
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].branch == "robin"
+
+    def test_session_has_base_branch(self, sandbox: Sandbox):
+        """Session records the base branch."""
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].base_branch == "main"
 
     def test_session_has_description(self, sandbox: Sandbox):
         """Session stores --description when provided."""
         sandbox.run(
-            'minds stage --no-worktree --name robin --task "build feature"'
+            'minds stage --name robin --task "build feature" --from-branch main'
             ' --description "Detailed requirements here"'
         )
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
@@ -464,27 +399,99 @@ class TestSessionCreation:
 
     def test_session_description_empty_by_default(self, sandbox: Sandbox):
         """Session description is empty when --description not provided."""
-        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].description == ""
 
     def test_session_parent_from_env(self, sandbox: Sandbox):
         """Session parent is set from MG_SESSION env var."""
         with patch.dict("os.environ", {"MG_SESSION": "parent-session-123"}):
-            sandbox.run('minds stage --no-worktree --name robin --task "sub-task"')
+            sandbox.run('minds stage --name robin --task "sub-task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].parent == "parent-session-123"
 
     def test_session_parent_empty_without_env(self, sandbox: Sandbox):
         """Session parent is empty when MG_SESSION not set."""
         with patch.dict("os.environ", {}, clear=True):
-            sandbox.run('minds stage --no-worktree --name robin --task "root task"')
+            sandbox.run('minds stage --name robin --task "root task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].parent == ""
 
     def test_output_includes_session_id(self, sandbox: Sandbox, capsys):
         """Output shows the session short_id."""
-        sandbox.run('minds stage --no-worktree --name robin --task "build feature"')
+        sandbox.run('minds stage --name robin --task "build feature" --from-branch main')
         output = capsys.readouterr().out
         assert "staged" in output
+
+
+# =============================================================================
+# Base Branch Detection Tests
+# =============================================================================
+
+
+class TestBaseBranchDetection:
+    """Test auto-detection of base branch from parent session."""
+
+    def test_errors_without_mg_session(self, sandbox: Sandbox):
+        """Errors when MG_SESSION is not set and --from-branch not provided."""
+        with patch.dict("os.environ", {}, clear=True):
+            with pytest.raises(CommandError, match="MG_SESSION is not set"):
+                sandbox.run('minds stage --name robin --task "test"')
+
+    def test_uses_parent_session_branch(self, sandbox: Sandbox):
+        """Uses parent session's branch as base branch."""
+        from mg.helpers.sessions import create_session
+
+        # Create a "wren" branch so git worktree can use it as base
+        git = Git(sandbox.ctx.paths.root, quiet=True)
+        git.run("branch wren")
+
+        sessions_file = sandbox.ctx.paths.user.sessions_file
+        parent = create_session(
+            sessions_file, "parent task", "wren",
+            branch="wren", base_branch="main",
+        )
+
+        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+            sandbox.run('minds stage --name robin --task "test"')
+
+        sessions = load_sessions(sessions_file)
+        robin_session = [s for s in sessions if s.mind == "robin"][0]
+        assert robin_session.base_branch == "wren"
+
+    def test_falls_back_to_default_when_parent_has_no_branch(self, sandbox: Sandbox):
+        """Falls back to default_branch when parent session has no branch."""
+        from mg.helpers.sessions import create_session
+
+        sessions_file = sandbox.ctx.paths.user.sessions_file
+        parent = create_session(sessions_file, "parent task", "wren")
+
+        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+            sandbox.run('minds stage --name robin --task "test"')
+
+        sessions = load_sessions(sessions_file)
+        robin_session = [s for s in sessions if s.mind == "robin"][0]
+        assert robin_session.base_branch == "main"
+
+    def test_from_branch_overrides_parent(self, sandbox: Sandbox):
+        """--from-branch takes priority over parent session's branch."""
+        from mg.helpers.sessions import create_session
+
+        # Create branches so git worktree can reference them
+        git = Git(sandbox.ctx.paths.root, quiet=True)
+        git.run("branch wren")
+
+        sessions_file = sandbox.ctx.paths.user.sessions_file
+        parent = create_session(
+            sessions_file, "parent task", "wren",
+            branch="wren", base_branch="main",
+        )
+
+        # --from-branch main should override the parent's branch (wren)
+        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+            sandbox.run('minds stage --name robin --task "test" --from-branch main')
+
+        sessions = load_sessions(sessions_file)
+        robin_session = [s for s in sessions if s.mind == "robin"][0]
+        assert robin_session.base_branch == "main"
 

@@ -32,6 +32,8 @@ class Session:
     status: str = "started"  # staged / started
     parent: str = ""  # Parent mg session id (empty = human root)
     description: str = ""  # Long-form body (commit body convention)
+    branch: str = ""  # Branch this mind's worktree is on
+    base_branch: str = ""  # Branch this worktree was created from
     claude_session_id: str = ""  # Current Claude session id
     old_claude_session_ids: list[str] = field(default_factory=list)
 
@@ -59,6 +61,8 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 status=entry.get("status", "started"),
                 parent=entry.get("parent", ""),
                 description=entry.get("description", ""),
+                branch=entry.get("branch", ""),
+                base_branch=entry.get("base_branch", ""),
                 claude_session_id=entry.get("claude_session_id", ""),
                 old_claude_session_ids=entry.get("old_claude_session_ids", []),
             )
@@ -104,6 +108,10 @@ def _session_to_dict(s: Session) -> dict:
     }
     if s.parent:
         d["parent"] = s.parent
+    if s.branch:
+        d["branch"] = s.branch
+    if s.base_branch:
+        d["base_branch"] = s.base_branch
     if s.description:
         d["description"] = s.description
     if s.claude_session_id:
@@ -120,6 +128,8 @@ def create_session(
     *,
     status: str = "started",
     parent: str = "",
+    branch: str = "",
+    base_branch: str = "",
     description: str = "",
 ) -> Session:
     """Create and save a new session.
@@ -141,6 +151,8 @@ def create_session(
         short_id=get_next_short_id(existing),
         status=status,
         parent=parent,
+        branch=branch,
+        base_branch=base_branch,
         description=description,
     )
     all_sessions = [session] + existing
