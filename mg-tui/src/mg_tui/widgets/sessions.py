@@ -1,8 +1,8 @@
 """Sessions widget — displays active sessions in a tree with preview.
 
 Full-screen tab content. The tree shows sessions nested by delegation
-hierarchy. Highlighting a node updates the preview area below. Pressing
-Enter switches to the Session tab for that session.
+hierarchy. Highlighting a node updates the preview area below. The launch
+action starts the highlighted mind.
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ class SessionsWidget(Vertical):
     BINDINGS = [
         Binding("j", "cursor_down", "Cursor Down", show=False, id="sessions.cursor_down"),
         Binding("k", "cursor_up", "Cursor Up", show=False, id="sessions.cursor_up"),
+        Binding("enter", "launch_session", "Launch", id="sessions.launch"),
     ]
 
     def action_cursor_down(self) -> None:
@@ -97,9 +98,13 @@ class SessionsWidget(Vertical):
         preview = self.query_one(SessionPreview)
         preview.render_preview(event.node.data)
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Launch the selected mind."""
-        entry: SessionEntry | None = event.node.data
+    def action_launch_session(self) -> None:
+        """Launch the highlighted mind."""
+        tree = self.query_one(Tree)
+        node = tree.cursor_node
+        if node is None:
+            return
+        entry: SessionEntry | None = node.data
         if entry is None:
             return
 
