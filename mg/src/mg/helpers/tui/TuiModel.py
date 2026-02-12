@@ -24,10 +24,12 @@ from mg.helpers.tui._base import TuiModelSection
 class SessionEntry:
     """A session displayed in the TUI."""
 
+    id: str = ""
     mind: str = ""
     task: str = ""
     short_id: int = 0
     status: str = "started"  # staged / started
+    parent_id: str = ""
 
 
 # ---------------------------------------------------------------------------

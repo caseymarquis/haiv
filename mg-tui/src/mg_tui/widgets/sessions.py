@@ -1,8 +1,8 @@
 """Sessions widget — displays active sessions in a tree with preview.
 
-Full-screen tab content. The tree shows all sessions (eventually nested
-for delegation hierarchy). Highlighting a node updates the preview area
-below. Pressing Enter switches to the Session tab for that session.
+Full-screen tab content. The tree shows sessions nested by delegation
+hierarchy. Highlighting a node updates the preview area below. Pressing
+Enter switches to the Session tab for that session.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from textual.widgets import Static, TabbedContent, Tree
 
 from mg.helpers.tui import helpers
 from mg.helpers.tui.TuiModel import SessionEntry
+from mg.helpers.utils.trees import TreeNode, build_tree
 
 
 class SessionPreview(Static):
@@ -73,10 +74,24 @@ class SessionsWidget(Vertical):
     def _render_sessions(self, sessions) -> None:
         tree = self.query_one(Tree)
         tree.root.remove_children()
-        for entry in sessions.entries:
-            status = entry.status or "none"
-            label = f"[{status}] {entry.task} ({entry.mind})"
-            tree.root.add_leaf(label, data=entry)
+        entries = sessions.entries
+        by_id = {e.id: e for e in entries}
+        pairs = [(e, by_id.get(e.parent_id) if e.parent_id else None) for e in entries]
+        roots = build_tree(pairs)
+
+        def _add_nodes(parent_tree_node, session_nodes: list[TreeNode[SessionEntry]]) -> None:
+            for node in session_nodes:
+                entry = node.item
+                status = entry.status or "none"
+                label = f"[{status}] {entry.task} ({entry.mind})"
+                if node.child_nodes:
+                    branch = parent_tree_node.add(label, data=entry)
+                    branch.expand()
+                    _add_nodes(branch, node.child_nodes)
+                else:
+                    parent_tree_node.add_leaf(label, data=entry)
+
+        _add_nodes(tree.root, roots)
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Update preview when cursor moves to a new node."""
