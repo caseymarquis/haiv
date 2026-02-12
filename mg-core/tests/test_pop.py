@@ -138,6 +138,27 @@ class TestMerge:
             with pytest.raises(CommandError, match="MG_SESSION"):
                 sandbox.run("pop --merge")
 
+    def test_skips_merge_when_branch_has_no_new_commits(self, sandbox: Sandbox, capsys):
+        """Skips merge and still cleans up when branch has nothing to merge."""
+        root = sandbox.ctx.paths.root
+        git = Git(root, quiet=True)
+
+        # Create a worktree branch with NO new commits (identical to main)
+        echo_worktree = root / "worktrees" / "echo"
+        git.run(f"worktree add -b echo {echo_worktree} main")
+
+        session = _create_session_with_branch(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            sandbox.run("pop --merge")
+
+        # Worktree and branch should still be cleaned up
+        assert not echo_worktree.exists()
+
+        # Should mention skipping
+        output = capsys.readouterr().out
+        assert "no new commits" in output.lower()
+
     def test_errors_when_session_missing_branch(self, sandbox: Sandbox):
         """Raises error when session has no branch metadata."""
         session = create_session(

@@ -75,9 +75,17 @@ def _do_merge(ctx: cmd.Ctx) -> None:
     if branch == base_branch:
         return
 
-    # Merge from the base branch's worktree
+    # Check if branch has commits to merge
     base_git = ctx.git.at_worktree(base_branch)
-    base_git.run(f"merge {branch}", intent=f"merge '{branch}' into '{base_branch}'")
+    ahead = base_git.run(
+        f"rev-list {base_branch}..{branch} --count",
+        intent=f"check if '{branch}' has commits ahead of '{base_branch}'",
+    ).strip()
+
+    if int(ahead) > 0:
+        base_git.run(f"merge {branch}", intent=f"merge '{branch}' into '{base_branch}'")
+    else:
+        ctx.print(f"'{branch}' has no new commits vs '{base_branch}', skipping merge.")
 
     # Remove the worktree and branch (delete from base so git sees it as merged)
     ctx.git.run(f"worktree remove worktrees/{branch}", intent=f"remove worktree for '{branch}'")
