@@ -48,7 +48,7 @@ class SessionsWidget(Vertical):
     BINDINGS = [
         Binding("j", "cursor_down", "Cursor Down", show=False, id="sessions.cursor_down"),
         Binding("k", "cursor_up", "Cursor Up", show=False, id="sessions.cursor_up"),
-        Binding("enter", "launch_session", "Launch", id="sessions.launch"),
+        Binding("enter", "launch_session", "Launch", id="sessions.launch", priority=True),
     ]
 
     def action_cursor_down(self) -> None:
