@@ -50,7 +50,12 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
     ctx.print("  3. Discuss your findings.")
     ctx.print("  4. Ensure proper test coverage and run tests.")
     ctx.print("  5. Commit all changes to your worktree branch.")
-    ctx.print("  6. Run `mg pop --merge`")
+    cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
+    if cd_to != ".":
+        ctx.print(f"  6. Run `cd \"{cd_to}\" && mg pop --merge`")
+    else:
+        ctx.print("  6. Run `mg pop --merge`")
+
     ctx.print("  7. Run `mg pop --session`")
 
 
@@ -67,6 +72,10 @@ def _do_merge(ctx: cmd.Ctx) -> None:
 
     branch = session.branch
     base_branch = session.base_branch
+    if branch == base_branch:
+        return
+    if base_branch.empty():
+        return
 
     # Merge from the base branch's worktree
     base_git = ctx.git.at_worktree(base_branch)
