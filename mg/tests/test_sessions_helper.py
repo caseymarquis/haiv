@@ -8,6 +8,7 @@ from unittest.mock import patch
 from mg.errors import CommandError
 from mg.helpers.sessions import (
     Session,
+    build_session_tree,
     create_session,
     get_current_session,
     load_sessions,
@@ -17,6 +18,63 @@ from mg.helpers.sessions import (
     get_session,
     get_most_recent_session_for_mind,
 )
+
+
+def _session(id: str, mind: str = "wren", task: str = "task", parent_id: str = "") -> Session:
+    """Helper to create a Session with sensible defaults."""
+    return Session(
+        id=id, task=task, mind=mind,
+        started=datetime.now(timezone.utc),
+        short_id=0, parent_id=parent_id,
+    )
+
+
+class TestBuildSessionTree:
+    """Tests for build_session_tree()."""
+
+    def test_flat_sessions_all_become_roots(self):
+        """Sessions with no parent_id are all roots."""
+        a = _session("a")
+        b = _session("b", mind="robin")
+        roots = build_session_tree([a, b])
+
+        assert len(roots) == 2
+        assert roots[0].item is a
+        assert roots[1].item is b
+
+    def test_child_linked_to_parent(self):
+        """Session with parent_id is nested under its parent."""
+        parent = _session("parent-uuid")
+        child = _session("child-uuid", mind="spark", parent_id="parent-uuid")
+        roots = build_session_tree([parent, child])
+
+        assert len(roots) == 1
+        assert roots[0].item is parent
+        assert len(roots[0].child_nodes) == 1
+        assert roots[0].child_nodes[0].item is child
+
+    def test_orphan_becomes_root(self):
+        """Session whose parent_id doesn't match any session is a root."""
+        orphan = _session("orphan-uuid", parent_id="gone-uuid")
+        roots = build_session_tree([orphan])
+
+        assert len(roots) == 1
+        assert roots[0].item is orphan
+
+    def test_mixed_tree(self):
+        """Multiple roots with children at different levels."""
+        r1 = _session("r1")
+        r2 = _session("r2", mind="robin")
+        c1 = _session("c1", mind="spark", parent_id="r1")
+        c2 = _session("c2", mind="echo", parent_id="c1")
+        roots = build_session_tree([r1, r2, c1, c2])
+
+        assert len(roots) == 2
+        assert roots[0].item is r1
+        assert roots[1].item is r2
+        # r1 -> c1 -> c2
+        assert roots[0].child_nodes[0].item is c1
+        assert roots[0].child_nodes[0].child_nodes[0].item is c2
 
 
 class TestGetSession:
@@ -257,7 +315,7 @@ class TestCreateSession:
         assert session.task == "Test task"
         assert session.mind == "wren"
         assert session.status == "started"
-        assert session.parent == ""
+        assert session.parent_id == ""
         assert session.description == ""
 
     def test_creates_with_staged_status(self, tmp_path):
@@ -274,10 +332,10 @@ class TestCreateSession:
 
         session = create_session(
             sessions_file, "Child task", "spark",
-            status="staged", parent="parent-uuid-123",
+            status="staged", parent_id="parent-uuid-123",
         )
 
-        assert session.parent == "parent-uuid-123"
+        assert session.parent_id == "parent-uuid-123"
 
     def test_creates_with_description(self, tmp_path):
         """Creates a session with long-form description."""
@@ -318,13 +376,13 @@ class TestCreateSession:
 
         created = create_session(
             sessions_file, "Task", "wren",
-            status="staged", parent="parent-123", description="Details",
+            status="staged", parent_id="parent-123", description="Details",
         )
 
         loaded = load_sessions(sessions_file)
         session = [s for s in loaded if s.id == created.id][0]
         assert session.status == "staged"
-        assert session.parent == "parent-123"
+        assert session.parent_id == "parent-123"
         assert session.description == "Details"
 
 
@@ -392,9 +450,9 @@ class TestResolveSession:
         """Parent is set when creating a new session."""
         sessions_file = tmp_path / "sessions.toml"
 
-        session = resolve_session(sessions_file, "wren", task="child task", parent="parent-123")
+        session = resolve_session(sessions_file, "wren", task="child task", parent_id="parent-123")
 
-        assert session.parent == "parent-123"
+        assert session.parent_id == "parent-123"
 
     def test_preserves_session_identity(self, tmp_path):
         """Transitioning a session preserves its id."""

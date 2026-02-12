@@ -80,10 +80,10 @@ class TestMindLaunchNoExistingPane:
 
         session = mind_launch(
             terminal, client, sessions_file, "wren", tmp_path,
-            task="child task", parent="parent-123",
+            task="child task", parent_id="parent-123",
         )
 
-        assert session.parent == "parent-123"
+        assert session.parent_id == "parent-123"
 
     def test_env_vars_include_mind_and_session(self, tmp_path):
         """Environment variables contain MG_MIND, MG_SESSION, and MG_ROOT."""

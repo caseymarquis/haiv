@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from mg.helpers.utils.trees import TreeNode, build_tree
+
 
 MAX_SESSIONS = 20
 
@@ -30,7 +32,7 @@ class Session:
     mind: str = ""
     short_id: int = 0  # Rolling integer for easy user reference
     status: str = "started"  # staged / started
-    parent: str = ""  # Parent mg session id (empty = human root)
+    parent_id: str = ""  # Parent mg session id (empty = human root)
     description: str = ""  # Long-form body (commit body convention)
     branch: str = ""  # Branch this mind's worktree is on
     base_branch: str = ""  # Branch this worktree was created from
@@ -59,7 +61,7 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 mind=entry.get("mind", ""),
                 short_id=entry.get("short_id", 0),
                 status=entry.get("status", "started"),
-                parent=entry.get("parent", ""),
+                parent_id=entry.get("parent", ""),
                 description=entry.get("description", ""),
                 branch=entry.get("branch", ""),
                 base_branch=entry.get("base_branch", ""),
@@ -106,8 +108,8 @@ def _session_to_dict(s: Session) -> dict:
         "short_id": s.short_id,
         "status": s.status,
     }
-    if s.parent:
-        d["parent"] = s.parent
+    if s.parent_id:
+        d["parent"] = s.parent_id
     if s.branch:
         d["branch"] = s.branch
     if s.base_branch:
@@ -127,7 +129,7 @@ def create_session(
     mind: str,
     *,
     status: str = "started",
-    parent: str = "",
+    parent_id: str = "",
     branch: str = "",
     base_branch: str = "",
     description: str = "",
@@ -150,7 +152,7 @@ def create_session(
         mind=mind,
         short_id=get_next_short_id(existing),
         status=status,
-        parent=parent,
+        parent_id=parent_id,
         branch=branch,
         base_branch=base_branch,
         description=description,
@@ -299,7 +301,7 @@ def resolve_session(
     mind_name: str,
     *,
     task: str | None = None,
-    parent: str = "",
+    parent_id: str = "",
 ) -> Session:
     """Ensure a mind has a started session, creating one if needed.
 
@@ -312,7 +314,7 @@ def resolve_session(
         mind_name: The mind to resolve a session for.
         task: Task description for new sessions. If None and no existing
               session, creates one with an empty task.
-        parent: Parent session id (for delegation chains).
+        parent_id: Parent session id (for delegation chains).
 
     Returns:
         A session in 'started' status with a claude_session_id set.
@@ -333,7 +335,7 @@ def resolve_session(
     claude_session_id = str(uuid.uuid4())
     session = create_session(
         sessions_file, task or "", mind_name,
-        status="started", parent=parent,
+        status="started", parent_id=parent_id,
     )
 
     def set_claude_id(s: Session) -> None:
@@ -360,3 +362,16 @@ def remove_session(sessions_file: Path, session_id: str) -> bool:
 
     _write_sessions(sessions_file, sessions)
     return True
+
+
+SessionNode = TreeNode[Session]
+
+
+def build_session_tree(sessions: list[Session]) -> list[SessionNode]:
+    """Build a tree from sessions using their parent_id field.
+
+    Sessions with no parent or whose parent is missing become roots.
+    """
+    by_id = {s.id: s for s in sessions}
+    pairs = [(s, by_id.get(s.parent_id) if s.parent_id else None) for s in sessions]
+    return build_tree(pairs)

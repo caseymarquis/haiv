@@ -124,13 +124,13 @@ def execute(ctx: cmd.Ctx) -> None:
             raise CommandError(str(e)) from e
 
     # Create session with status "staged"
-    parent = os.environ.get(MG_SESSION, "")
+    parent_id = os.environ.get(MG_SESSION, "")
     session = create_session(
         ctx.paths.user.sessions_file,
         task,
         name,
         status="staged",
-        parent=parent,
+        parent_id=parent_id,
         branch=name,
         base_branch=base_branch,
         description=description,

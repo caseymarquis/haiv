@@ -77,11 +77,11 @@ class Tui:
         mind_name: str,
         *,
         task: str | None = None,
-        parent: str = "",
+        parent_id: str = "",
     ) -> Session:
         """Put a mind in the hud — switching, launching, or restarting as needed."""
         return helpers.mind_launch(
             self._terminal, self._require_client(), self._sessions_file,
-            mind_name, self._mg_root, task=task, parent=parent,
+            mind_name, self._mg_root, task=task, parent_id=parent_id,
         )
 

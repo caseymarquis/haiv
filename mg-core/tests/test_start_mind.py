@@ -134,7 +134,7 @@ class TestStartExecution:
             )
         mock_tui = cast(MagicMock, result.ctx.tui)
         kwargs = mock_tui.mind_launch.call_args[1]
-        assert kwargs["parent"] == "parent-123"
+        assert kwargs["parent_id"] == "parent-123"
 
     def test_passes_empty_parent_when_no_env(self, tmp_path):
         """Parent is empty string when MG_SESSION not set."""
@@ -146,4 +146,4 @@ class TestStartExecution:
             )
         mock_tui = cast(MagicMock, result.ctx.tui)
         kwargs = mock_tui.mind_launch.call_args[1]
-        assert kwargs["parent"] == ""
+        assert kwargs["parent_id"] == ""

@@ -85,7 +85,7 @@ def mind_launch(
     mg_root: Path,
     *,
     task: str | None = None,
-    parent: str = "",
+    parent_id: str = "",
 ) -> Session:
     """Put a mind in the hud — switching, launching, or restarting as needed.
 
@@ -101,7 +101,7 @@ def mind_launch(
         mg_root: Project root path (for environment variables).
         task: Task description for new sessions. If None and no existing
               session, creates one with an empty task.
-        parent: Parent session id (for delegation chains).
+        parent_id: Parent session id (for delegation chains).
 
     Returns:
         The session for this mind.
@@ -126,7 +126,7 @@ def mind_launch(
             return session
 
     # Need to launch a new pane — resolve or create session
-    session = resolve_session(sessions_file, mind_name, task=task, parent=parent)
+    session = resolve_session(sessions_file, mind_name, task=task, parent_id=parent_id)
 
     sessions_refresh(client, sessions_file)
 

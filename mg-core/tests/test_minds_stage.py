@@ -422,14 +422,14 @@ class TestSessionCreation:
         with patch.dict("os.environ", {"MG_SESSION": "parent-session-123"}):
             sandbox.run('minds stage --name robin --task "sub-task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
-        assert sessions[0].parent == "parent-session-123"
+        assert sessions[0].parent_id == "parent-session-123"
 
     def test_session_parent_empty_without_env(self, sandbox: Sandbox):
         """Session parent is empty when MG_SESSION not set."""
         with patch.dict("os.environ", {}, clear=True):
             sandbox.run('minds stage --name robin --task "root task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
-        assert sessions[0].parent == ""
+        assert sessions[0].parent_id == ""
 
     def test_output_includes_session_id(self, sandbox: Sandbox, capsys):
         """Output shows the session short_id."""

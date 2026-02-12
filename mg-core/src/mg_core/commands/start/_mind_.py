@@ -32,19 +32,19 @@ def define() -> cmd.Def:
 def execute(ctx: cmd.Ctx) -> None:
     mind = ctx.args.get_one("mind", type=Mind)
     task = ctx.args.get_one("task") if ctx.args.has("task") else None
-    parent = os.environ.get(MG_SESSION, "")
+    parent_id = os.environ.get(MG_SESSION, "")
 
     if ctx.args.has("here"):
-        _launch_here(ctx, mind.name, task=task, parent=parent)
+        _launch_here(ctx, mind.name, task=task, parent_id=parent_id)
     else:
-        ctx.tui.mind_launch(mind.name, task=task, parent=parent)
+        ctx.tui.mind_launch(mind.name, task=task, parent_id=parent_id)
 
 
 def _launch_here(
-    ctx: cmd.Ctx, mind_name: str, *, task: str | None, parent: str,
+    ctx: cmd.Ctx, mind_name: str, *, task: str | None, parent_id: str,
 ) -> None:
     """Resolve a session and launch Claude in the current terminal."""
-    session = resolve_session(ctx.paths.user.sessions_file, mind_name, task=task, parent=parent)
+    session = resolve_session(ctx.paths.user.sessions_file, mind_name, task=task, parent_id=parent_id)
     env = build_env(mind_name, session.id, ctx.paths.root)
     claude_cmd = build_claude_command(mind_name, session.claude_session_id)
 
