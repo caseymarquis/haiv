@@ -12,12 +12,10 @@ from __future__ import annotations
 
 import os
 import random
-from pathlib import Path
 
 from mg import cmd
 from mg._infrastructure.env import MG_SESSION
 from mg.errors import CommandError
-from mg.wrappers.git import Git
 
 from mg.helpers.minds import (
     InvalidMindNameError,
@@ -44,6 +42,11 @@ def define() -> cmd.Def:
                 min_args=0,
                 max_args=1,
                 description="Base branch for worktree (defaults to parent's branch or project default)",
+            ),
+            cmd.Flag(
+                "allow-dirty",
+                type=bool,
+                description="Skip clean working tree check",
             ),
         ],
     )
@@ -93,7 +96,8 @@ def execute(ctx: cmd.Ctx) -> None:
         base_branch = _detect_base_branch(ctx)
 
     # Check that the base branch's working tree is clean
-    _check_clean_working_tree(ctx, base_branch)
+    if not ctx.args.has("allow-dirty"):
+        _check_clean_working_tree(ctx, base_branch)
 
     # Check if worktree directory already exists and has contents
     worktree_path = ctx.paths.root / "worktrees" / name
@@ -178,30 +182,15 @@ def _detect_base_branch(ctx: cmd.Ctx) -> str:
 
 def _check_clean_working_tree(ctx: cmd.Ctx, base_branch: str) -> None:
     """Raise CommandError if the base branch's working tree has uncommitted changes."""
-    worktree_path = _find_worktree_for_branch(ctx, base_branch)
+    worktree_path = ctx.git.worktree_path_for_branch(base_branch)
     if worktree_path is None:
         return  # Branch not checked out, nothing to check
 
-    git = Git(worktree_path, quiet=True)
-    status = git.run("status --porcelain", intent="check working tree status").strip()
+    status = ctx.git.at_path(worktree_path).run(
+        "status --porcelain", intent="check working tree status"
+    ).strip()
     if status:
         raise CommandError(
             f"Working tree for '{base_branch}' has uncommitted changes.\n\n"
             f"Commit your changes before staging a new mind."
         )
-
-
-def _find_worktree_for_branch(ctx: cmd.Ctx, branch: str) -> Path | None:
-    """Find the worktree path for a given branch, or None if not checked out."""
-    output = Git(ctx.paths.root, quiet=True).run(
-        "worktree list --porcelain", intent="list worktrees"
-    )
-    current_path = None
-    for line in output.splitlines():
-        if line.startswith("worktree "):
-            current_path = Path(line[len("worktree "):])
-        elif line.startswith("branch refs/heads/"):
-            branch_name = line[len("branch refs/heads/"):]
-            if branch_name == branch:
-                return current_path
-    return None

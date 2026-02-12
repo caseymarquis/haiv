@@ -36,6 +36,24 @@ class Git:
         self.path = Path(path)
         self.quiet = quiet
 
+    def at_path(self, path: Path | str) -> Git:
+        """Return a Git instance for a different working directory.
+
+        Relative paths are resolved against this instance's path.
+        """
+        return Git(self.path / path, quiet=self.quiet)
+
+    def at_worktree(self, branch: str) -> Git:
+        """Return a Git instance for the worktree where a branch is checked out.
+
+        Raises:
+            GitError: If the branch is not checked out in any worktree.
+        """
+        path = self.worktree_path_for_branch(branch)
+        if path is None:
+            raise GitError(f"No worktree found for branch '{branch}'")
+        return self.at_path(path)
+
     def run(self, cmd: str, *, intent: str | None = None) -> str:
         """Run a git command.
 
@@ -100,3 +118,18 @@ class Git:
             return self.run(f"config {key}").strip() or None
         except Exception:
             return None
+
+    def worktree_path_for_branch(self, branch: str) -> Path | None:
+        """Find the worktree path for a given branch, or None if not checked out."""
+        output = Git(self.path, quiet=True).run(
+            "worktree list --porcelain", intent="list worktrees"
+        )
+        current_path = None
+        for line in output.splitlines():
+            if line.startswith("worktree "):
+                current_path = Path(line[len("worktree "):])
+            elif line.startswith("branch refs/heads/"):
+                branch_name = line[len("branch refs/heads/"):]
+                if branch_name == branch:
+                    return current_path
+        return None

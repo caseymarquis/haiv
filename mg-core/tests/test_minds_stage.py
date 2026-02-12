@@ -270,7 +270,7 @@ class TestWorktreeCreation:
         (worktree_dir / "some-file.txt").write_text("content")
 
         with pytest.raises(CommandError, match="already exists and is not empty"):
-            sandbox.run('minds stage --name robin --task "test" --from-branch main')
+            sandbox.run('minds stage --name robin --task "test" --from-branch main --allow-dirty')
 
     def test_outputs_worktree_location(self, sandbox: Sandbox, capsys):
         """Output includes worktree location."""
@@ -294,7 +294,7 @@ class TestMindReuse:
         (minds_dir / "robin" / "home").mkdir(parents=True)
         (minds_dir / "robin" / "references.toml").write_text("")
 
-        sandbox.run('minds stage --task "test" --from-branch main')
+        sandbox.run('minds stage --task "test" --from-branch main --allow-dirty')
         output = capsys.readouterr().out
 
         assert "robin" in output
@@ -332,7 +332,7 @@ class TestMindReuse:
             (minds_dir / name / "references.toml").write_text("")
 
         random.seed(42)
-        sandbox.run('minds stage --task "test" --from-branch main')
+        sandbox.run('minds stage --task "test" --from-branch main --allow-dirty')
 
         mind_dirs = [d for d in minds_dir.iterdir() if d.is_dir() and not d.name.startswith("_")]
         assert set(d.name for d in mind_dirs) == {"alpha", "beta", "gamma"}
@@ -351,7 +351,7 @@ class TestMindReuse:
         sessions_file = sandbox.ctx.paths.user.sessions_file
         create_session(sessions_file, "working on stuff", "busy")
 
-        sandbox.run('minds stage --task "test" --from-branch main')
+        sandbox.run('minds stage --task "test" --from-branch main --allow-dirty')
         output = capsys.readouterr().out
 
         assert "idle" in output
@@ -481,7 +481,7 @@ class TestBaseBranchDetection:
         parent = create_session(sessions_file, "parent task", "wren")
 
         with patch.dict("os.environ", {"MG_SESSION": parent.id}):
-            sandbox.run('minds stage --name robin --task "test"')
+            sandbox.run('minds stage --name robin --task "test" --allow-dirty')
 
         sessions = load_sessions(sessions_file)
         robin_session = [s for s in sessions if s.mind == "robin"][0]
@@ -503,7 +503,7 @@ class TestBaseBranchDetection:
 
         # --from-branch main should override the parent's branch (wren)
         with patch.dict("os.environ", {"MG_SESSION": parent.id}):
-            sandbox.run('minds stage --name robin --task "test" --from-branch main')
+            sandbox.run('minds stage --name robin --task "test" --from-branch main --allow-dirty')
 
         sessions = load_sessions(sessions_file)
         robin_session = [s for s in sessions if s.mind == "robin"][0]

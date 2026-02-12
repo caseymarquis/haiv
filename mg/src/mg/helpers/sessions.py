@@ -193,6 +193,30 @@ def find_session(sessions_file: Path, session_id: str) -> Session | None:
     return None
 
 
+def get_current_session(sessions_file: Path) -> Session:
+    """Get the current session from the MG_SESSION environment variable.
+
+    Raises:
+        CommandError: If MG_SESSION is not set or session not found.
+    """
+    import os
+    from mg._infrastructure.env import MG_SESSION
+    from mg.errors import CommandError
+
+    session_id = os.environ.get(MG_SESSION, "")
+    if not session_id:
+        raise CommandError(
+            "MG_SESSION is not set — cannot detect current session.\n\n"
+            "  Set it to your session ID:  export MG_SESSION=<your-session-id>"
+        )
+
+    session = find_session(sessions_file, session_id)
+    if not session:
+        raise CommandError(f"Session not found: {session_id}")
+
+    return session
+
+
 def resolve_short_id(sessions_file: Path, short_id: int) -> str | None:
     """Translate a short_id to the full session ID.
 
