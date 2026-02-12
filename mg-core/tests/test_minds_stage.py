@@ -7,6 +7,7 @@ Tests the full execute() behavior including:
 - Template creation
 - Output prompts
 - Worktree creation
+- Clean working tree enforcement
 """
 
 from unittest.mock import patch
@@ -18,6 +19,19 @@ from mg.errors import CommandError
 from mg.helpers.sessions import load_sessions
 from mg.test import Sandbox
 from mg.wrappers.git import Git
+
+
+# Store original Git.run before any patching
+_original_git_run = Git.run
+
+
+def _intercept_worktree_list(worktree_output: str):
+    """Return a Git.run replacement that intercepts 'worktree list --porcelain'."""
+    def mock_run(self, cmd, *, intent=None):
+        if cmd == "worktree list --porcelain":
+            return worktree_output
+        return _original_git_run(self, cmd, intent=intent)
+    return mock_run
 
 
 # =============================================================================
@@ -494,4 +508,70 @@ class TestBaseBranchDetection:
         sessions = load_sessions(sessions_file)
         robin_session = [s for s in sessions if s.mind == "robin"][0]
         assert robin_session.base_branch == "main"
+
+
+# =============================================================================
+# Clean Working Tree Tests
+# =============================================================================
+
+
+class TestCleanWorkingTree:
+    """Test that staging refuses to run with uncommitted changes."""
+
+    def _worktree_output(self, root):
+        """Build mock worktree list output pointing main at the sandbox root."""
+        return (
+            f"worktree {root}\n"
+            f"HEAD 264bca4d3a8ef1b31bc266ecda47626bc3d1a937\n"
+            f"branch refs/heads/main\n"
+            f"\n"
+        )
+
+    def test_rejects_unstaged_changes(self, sandbox: Sandbox):
+        """Refuses to stage when base branch has unstaged modifications."""
+        root = sandbox.ctx.paths.root
+        (root / "README.md").write_text("modified\n")
+
+        output = self._worktree_output(root)
+        with patch.object(Git, "run", _intercept_worktree_list(output)):
+            with pytest.raises(CommandError, match="uncommitted changes"):
+                sandbox.run('minds stage --name robin --task "test" --from-branch main')
+
+    def test_rejects_staged_changes(self, sandbox: Sandbox):
+        """Refuses to stage when base branch has staged changes."""
+        root = sandbox.ctx.paths.root
+        git = Git(root, quiet=True)
+        (root / "README.md").write_text("modified\n")
+        git.run("add README.md")
+
+        output = self._worktree_output(root)
+        with patch.object(Git, "run", _intercept_worktree_list(output)):
+            with pytest.raises(CommandError, match="uncommitted changes"):
+                sandbox.run('minds stage --name robin --task "test" --from-branch main')
+
+    def test_rejects_untracked_files(self, sandbox: Sandbox):
+        """Untracked files also count as dirty."""
+        root = sandbox.ctx.paths.root
+        (root / "new_file.txt").write_text("new\n")
+
+        output = self._worktree_output(root)
+        with patch.object(Git, "run", _intercept_worktree_list(output)):
+            with pytest.raises(CommandError, match="uncommitted changes"):
+                sandbox.run('minds stage --name robin --task "test" --from-branch main')
+
+    def test_skips_check_when_branch_not_checked_out(self, sandbox: Sandbox):
+        """Skips check when base branch has no worktree (not checked out)."""
+        root = sandbox.ctx.paths.root
+        # Dirty the tree, but mock worktree list to show a different branch
+        (root / "README.md").write_text("modified\n")
+
+        output = (
+            f"worktree {root}\n"
+            f"HEAD 264bca4d3a8ef1b31bc266ecda47626bc3d1a937\n"
+            f"branch refs/heads/other-branch\n"
+            f"\n"
+        )
+        with patch.object(Git, "run", _intercept_worktree_list(output)):
+            sandbox.run('minds stage --name robin --task "test" --from-branch main')
+        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
 
