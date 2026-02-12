@@ -82,8 +82,7 @@ class SessionsWidget(Vertical):
         def _add_nodes(parent_tree_node, session_nodes: list[TreeNode[SessionEntry]]) -> None:
             for node in session_nodes:
                 entry = node.item
-                status = entry.status or "none"
-                label = f"[{status}] {entry.task} ({entry.mind})"
+                label = f"[{entry.short_id}] {entry.mind}: {entry.task}"
                 if node.child_nodes:
                     branch = parent_tree_node.add(label, data=entry)
                     branch.expand()
