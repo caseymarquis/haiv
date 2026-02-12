@@ -74,8 +74,6 @@ def _do_merge(ctx: cmd.Ctx) -> None:
     base_branch = session.base_branch
     if branch == base_branch:
         return
-    if base_branch.empty():
-        return
 
     # Merge from the base branch's worktree
     base_git = ctx.git.at_worktree(base_branch)
