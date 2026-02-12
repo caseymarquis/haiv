@@ -10,6 +10,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.events import Click
 from textual.widgets import Static, Tree
 
 from mg.helpers.tui import helpers
@@ -93,6 +94,11 @@ class SessionsWidget(Vertical):
                     parent_tree_node.add_leaf(label, data=entry)
 
         _add_nodes(tree.root, roots)
+
+    def on_click(self, event: Click) -> None:
+        """Double-click launches the highlighted mind."""
+        if event.chain >= 2:
+            self.action_launch_session()
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Update preview when cursor moves to a new node."""
