@@ -87,6 +87,7 @@ class SessionsWidget(Vertical):
                 if node.child_nodes:
                     branch = parent_tree_node.add(label, data=entry)
                     branch.expand()
+                    branch.allow_expand = False
                     _add_nodes(branch, node.child_nodes)
                 else:
                     parent_tree_node.add_leaf(label, data=entry)
