@@ -187,6 +187,20 @@ class TerminalManager:
 
     # -- Queries (public) --
 
+    def close_parked_mind(self, mind: str) -> None:
+        """Kill a parked mind's pane.
+
+        Args:
+            mind: Name of the mind whose parked pane to close.
+
+        Raises:
+            CommandError: If no parked pane found for the mind.
+        """
+        pane = self._find_parked_mind(mind)
+        if pane is None:
+            raise CommandError(f"No parked pane found for mind: {mind}")
+        self.wezterm.kill_pane(pane.pane_id)
+
     def is_mind_active(self, mind: str) -> bool:
         """True if mind is currently showing in the hud."""
         return self._active_mind_name() == mind

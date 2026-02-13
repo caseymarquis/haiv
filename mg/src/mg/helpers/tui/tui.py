@@ -72,6 +72,10 @@ class Tui:
         """Read sessions from disk and push into the TUI model."""
         helpers.sessions_refresh(self._require_client(), self._sessions_file)
 
+    def mind_close_pane(self, mind_name: str) -> None:
+        """Close a parked mind's pane."""
+        helpers.mind_close_pane(self._terminal, mind_name)
+
     def mind_launch(
         self,
         mind_name: str,

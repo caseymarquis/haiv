@@ -1,6 +1,7 @@
 """Tests for mg pop command."""
 
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -159,6 +160,17 @@ class TestMerge:
         output = capsys.readouterr().out
         assert "no new commits" in output.lower()
 
+    def test_reports_cleanly_when_branch_already_gone(self, sandbox: Sandbox, capsys):
+        """Reports cleanly when the branch no longer exists."""
+        session = _create_session_with_branch(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            sandbox.run("pop --merge")
+
+        output = capsys.readouterr().out
+        assert "missing" in output.lower()
+        assert "already synced" in output.lower()
+
     def test_errors_when_session_missing_branch(self, sandbox: Sandbox):
         """Raises error when session has no branch metadata."""
         session = create_session(
@@ -180,15 +192,60 @@ class TestMerge:
 class TestSession:
     """Test --session flag behavior."""
 
-    def test_removes_session(self, sandbox: Sandbox):
-        """Removes the current session."""
+    def test_removes_session_and_launches_parent(self, sandbox: Sandbox):
+        """Removes session, launches parent mind, and closes pane."""
+        # Create parent session, then child session
+        parent = create_session(
+            sandbox.ctx.paths.user.sessions_file,
+            "parent task",
+            "wren",
+        )
+        session = _create_session_with_branch(
+            sandbox, mind="echo", branch="echo", base_branch="main",
+        )
+        # Manually set parent_id (create_session helper doesn't expose it)
+        from mg.helpers.sessions import update_session
+        update_session(
+            sandbox.ctx.paths.user.sessions_file,
+            session.id,
+            lambda s: setattr(s, "parent_id", parent.id),
+        )
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            ctx = sandbox.run("pop --session")
+
+        # Session should be removed
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert all(s.id != session.id for s in sessions)
+        # Parent should still exist
+        assert any(s.id == parent.id for s in sessions)
+
+        # Should have launched parent mind and closed our pane
+        mock_tui = cast(MagicMock, ctx.tui)
+        mock_tui.mind_launch.assert_called_once_with("wren")
+        mock_tui.mind_close_pane.assert_called_once_with("echo")
+
+    def test_errors_when_no_parent(self, sandbox: Sandbox):
+        """Raises error when session has no parent."""
         session = _create_session_with_branch(sandbox)
 
         with patch.dict("os.environ", {"MG_SESSION": session.id}):
-            sandbox.run("pop --session")
+            with pytest.raises(CommandError, match="no parent"):
+                sandbox.run("pop --session")
 
-        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
-        assert len(sessions) == 0
+    def test_errors_when_parent_not_found(self, sandbox: Sandbox):
+        """Raises error when parent session doesn't exist."""
+        session = _create_session_with_branch(sandbox)
+        from mg.helpers.sessions import update_session
+        update_session(
+            sandbox.ctx.paths.user.sessions_file,
+            session.id,
+            lambda s: setattr(s, "parent_id", "nonexistent-id"),
+        )
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            with pytest.raises(CommandError, match="Parent session not found"):
+                sandbox.run("pop --session")
 
     def test_errors_without_mg_session(self, sandbox: Sandbox):
         """Raises error when MG_SESSION is not set."""

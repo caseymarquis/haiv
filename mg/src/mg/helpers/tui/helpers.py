@@ -141,6 +141,16 @@ def mind_launch(
     return session
 
 
+def mind_close_pane(terminal: TerminalManager, mind_name: str) -> None:
+    """Close a parked mind's pane.
+
+    Args:
+        terminal: TerminalManager for pane operations.
+        mind_name: Name of the mind whose parked pane to close.
+    """
+    terminal.close_parked_mind(mind_name)
+
+
 # -- Claude launch helpers --
 # These aren't really TUI concerns — they're about constructing the claude
 # invocation. They live here for now because mind_launch is the primary

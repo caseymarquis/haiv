@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from mg import cmd
 from mg.errors import CommandError
-from mg.helpers.sessions import get_current_session, remove_session
+from mg.helpers.sessions import find_session, get_current_session, remove_session
 
 
 def define() -> cmd.Def:
@@ -75,8 +75,20 @@ def _do_merge(ctx: cmd.Ctx) -> None:
     if branch == base_branch:
         return
 
-    # Check if branch has commits to merge
+    # Check if the branch still exists
     base_git = ctx.git.at_worktree(base_branch)
+    branch_exists = base_git.run(
+        f"branch --list {branch}", intent=f"check if branch '{branch}' exists",
+    ).strip()
+
+    if not branch_exists:
+        ctx.print(
+            f"Branch '{branch}' is missing. This is expected if changes were\n"
+            f"already synced or --merge was previously run."
+        )
+        return
+
+    # Check if branch has commits to merge
     ahead = base_git.run(
         f"rev-list {base_branch}..{branch} --count",
         intent=f"check if '{branch}' has commits ahead of '{base_branch}'",
@@ -93,7 +105,24 @@ def _do_merge(ctx: cmd.Ctx) -> None:
 
 
 def _do_session(ctx: cmd.Ctx) -> None:
-    """Remove the current session."""
+    """Remove the current session, launch parent, and close pane."""
     session = get_current_session(ctx.paths.user.sessions_file)
+
+    if not session.parent_id:
+        raise CommandError(
+            f"Session [{session.short_id}] has no parent session.\n"
+            f"  To remove manually: mg sessions {session.short_id} remove"
+        )
+
+    parent = find_session(ctx.paths.user.sessions_file, session.parent_id)
+    if not parent:
+        raise CommandError(
+            f"Parent session not found: {session.parent_id}\n"
+            f"  To remove manually: mg sessions {session.short_id} remove"
+        )
+
+    mind_name = session.mind
     remove_session(ctx.paths.user.sessions_file, session.id)
     ctx.tui.sessions_refresh()
+    ctx.tui.mind_launch(parent.mind)
+    ctx.tui.mind_close_pane(mind_name)
