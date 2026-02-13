@@ -120,9 +120,9 @@ class PkgPaths:
         return self.root / "resolvers"
 
     @property
-    def hooks_dir(self) -> Path:
-        """The hooks directory."""
-        return self.root / "hooks"
+    def mg_hook_handlers_dir(self) -> Path:
+        """The mg_hook_handlers directory for mg hook handler modules."""
+        return self.root / "mg_hook_handlers"
 
 
 @dataclass

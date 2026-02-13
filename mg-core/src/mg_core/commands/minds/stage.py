@@ -27,12 +27,13 @@ from mg.helpers.minds import (
     validate_mind_name,
 )
 from mg.helpers.sessions import create_session, find_session, load_sessions
-from mg_core.events import AFTER_WORKTREE_CREATED, WorktreeCreated
+from mg_core.mg_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
 
 
 def define() -> cmd.Def:
     return cmd.Def(
         description="Prep a mind for a new task",
+        enable_mg_hooks=True,
         flags=[
             cmd.Flag("task", type=str, description="Task summary (required)"),
             cmd.Flag("description", type=str, min_args=0, max_args=1, description="Long-form description"),

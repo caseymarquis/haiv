@@ -5,6 +5,7 @@ from typing import Any, TypeVar, overload
 
 from punq import Container
 
+from mg._infrastructure.mg_hooks import MgHookRegistry
 from mg._infrastructure.settings import SettingsCache, get_settings
 from mg.helpers.tui import Tui
 from mg.helpers.tui.TuiClient import TuiClient
@@ -49,6 +50,7 @@ class Def:
 
     description: str
     flags: list[Flag] = field(default_factory=list)
+    enable_mg_hooks: bool = False
 
 
 class Args:
@@ -161,11 +163,13 @@ class Ctx:
         args: Parsed command arguments and flags.
         paths: Paths object. See mg/paths.py for details.
         container: Dependency injection container.
+        _mg_hook_registry: MgHookRegistry for mg hook dispatch (set when enable_mg_hooks=True).
     """
 
     args: Args
     paths: Paths
     container: Container = field(default_factory=Container)
+    _mg_hook_registry: MgHookRegistry | None = field(default=None, repr=False)
     _settings_cache: SettingsCache = field(default_factory=SettingsCache)
     _tui: Tui | None = field(default=None, repr=False)
 

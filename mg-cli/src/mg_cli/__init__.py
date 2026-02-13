@@ -21,7 +21,7 @@ from mg._infrastructure.args import build_ctx
 from mg._infrastructure.runner import run_command
 from mg._infrastructure.identity import detect_user, Identity
 from mg._infrastructure.resolvers import make_resolver
-from mg.hooks import configure as configure_hooks
+from mg._infrastructure.mg_hooks import configure_mg_hooks
 from mg.util import module_to_folder
 
 __version__ = "0.1.0"
@@ -292,8 +292,19 @@ def main():
                 pkg_roots.append(paths.pkgs.user.root)
 
         resolve = make_resolver(pkg_roots, paths=paths, has_user=mg_username is not None)
-        configure_hooks(pkg_roots)
-        ctx = build_ctx(route, command, mg_root=mg_root, mg_username=mg_username, resolve=resolve)
+
+        definition = command.define()
+        mg_hook_registry = None
+        if definition.enable_mg_hooks:
+            mg_hook_registry = configure_mg_hooks(pkg_roots)
+
+        ctx = build_ctx(
+            route, command,
+            mg_root=mg_root,
+            mg_username=mg_username,
+            resolve=resolve,
+            mg_hook_registry=mg_hook_registry,
+        )
         run_command(command, ctx)
     except Exception as exc:
         _handle_error(exc)

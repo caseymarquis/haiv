@@ -44,6 +44,7 @@ def build_ctx(
     mg_root: Path | None = None,
     mg_username: str | None = None,
     resolve: Callable[[ResolveRequest], Any] | None = None,
+    mg_hook_registry: Any | None = None,
 ) -> cmd.Ctx:
     """Build a Ctx from a route match and command definition.
 
@@ -53,6 +54,7 @@ def build_ctx(
         mg_root: Root of the mg-managed repo, if known
         mg_username: Name of the current user (folder name in users/)
         resolve: Optional callback to resolve param/flag values to objects
+        mg_hook_registry: Optional MgHookRegistry for mg hook dispatch
 
     Returns:
         Populated Ctx ready for execute()
@@ -88,7 +90,7 @@ def build_ctx(
         _mg_root=mg_root,
         _user_name=mg_username,
     )
-    return cmd.Ctx(args=args, paths=paths)
+    return cmd.Ctx(args=args, paths=paths, _mg_hook_registry=mg_hook_registry)
 
 
 def _parse_flags(
