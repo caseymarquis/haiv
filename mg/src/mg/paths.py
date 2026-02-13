@@ -119,6 +119,11 @@ class PkgPaths:
         """The resolvers directory."""
         return self.root / "resolvers"
 
+    @property
+    def hooks_dir(self) -> Path:
+        """The hooks directory."""
+        return self.root / "hooks"
+
 
 @dataclass
 class UserPaths:

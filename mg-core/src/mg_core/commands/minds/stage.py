@@ -27,6 +27,7 @@ from mg.helpers.minds import (
     validate_mind_name,
 )
 from mg.helpers.sessions import create_session, find_session, load_sessions
+from mg_core.events import AFTER_WORKTREE_CREATED, WorktreeCreated
 
 
 def define() -> cmd.Def:
@@ -113,6 +114,17 @@ def execute(ctx: cmd.Ctx) -> None:
         intent=f"create worktree for mind '{name}'",
     )
     location = f"worktrees/{name}/"
+
+    # Emit hook for post-worktree-creation tasks (e.g., uv sync)
+    AFTER_WORKTREE_CREATED.emit(
+        WorktreeCreated(
+            worktree_path=worktree_path,
+            branch=name,
+            base_branch=base_branch,
+            mind_name=name,
+        ),
+        ctx,
+    )
 
     # Scaffold new mind or reuse existing
     if reused_mind:
