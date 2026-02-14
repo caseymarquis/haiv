@@ -127,14 +127,14 @@ def execute(ctx: cmd.Ctx) -> None:
         ctx,
     )
 
-    # Scaffold new mind or reuse existing
-    if reused_mind:
-        mind = reused_mind
-    else:
-        try:
-            mind = scaffold_mind(name, minds_dir, ctx.templates, location=location)
-        except MindExistsError as e:
-            raise CommandError(str(e)) from e
+    # Scaffold mind (non-destructive for reused minds)
+    try:
+        mind = scaffold_mind(
+            name, minds_dir, ctx.templates,
+            location=location, skip_existing=reused_mind is not None,
+        )
+    except MindExistsError as e:
+        raise CommandError(str(e)) from e
 
     # Create session with status "staged"
     parent_id = os.environ.get(MG_SESSION, "")

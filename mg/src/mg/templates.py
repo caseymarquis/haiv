@@ -53,12 +53,13 @@ class TemplateRenderer:
 
         return template.render(**variables)
 
-    def write(self, template_path: str, dest: Path, **variables) -> Path:
+    def write(self, template_path: str, dest: Path, *, skip_existing: bool = False, **variables) -> Path:
         """Render a template and write it to a file.
 
         Args:
             template_path: Path to the template relative to assets directory.
             dest: Destination path for the rendered file.
+            skip_existing: If True, skip writing if dest already exists.
             **variables: Variables to substitute in the template.
 
         Returns:
@@ -67,6 +68,8 @@ class TemplateRenderer:
         Raises:
             TemplateNotFoundError: If the template doesn't exist.
         """
+        if skip_existing and dest.exists():
+            return dest
         content = self.render(template_path, **variables)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content)

@@ -415,6 +415,7 @@ def scaffold_mind(
     templates: TemplateRenderer,
     *,
     location: str | None = None,
+    skip_existing: bool = False,
 ) -> Mind:
     """Create a new mind folder with proper structure.
 
@@ -440,7 +441,7 @@ def scaffold_mind(
     Raises:
         MindExistsError: If a mind with this name already exists.
     """
-    if mind_exists(name, minds_dir):
+    if not skip_existing and mind_exists(name, minds_dir):
         raise MindExistsError(name)
 
     # Create at root level
@@ -448,16 +449,21 @@ def scaffold_mind(
     paths = MindPaths(root=mind_root)
 
     # Create directories
-    paths.work.root.mkdir(parents=True)
-    paths.work.docs_dir.mkdir(parents=True)
-    paths.home.root.mkdir(parents=True)
+    paths.work.root.mkdir(parents=True, exist_ok=True)
+    paths.work.docs_dir.mkdir(parents=True, exist_ok=True)
+    paths.home.root.mkdir(parents=True, exist_ok=True)
 
     # Write template files
-    templates.write("minds/welcome.md.j2", paths.work.welcome_file, location=location or "")
-    templates.write("minds/references.toml.j2", paths.references_file)
-    paths.work.immediate_plan_file.write_text("# Immediate Plan\n")
-    paths.work.long_term_vision_file.write_text("# Long-Term Vision\n")
-    paths.work.my_process_file.write_text("# My Process\n")
-    paths.work.scratchpad_file.write_text("# Scratchpad\n")
+    templates.write("minds/welcome.md.j2", paths.work.welcome_file, skip_existing=skip_existing, location=location or "")
+    templates.write("minds/references.toml.j2", paths.references_file, skip_existing=skip_existing)
+
+    def _write_if_missing(path: Path, content: str) -> None:
+        if not skip_existing or not path.exists():
+            path.write_text(content)
+
+    _write_if_missing(paths.work.immediate_plan_file, "# Immediate Plan\n")
+    _write_if_missing(paths.work.long_term_vision_file, "# Long-Term Vision\n")
+    _write_if_missing(paths.work.my_process_file, "# My Process\n")
+    _write_if_missing(paths.work.scratchpad_file, "# Scratchpad\n")
 
     return Mind(paths=paths)
