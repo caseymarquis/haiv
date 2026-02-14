@@ -22,7 +22,7 @@ def sync_packages(req: WorktreeCreated, ctx: cmd.Ctx) -> None:
 
     try:
         subprocess.run(
-            ["uv", "sync", "--all-packages"],
+            ["uv", "sync", "--all-packages", "--quiet"],
             cwd=req.worktree_path,
             check=True,
         )
