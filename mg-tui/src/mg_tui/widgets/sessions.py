@@ -7,6 +7,7 @@ action starts the highlighted mind.
 
 from __future__ import annotations
 
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
@@ -73,6 +74,13 @@ class SessionsWidget(Vertical):
         """Called by blinker when the sessions section changes."""
         self._render_sessions(sender)
 
+    def _get_active_mind(self) -> str | None:
+        """Get the active mind name from the terminal, or None."""
+        terminal = self.app.terminal
+        if terminal is not None:
+            return terminal.get_active_mind_name()
+        return None
+
     def _render_sessions(self, sessions) -> None:
         tree = self.query_one(Tree)
         tree.root.remove_children()
@@ -80,11 +88,34 @@ class SessionsWidget(Vertical):
         by_id = {e.id: e for e in entries}
         pairs = [(e, by_id.get(e.parent_id) if e.parent_id else None) for e in entries]
         roots = build_tree(pairs)
+        active_mind = self._get_active_mind()
+
+        def _build_label(entry: SessionEntry) -> Text:
+            """Build a Rich Text label with git stats and active mind styling."""
+            is_active = entry.mind == active_mind
+
+            base = f"[{entry.short_id}] {entry.mind}: {entry.task}"
+
+            # Git stats suffix
+            parts: list[str] = []
+            if entry.ahead > 0:
+                parts.append(f"↑{entry.ahead}")
+            if entry.behind > 0:
+                parts.append(f"↓{entry.behind}")
+            if entry.changed_files > 0:
+                parts.append(f"~{entry.changed_files}")
+            elif entry.changed_files == 0:
+                parts.append("✓")
+
+            suffix = f"  {' '.join(parts)}" if parts else ""
+
+            style = "bold on dark_green" if is_active else ""
+            return Text(f"{base}{suffix}", style=style)
 
         def _add_nodes(parent_tree_node, session_nodes: list[TreeNode[SessionEntry]]) -> None:
             for node in session_nodes:
                 entry = node.item
-                label = f"[{entry.short_id}] {entry.mind}: {entry.task}"
+                label = _build_label(entry)
                 if node.child_nodes:
                     branch = parent_tree_node.add(label, data=entry)
                     branch.expand()

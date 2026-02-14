@@ -160,3 +160,31 @@ class TestEnsureWorkspace:
         wezterm.activate_pane.assert_called_once_with(42)
         wezterm.spawn.assert_not_called()
         wezterm.run_external.assert_not_called()
+
+
+class TestGetActiveMindName:
+    """Tests for TerminalManager.get_active_mind_name()."""
+
+    def test_returns_mind_name_from_hud_tab(self, manager, wezterm):
+        """Extracts mind name from 'mg(project):mind' tab title."""
+        wezterm.list_panes.return_value = [
+            make_pane(tab_title="mg(my-project):wren"),
+        ]
+
+        assert manager.get_active_mind_name() == "wren"
+
+    def test_returns_none_when_no_mind_active(self, manager, wezterm):
+        """Returns None when hud tab has no mind suffix."""
+        wezterm.list_panes.return_value = [
+            make_pane(tab_title="mg(my-project)"),
+        ]
+
+        assert manager.get_active_mind_name() is None
+
+    def test_returns_none_when_no_hud_tab(self, manager, wezterm):
+        """Returns None when no hud tab exists."""
+        wezterm.list_panes.return_value = [
+            make_pane(tab_title="other"),
+        ]
+
+        assert manager.get_active_mind_name() is None

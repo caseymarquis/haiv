@@ -2,7 +2,7 @@
 
 import pytest
 
-from mg.wrappers.git import Git, GitError
+from mg.wrappers.git import BranchStats, Git, GitError
 
 
 @pytest.fixture
@@ -90,3 +90,60 @@ class TestAtWorktree:
         """Raises GitError when branch has no worktree."""
         with pytest.raises(GitError, match="No worktree found"):
             git_repo.at_worktree("nonexistent")
+
+
+class TestBranchStats:
+    """Tests for Git.branch_stats()."""
+
+    def test_clean_branch_at_same_commit(self, git_repo):
+        """Branch with no changes and same commit as base returns all zeros."""
+        worktree_path = git_repo.path / "worktrees" / "feature"
+        git_repo.run(f"worktree add -b feature {worktree_path}")
+
+        stats = git_repo.branch_stats("feature", "main")
+
+        assert stats == BranchStats(ahead=0, behind=0, changed_files=0)
+
+    def test_branch_ahead(self, git_repo):
+        """Branch with commits ahead of base reports ahead count."""
+        worktree_path = git_repo.path / "worktrees" / "feature"
+        git_repo.run(f"worktree add -b feature {worktree_path}")
+        feature_git = Git(worktree_path, quiet=True)
+        (worktree_path / "new.txt").write_text("hello\n")
+        feature_git.run("add .")
+        feature_git.run("commit -m 'feature commit'")
+
+        stats = git_repo.branch_stats("feature", "main")
+
+        assert stats.ahead == 1
+        assert stats.behind == 0
+
+    def test_branch_behind(self, git_repo):
+        """Branch behind base reports behind count."""
+        worktree_path = git_repo.path / "worktrees" / "feature"
+        git_repo.run(f"worktree add -b feature {worktree_path}")
+        # Commit on main (base) after branching
+        (git_repo.path / "main-change.txt").write_text("change\n")
+        git_repo.run("add .")
+        git_repo.run("commit -m 'main commit'")
+
+        stats = git_repo.branch_stats("feature", "main")
+
+        assert stats.ahead == 0
+        assert stats.behind == 1
+
+    def test_dirty_worktree(self, git_repo):
+        """Uncommitted changes report changed_files count."""
+        worktree_path = git_repo.path / "worktrees" / "feature"
+        git_repo.run(f"worktree add -b feature {worktree_path}")
+        (worktree_path / "dirty.txt").write_text("uncommitted\n")
+        (worktree_path / "dirty2.txt").write_text("also uncommitted\n")
+
+        stats = git_repo.branch_stats("feature", "main")
+
+        assert stats.changed_files == 2
+
+    def test_no_worktree_raises(self, git_repo):
+        """Raises when branch has no worktree."""
+        with pytest.raises(GitError):
+            git_repo.branch_stats("nonexistent", "main")

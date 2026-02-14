@@ -29,6 +29,7 @@ from mg.helpers.sessions import (
 )
 from mg.helpers.tui._base import ModelClient
 from mg.helpers.tui.TuiModel import SessionEntry, TuiModel
+from mg.wrappers.git import BranchStats, Git
 
 if TYPE_CHECKING:
     from mg.helpers.tui.terminal import TerminalManager
@@ -37,21 +38,37 @@ if TYPE_CHECKING:
 # -- Model operations --
 
 
-def sessions_refresh(client: ModelClient, sessions_file: Path) -> None:
+def sessions_refresh(
+    client: ModelClient,
+    sessions_file: Path,
+    *,
+    git: Git | None = None,
+) -> None:
     """Read sessions from disk and push them into the TUI model.
 
     Args:
         client: A TuiClient or TuiLocalClient.
         sessions_file: Path to the sessions.ig.toml file.
+        git: Optional Git instance for computing branch stats. When
+            provided, each entry gets ahead/behind/changed_files populated.
     """
     sessions = load_sessions(sessions_file)
-    entries = [
-        SessionEntry(
-            id=s.id, mind=s.mind, task=s.task,
-            short_id=s.short_id, status=s.status, parent_id=s.parent_id,
+    entries = []
+    for s in sessions:
+        stats = BranchStats()
+        if git is not None and s.branch:
+            try:
+                stats = git.branch_stats(s.branch, s.base_branch)
+            except Exception:
+                pass
+        entries.append(
+            SessionEntry(
+                id=s.id, mind=s.mind, task=s.task,
+                short_id=s.short_id, status=s.status, parent_id=s.parent_id,
+                ahead=stats.ahead, behind=stats.behind,
+                changed_files=stats.changed_files,
+            )
         )
-        for s in sessions
-    ]
     client.write(lambda m: _set_entries(m, entries))
 
 
@@ -89,6 +106,7 @@ def mind_launch(
     *,
     task: str | None = None,
     parent_id: str = "",
+    git: Git | None = None,
 ) -> Session:
     """Put a mind in the hud — switching, launching, or restarting as needed.
 
@@ -105,6 +123,7 @@ def mind_launch(
         task: Task description for new sessions. If None and no existing
               session, creates one with an empty task.
         parent_id: Parent session id (for delegation chains).
+        git: Optional Git instance for computing branch stats.
 
     Returns:
         The session for this mind.
@@ -117,7 +136,7 @@ def mind_launch(
                 f"Mind '{mind_name}' is already active in the hud.\n"
                 f"To relaunch here: mg start {mind_name} --here"
             )
-            sessions_refresh(client, sessions_file)
+            sessions_refresh(client, sessions_file, git=git)
             return session
 
     # Parked pane exists — switch to it
@@ -125,13 +144,13 @@ def mind_launch(
         session = get_most_recent_session_for_mind(sessions_file, mind_name)
         if session is not None:
             terminal.switch_to_mind(mind_name)
-            sessions_refresh(client, sessions_file)
+            sessions_refresh(client, sessions_file, git=git)
             return session
 
     # Need to launch a new pane — resolve or create session
     session = resolve_session(sessions_file, mind_name, task=task, parent_id=parent_id)
 
-    sessions_refresh(client, sessions_file)
+    sessions_refresh(client, sessions_file, git=git)
 
     # Build claude command and launch
     claude_cmd = build_claude_command(mind_name, session.claude_session_id)

@@ -86,7 +86,7 @@ class TerminalManager:
             )
 
             # Park old mind pane to its own tab
-            old_mind = self._active_mind_name()
+            old_mind = self.get_active_mind_name()
             self.wezterm.move_pane_to_new_tab(
                 old_mind_pane.pane_id, window_id=hud_pane.window_id,
             )
@@ -142,7 +142,7 @@ class TerminalManager:
         # Park current mind (if one exists)
         old_mind_pane = self._find_mind_pane()
         if old_mind_pane is not None:
-            old_mind = self._active_mind_name()
+            old_mind = self.get_active_mind_name()
             self.wezterm.move_pane_to_new_tab(
                 old_mind_pane.pane_id, window_id=hud_pane.window_id,
             )
@@ -201,9 +201,21 @@ class TerminalManager:
             raise CommandError(f"No parked pane found for mind: {mind}")
         self.wezterm.kill_pane(pane.pane_id)
 
+    def get_active_mind_name(self) -> str | None:
+        """Get the name of the mind currently showing in the hud.
+
+        Queries terminal panes — this does real work each call.
+        """
+        for pane in self.wezterm.list_panes():
+            if pane.tab_title.startswith(self.hud_tab_prefix):
+                if ":" in pane.tab_title:
+                    return pane.tab_title.split(":", 1)[1]
+                return None
+        return None
+
     def is_mind_active(self, mind: str) -> bool:
         """True if mind is currently showing in the hud."""
-        return self._active_mind_name() == mind
+        return self.get_active_mind_name() == mind
 
     def is_mind_parked(self, mind: str) -> bool:
         """True if mind has a parked pane."""
@@ -227,15 +239,6 @@ class TerminalManager:
         for pane in self.wezterm.list_panes():
             if pane.tab_title.startswith(self.hud_tab_prefix) and pane.left_col != 0:
                 return pane
-        return None
-
-    def _active_mind_name(self) -> str | None:
-        """Extract the active mind name from the hud tab title."""
-        for pane in self.wezterm.list_panes():
-            if pane.tab_title.startswith(self.hud_tab_prefix):
-                if ":" in pane.tab_title:
-                    return pane.tab_title.split(":", 1)[1]
-                return None
         return None
 
     def _find_parked_mind(self, mind: str) -> Pane | None:

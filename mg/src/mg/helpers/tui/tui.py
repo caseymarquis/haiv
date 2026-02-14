@@ -28,6 +28,7 @@ from mg.helpers.tui.TuiClient import TuiClient
 from mg.helpers.tui.TuiModel import TuiModel
 from mg.helpers.tui.terminal import TerminalManager
 from mg.settings import MgSettings
+from mg.wrappers.git import Git
 from mg.wrappers.wezterm import WezTerm
 
 
@@ -48,6 +49,7 @@ class Tui:
         wezterm = WezTerm(settings.wezterm_command)
         self._terminal = TerminalManager(wezterm, mg_root, settings.tui_command)
         self._mg_root = mg_root
+        self._git = Git(mg_root, quiet=True)
         self._client = client
         self._sessions_file = sessions_file
 
@@ -70,7 +72,7 @@ class Tui:
 
     def sessions_refresh(self) -> None:
         """Read sessions from disk and push into the TUI model."""
-        helpers.sessions_refresh(self._require_client(), self._sessions_file)
+        helpers.sessions_refresh(self._require_client(), self._sessions_file, git=self._git)
 
     def mind_close_pane(self, mind_name: str) -> None:
         """Close a parked mind's pane."""
@@ -87,5 +89,6 @@ class Tui:
         return helpers.mind_launch(
             self._terminal, self._require_client(), self._sessions_file,
             mind_name, self._mg_root, task=task, parent_id=parent_id,
+            git=self._git,
         )
 

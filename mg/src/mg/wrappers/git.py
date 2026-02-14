@@ -7,9 +7,19 @@ that encourages Claude to analyze and help fix the error.
 from __future__ import annotations
 
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from mg.errors import CommandError
+
+
+@dataclass
+class BranchStats:
+    """Git stats for a branch relative to its base."""
+
+    ahead: int = -1
+    behind: int = -1
+    changed_files: int = -1
 
 
 class GitError(CommandError):
@@ -118,6 +128,31 @@ class Git:
             return self.run(f"config {key}").strip() or None
         except Exception:
             return None
+
+    def branch_stats(self, branch: str, base_branch: str) -> BranchStats:
+        """Compute ahead/behind/changed_files for a branch relative to its base.
+
+        Runs in the worktree for the given branch.
+
+        Args:
+            branch: The branch to check.
+            base_branch: The branch to compare against.
+
+        Returns:
+            BranchStats with computed values.
+        """
+        wt = self.at_worktree(branch)
+
+        ahead, behind = 0, 0
+        if base_branch:
+            output = wt.run(f"rev-list --count --left-right {base_branch}...{branch}")
+            parts = output.strip().split()
+            behind, ahead = int(parts[0]), int(parts[1])
+
+        output = wt.run("status --porcelain")
+        changed_files = sum(1 for line in output.splitlines() if line.strip())
+
+        return BranchStats(ahead=ahead, behind=behind, changed_files=changed_files)
 
     def worktree_path_for_branch(self, branch: str) -> Path | None:
         """Find the worktree path for a given branch, or None if not checked out."""

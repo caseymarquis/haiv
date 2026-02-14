@@ -44,6 +44,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
 from mg._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
 from mg.helpers.tui import helpers
+from mg.wrappers.git import Git
 from mg_tui.init import init as init_mg_deps
 from mg_tui.store import TuiStore
 from mg_tui.widgets.errors import ErrorsWidget
@@ -92,6 +93,7 @@ class MindGamesApp(App):
         self.paths = deps.paths
         self.settings = deps.settings
         self.terminal = deps.terminal
+        self.git = Git(deps.paths.root, quiet=True) if deps.paths else None
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
@@ -104,7 +106,7 @@ class MindGamesApp(App):
             self.set_keymap(self.settings.keybindings)
 
         if self.paths is not None:
-            helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file)
+            helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file, git=self.git)
 
         # Immediate first read, then start polling
         self._poll_model()
