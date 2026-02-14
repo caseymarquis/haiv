@@ -19,6 +19,7 @@ from types import ModuleType
 from typing import Any, Callable
 
 from mg._infrastructure.args import ResolveRequest
+from mg.paths import PkgPaths
 
 
 class ResolverError(Exception):
@@ -75,7 +76,8 @@ def discover_resolvers(pkg_root: Path) -> dict[str, Path]:
 
     Files starting with underscore are ignored.
     """
-    resolvers_dir = pkg_root / "resolvers"
+    pkg = PkgPaths(root=pkg_root)
+    resolvers_dir = pkg.resolvers_dir
     if not resolvers_dir.exists():
         return {}
 

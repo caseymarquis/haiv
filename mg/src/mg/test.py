@@ -47,6 +47,7 @@ from punq import Container
 
 from mg import cmd
 from mg._infrastructure.args import ResolveRequest, build_ctx
+from mg._infrastructure.mg_hooks import MgHookRegistry
 from mg.paths import Paths, PkgPaths
 from mg._infrastructure.loader import Command, load_command
 from mg.util import module_to_folder
@@ -197,7 +198,11 @@ def parse(
 
     command = load_command(route.file)
     mg_root = _create_test_root()
-    ctx = build_ctx(route, command, mg_root=mg_root, mg_username=TEST_USERNAME, resolve=resolve)
+    ctx = build_ctx(
+        route, command,
+        mg_root=mg_root, mg_username=TEST_USERNAME,
+        resolve=resolve, mg_hook_registry=MgHookRegistry(),
+    )
 
     # Register command for run_command to retrieve
     ctx.container.register(Command, instance=command)
@@ -336,6 +341,7 @@ class Sandbox:
             args=cmd.Args(),
             paths=paths,
             container=container,
+            _mg_hook_registry=MgHookRegistry(),
         )
 
         # Automatic cleanup when Sandbox is garbage collected

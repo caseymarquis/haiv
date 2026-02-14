@@ -19,7 +19,7 @@ from mg._infrastructure.mg_hooks import (
     discover_mg_hooks,
     load_mg_hook_module,
 )
-from mg.mg_hooks import MgHookPoint, mg_hook
+from mg.mg_hooks import MgHookHandler, MgHookPoint, mg_hook
 
 
 # ---------------------------------------------------------------------------
@@ -182,7 +182,7 @@ class TestLoadMgHookModule:
 
         mod1 = load_mg_hook_module(hook_file)
         assert mod1 is not None
-        mod1.count = 42
+        mod1.count = 42  # type: ignore[attr-defined]
 
         mod2 = load_mg_hook_module(hook_file)
         assert mod2 is not None
@@ -200,12 +200,13 @@ class TestCollectMgHandlers:
     def test_finds_marked_functions(self):
         """Finds functions with _mg_hook_guid attribute."""
         module = ModuleType("test_module")
+        point = MgHookPoint[str, str](guid="test:my-hook")
 
+        @mg_hook(point)
         def handler(req, ctx):
             return "handled"
 
-        handler._mg_hook_guid = "test:my-hook"
-        module.handler = handler
+        module.handler = handler  # type: ignore[attr-defined]
 
         result = collect_mg_handlers(module)
 
@@ -217,17 +218,19 @@ class TestCollectMgHandlers:
     def test_finds_multiple_handlers(self):
         """Finds all marked functions in a module."""
         module = ModuleType("test_module")
+        point_a = MgHookPoint[str, str](guid="test:hook-a")
+        point_b = MgHookPoint[str, str](guid="test:hook-b")
 
+        @mg_hook(point_a)
         def handler_a(req, ctx):
             return "a"
 
+        @mg_hook(point_b)
         def handler_b(req, ctx):
             return "b"
 
-        handler_a._mg_hook_guid = "test:hook-a"
-        handler_b._mg_hook_guid = "test:hook-b"
-        module.handler_a = handler_a
-        module.handler_b = handler_b
+        module.handler_a = handler_a  # type: ignore[attr-defined]
+        module.handler_b = handler_b  # type: ignore[attr-defined]
 
         result = collect_mg_handlers(module)
 
@@ -237,16 +240,17 @@ class TestCollectMgHandlers:
     def test_ignores_unmarked_functions(self):
         """Functions without _mg_hook_guid are ignored."""
         module = ModuleType("test_module")
+        point = MgHookPoint[str, str](guid="test:hook")
 
+        @mg_hook(point)
         def marked(req, ctx):
             return "yes"
 
         def unmarked(req, ctx):
             return "no"
 
-        marked._mg_hook_guid = "test:hook"
-        module.marked = marked
-        module.unmarked = unmarked
+        module.marked = marked  # type: ignore[attr-defined]
+        module.unmarked = unmarked  # type: ignore[attr-defined]
 
         result = collect_mg_handlers(module)
 
@@ -256,8 +260,8 @@ class TestCollectMgHandlers:
     def test_ignores_non_callable_attributes(self):
         """Non-callable module attributes are ignored."""
         module = ModuleType("test_module")
-        module.SOME_CONSTANT = "hello"
-        module.A_NUMBER = 42
+        module.SOME_CONSTANT = "hello"  # type: ignore[attr-defined]
+        module.A_NUMBER = 42  # type: ignore[attr-defined]
 
         result = collect_mg_handlers(module)
 
@@ -274,12 +278,13 @@ class TestCollectMgHandlers:
     def test_ignores_private_attributes(self):
         """Attributes starting with underscore are skipped."""
         module = ModuleType("test_module")
+        point = MgHookPoint[str, str](guid="test:hook")
 
+        @mg_hook(point)
         def _private(req, ctx):
             return "private"
 
-        _private._mg_hook_guid = "test:hook"
-        module._private = _private
+        module._private = _private  # type: ignore[attr-defined]
 
         result = collect_mg_handlers(module)
 

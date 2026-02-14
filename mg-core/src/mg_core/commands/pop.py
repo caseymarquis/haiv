@@ -43,20 +43,27 @@ def execute(ctx: cmd.Ctx) -> None:
 
 def _print_checklist(ctx: cmd.Ctx) -> None:
     """Print the wind-down checklist."""
-    ctx.print("Create TODOs for the following items and work through them in order:")
-    ctx.print()
-    ctx.print("  1. Review your original assignment for gaps in completion.")
-    ctx.print("  2. Review for small improvements that are easy to add.")
-    ctx.print("  3. Discuss your findings.")
-    ctx.print("  4. Ensure proper test coverage and run tests.")
-    ctx.print("  5. Commit all changes to your worktree branch.")
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
-        ctx.print(f"  6. Run `cd \"{cd_to}\" && mg pop --merge`")
+        merge_step = f'Run `cd "{cd_to}" && mg pop --merge`'
     else:
-        ctx.print("  6. Run `mg pop --merge`")
+        merge_step = "Run `mg pop --merge`"
 
-    ctx.print("  7. Run `mg pop --session`")
+    ctx.mind.checklist(
+        postamble=(
+            "This is an opportunity to consider your work as a whole "
+            "and ensure it is aligned with the spirit of the original task."
+        ),
+        items=[
+            "Review your original assignment for gaps in completion.",
+            "Review for small improvements that are easy to add.",
+            "Discuss your findings.",
+            "Ensure proper test coverage and run tests.",
+            "Commit all changes to your worktree branch.",
+            merge_step,
+            "Run `mg pop --session`",
+        ],
+    )
 
 
 def _do_merge(ctx: cmd.Ctx) -> None:

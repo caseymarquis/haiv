@@ -78,7 +78,7 @@ class TestChecklist:
         sandbox.run("pop")
         output = capsys.readouterr().out
 
-        assert "TODOs" in output
+        assert "Create a task for each item" in output
         assert "gaps in completion" in output
         assert "small improvements" in output
         assert "Discuss" in output
@@ -86,6 +86,7 @@ class TestChecklist:
         assert "Commit" in output
         assert "mg pop --merge" in output
         assert "mg pop --session" in output
+        assert "spirit of the original task" in output
 
 
 # =============================================================================

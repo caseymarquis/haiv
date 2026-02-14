@@ -1,7 +1,10 @@
 """Command types for mg commands."""
 
+from __future__ import annotations
+
+import builtins
 from dataclasses import dataclass, field
-from typing import Any, TypeVar, overload
+from typing import Any, Callable, TypeVar, overload
 
 from punq import Container
 
@@ -37,7 +40,7 @@ class Flag:
     """
 
     name: str
-    type: type = str
+    type: builtins.type = str
     resolver: str | None = None
     min_args: int = 1
     max_args: int | None = 1
@@ -200,6 +203,53 @@ class Ctx:
         """Get a TemplateRenderer for the current package's assets."""
         return TemplateRenderer(self.paths.pkgs.current.assets_dir)
 
+    @property
+    def mind(self) -> MindNS:
+        """Namespace for structured communication with the running mind."""
+        return MindNS(self.print)
+
     def print(self, text: str = "") -> None:
         """Print output."""
         print(text)
+
+
+class MindNS:
+    """Helpful patterns for collaborating with the mind running a command.
+
+    Accessed via ``ctx.mind``.
+    """
+
+    def __init__(self, print_fn: Callable[[str], None]) -> None:
+        self._print = print_fn
+
+    _DEFAULT_PREAMBLE = (
+        "Create a task for each item before starting any work. "
+        "Give each task genuine consideration \u2014 don't skip or rush "
+        "through items that feel obvious."
+    )
+
+    def checklist(
+        self,
+        items: list[str],
+        *,
+        preamble: str | None = _DEFAULT_PREAMBLE,
+        postamble: str | None = None,
+    ) -> None:
+        """Present a checklist for the mind to work through.
+
+        Args:
+            items: The checklist items.
+            preamble: Guidance printed before the list. Defaults to
+                standard task-creation encouragement. Pass None to omit.
+            postamble: Optional context printed after the list.
+        """
+        if preamble:
+            self._print(preamble)
+            self._print("")
+
+        for i, item in enumerate(items, 1):
+            self._print(f"  {i}. {item}")
+
+        if postamble:
+            self._print("")
+            self._print(postamble)

@@ -19,6 +19,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
 
+from mg.mg_hooks import MgHookHandler
+from mg.paths import PkgPaths
+
 
 class MgHookRegistry:
     """Central registry for mg hook handlers.
@@ -42,7 +45,7 @@ class MgHookRegistry:
             guid: The mg hook point GUID to subscribe to.
             handler: Callable with signature (request, ctx) -> response.
         """
-        ...
+        self._handlers.setdefault(guid, []).append(handler)
 
     def emit(self, guid: str, request: Any, ctx: Any) -> list[Any]:
         """Emit an mg hook point, calling all registered handlers.
@@ -58,11 +61,11 @@ class MgHookRegistry:
         Returns:
             List of results from each handler.
         """
-        ...
+        return [handler(request, ctx) for handler in self._handlers.get(guid, [])]
 
     def reset(self) -> None:
         """Reset all state. For testing only."""
-        ...
+        self._handlers.clear()
 
 
 def discover_mg_hooks(pkg_root: Path) -> list[Path]:
@@ -79,7 +82,19 @@ def discover_mg_hooks(pkg_root: Path) -> list[Path]:
     Returns:
         List of paths to mg hook .py files, sorted by name for deterministic order.
     """
-    ...
+    pkg = PkgPaths(root=pkg_root)
+    handlers_dir = pkg.mg_hook_handlers_dir
+    if not handlers_dir.exists():
+        return []
+
+    paths = []
+    for item in handlers_dir.iterdir():
+        if item.name.startswith("_"):
+            continue
+        if item.is_file() and item.suffix == ".py":
+            paths.append(item)
+
+    return sorted(paths, key=lambda p: p.name)
 
 
 def load_mg_hook_module(path: Path, *, quiet: bool = False) -> ModuleType | None:
@@ -95,10 +110,28 @@ def load_mg_hook_module(path: Path, *, quiet: bool = False) -> ModuleType | None
     Returns:
         Loaded module, or None if invalid/broken.
     """
-    ...
+    try:
+        module_name = f"mg_hook_{path.stem}_{id(path)}"
+        spec = importlib.util.spec_from_file_location(module_name, path)
+
+        if spec is None or spec.loader is None:
+            if not quiet:
+                print(f"Warning: Cannot load mg hook module from {path}")
+            return None
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+
+        return module
+
+    except Exception as e:
+        if not quiet:
+            print(f"Warning: Error loading mg hook module {path}: {e}")
+        return None
 
 
-def collect_mg_handlers(module: ModuleType) -> list[tuple[str, Callable]]:
+def collect_mg_handlers(module: ModuleType) -> list[tuple[str, MgHookHandler]]:
     """Scan a loaded module for functions marked with @mg_hook.
 
     Looks for the ``_mg_hook_guid`` attribute set by the @mg_hook decorator.
@@ -109,7 +142,14 @@ def collect_mg_handlers(module: ModuleType) -> list[tuple[str, Callable]]:
     Returns:
         List of (guid, handler) pairs found in the module.
     """
-    ...
+    handlers = []
+    for name in dir(module):
+        if name.startswith("_"):
+            continue
+        attr = getattr(module, name)
+        if callable(attr) and hasattr(attr, "_mg_hook_guid"):
+            handlers.append((attr._mg_hook_guid, attr))
+    return handlers
 
 
 def configure_mg_hooks(pkg_roots: list[Path]) -> MgHookRegistry:
@@ -125,4 +165,11 @@ def configure_mg_hooks(pkg_roots: list[Path]) -> MgHookRegistry:
     Returns:
         Populated MgHookRegistry ready for use.
     """
-    ...
+    registry = MgHookRegistry()
+    for pkg_root in pkg_roots:
+        for path in discover_mg_hooks(pkg_root):
+            module = load_mg_hook_module(path)
+            if module is not None:
+                for guid, handler in collect_mg_handlers(module):
+                    registry.register(guid, handler)
+    return registry

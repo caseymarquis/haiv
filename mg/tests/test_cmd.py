@@ -143,6 +143,90 @@ class TestCtx:
         assert captured.out == "hello\n"
 
 
+class TestMindNS:
+    """Tests for MindNS class."""
+
+    def test_checklist_prints_items_numbered(self):
+        """Items are printed as a numbered list."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["First", "Second", "Third"], preamble=None)
+
+        assert "  1. First" in lines
+        assert "  2. Second" in lines
+        assert "  3. Third" in lines
+
+    def test_checklist_default_preamble(self):
+        """Default preamble encourages task creation."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["Do something"])
+
+        assert any("Create a task for each item" in line for line in lines)
+        assert any("genuine consideration" in line for line in lines)
+
+    def test_checklist_custom_preamble(self):
+        """Custom preamble replaces the default."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["Do something"], preamble="Custom guidance.")
+
+        assert "Custom guidance." in lines
+        assert not any("Create a task" in line for line in lines)
+
+    def test_checklist_preamble_none_omits(self):
+        """preamble=None omits the preamble entirely."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["Do something"], preamble=None)
+
+        # First line should be the item, no preamble or blank line
+        assert lines[0] == "  1. Do something"
+
+    def test_checklist_postamble(self):
+        """Postamble is printed after the items."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["Do something"], preamble=None, postamble="Final thought.")
+
+        assert lines[-1] == "Final thought."
+
+    def test_checklist_postamble_none_omits(self):
+        """postamble=None omits the postamble."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(items=["Do something"], preamble=None, postamble=None)
+
+        assert len(lines) == 1
+        assert lines[0] == "  1. Do something"
+
+    def test_checklist_full_structure(self):
+        """Full output: preamble, blank, items, blank, postamble."""
+        lines = []
+        mind = cmd.MindNS(lines.append)
+        mind.checklist(
+            items=["Alpha", "Beta"],
+            preamble="Before.",
+            postamble="After.",
+        )
+
+        assert lines == [
+            "Before.",
+            "",
+            "  1. Alpha",
+            "  2. Beta",
+            "",
+            "After.",
+        ]
+
+    def test_ctx_mind_property(self, capsys):
+        """ctx.mind returns a MindNS that prints via ctx.print."""
+        ctx = cmd.Ctx(args=cmd.Args(), paths=make_paths())
+        ctx.mind.checklist(items=["Test"], preamble=None, postamble=None)
+        output = capsys.readouterr().out
+        assert "1. Test" in output
+
+
 class TestDef:
     """Tests for Def class."""
 

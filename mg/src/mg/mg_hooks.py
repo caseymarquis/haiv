@@ -46,13 +46,25 @@ or allow hooks to halt execution.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Generic, Protocol, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mg import cmd
 
 TReq = TypeVar("TReq")
 TRes = TypeVar("TRes")
+
+
+class MgHookHandler(Protocol):
+    """A callable that has been marked as an mg hook handler.
+
+    Created by the ``@mg_hook`` decorator, which stamps ``_mg_hook_guid``
+    on the function. Used by ``collect_mg_handlers()`` during discovery.
+    """
+
+    _mg_hook_guid: str
+
+    def __call__(self, req: Any, ctx: Any) -> Any: ...
 
 
 @dataclass
@@ -82,12 +94,18 @@ class MgHookPoint(Generic[TReq, TRes]):
         Returns:
             List of results from each handler.
         """
-        ...
+        registry = ctx._mg_hook_registry
+        if registry is None:
+            raise RuntimeError(
+                "mg hooks not enabled for this command. "
+                "Add enable_mg_hooks=True to the command definition."
+            )
+        return registry.emit(self.guid, request, ctx)
 
 
 def mg_hook(
     point: MgHookPoint[TReq, TRes],
-) -> Callable[[Callable[..., TRes]], Callable[..., TRes]]:
+) -> Callable[[Callable[..., TRes]], MgHookHandler]:
     """Decorator to mark a function as an mg hook handler.
 
     Sets ``_mg_hook_guid`` on the function for later collection by
@@ -102,4 +120,9 @@ def mg_hook(
         def sync_packages(req: WorktreeCreated, ctx: cmd.Ctx) -> None:
             run_uv_sync(req.worktree_path)
     """
-    ...
+
+    def decorator(fn: Callable[..., TRes]) -> MgHookHandler:
+        fn._mg_hook_guid = point.guid  # type: ignore[attr-defined]
+        return fn  # type: ignore[return-value]
+
+    return decorator
