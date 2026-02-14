@@ -10,7 +10,7 @@ The mg system currently provides:
 
 - **Mind management** - Creating, launching, and coordinating AI workers
 - **Session tracking** - Tracking work across sessions, enabling resume
-- **Tmux integration** - Managing parallel workers in tmux windows
+- **WezTerm integration** - Managing parallel workers in WezTerm panes
 - **Development workflow** - Commands for working in worktrees, running tests
 
 Use `mg help` to discover available commands and usage patterns.

@@ -26,28 +26,22 @@
 ## Assigning Workers
 
 ```bash
-mg minds stage --worktree            # code work (feature branches off main)
-mg minds stage --no-worktree         # coordination, discovery, or mg-state work
+mg minds stage --task "description"                    # auto-detects base branch from parent
+mg minds stage --task "description" --from-branch main # explicit base branch
 ```
 
-**Worktrees are for code branches.** Use `--worktree` when the mind will write code in a feature branch (Python, commands, fixes). Use `--no-worktree` for:
-- Coordination and planning roles
-- Research and discovery
-- Work on mg-state itself (mind state, docs, infrastructure files)
+**Every mind gets a worktree.** The base branch is auto-detected from the parent's current branch (or the project's default branch if the parent isn't in a worktree). The base branch is recorded in the session for close-out.
 
-When doing code work, prefer `--worktree`. An unused worktree costs nothing; a missing one causes problems.
-
-Edit `startup/welcome.md` with the task, set up `references.toml`, then:
+Edit `work/welcome.md` with the task, set up `references.toml`, then:
 ```bash
-mg start <mind> --tmux --task "description"
+mg start <mind>
 ```
 
 ---
 
 ## Monitoring
 
-- `mg next` - cycle to idle windows
-- `Ctrl-b n/p` - navigate manually
+- `mg sessions` - see active sessions and delegation tree
 - Watch for: questions, AARs in `temp-aar/`, signs of being stuck
 
 ---
