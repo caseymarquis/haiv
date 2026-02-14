@@ -9,6 +9,8 @@ individual steps.
 
 from __future__ import annotations
 
+import shutil
+
 from mg import cmd
 from mg.errors import CommandError
 from mg.helpers.sessions import find_session, get_current_session, remove_session
@@ -130,6 +132,13 @@ def _do_session(ctx: cmd.Ctx) -> None:
 
     mind_name = session.mind
     remove_session(ctx.paths.user.sessions_file, session.id)
+
+    # Clear work/ directory for next assignment
+    work_dir = ctx.paths.user.minds_dir / mind_name / "work"
+    if work_dir.exists():
+        shutil.rmtree(work_dir)
+        work_dir.mkdir()
+
     ctx.tui.sessions_refresh()
     ctx.tui.mind_launch(parent.mind)
     ctx.tui.mind_close_pane(mind_name)
