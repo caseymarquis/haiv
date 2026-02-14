@@ -107,7 +107,7 @@ class SessionsWidget(Vertical):
             elif entry.changed_files == 0:
                 parts.append("✓")
 
-            suffix = f"  {' '.join(parts)}" if parts else ""
+            suffix = f"  {' '.join(parts)}" if parts else "  --"
 
             style = "bold on dark_green" if is_active else ""
             return Text(f"{base}{suffix}", style=style)
