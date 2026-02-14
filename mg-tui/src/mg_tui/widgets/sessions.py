@@ -96,18 +96,17 @@ class SessionsWidget(Vertical):
 
             base = f"[{entry.short_id}] {entry.mind}: {entry.task}"
 
-            # Git stats suffix
-            parts: list[str] = []
-            if entry.ahead > 0:
-                parts.append(f"↑{entry.ahead}")
-            if entry.behind > 0:
-                parts.append(f"↓{entry.behind}")
-            if entry.changed_files > 0:
-                parts.append(f"~{entry.changed_files}")
-            elif entry.changed_files == 0:
-                parts.append("✓")
-
-            suffix = f"  {' '.join(parts)}" if parts else "  --"
+            # Git stats suffix (-1 means no data)
+            has_stats = entry.changed_files >= 0
+            if has_stats:
+                parts = [f"↑{entry.ahead}", f"↓{entry.behind}"]
+                if entry.changed_files > 0:
+                    parts.append(f"~{entry.changed_files}")
+                else:
+                    parts.append("✓")
+                suffix = f"  {' '.join(parts)}"
+            else:
+                suffix = "  --"
 
             style = "bold on dark_green" if is_active else ""
             return Text(f"{base}{suffix}", style=style)
