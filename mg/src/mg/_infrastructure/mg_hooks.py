@@ -17,7 +17,7 @@ import importlib.util
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any
 
 from mg.mg_hooks import MgHookHandler
 from mg.paths import PkgPaths
@@ -34,16 +34,16 @@ class MgHookRegistry:
     """
 
     def __init__(self) -> None:
-        self._handlers: dict[str, list[Callable]] = {}
+        self._handlers: dict[str, list[MgHookHandler]] = {}
 
-    def register(self, guid: str, handler: Callable) -> None:
+    def register(self, guid: str, handler: MgHookHandler) -> None:
         """Register a handler for an mg hook point GUID.
 
         Called by configure_mg_hooks() during startup, not by user code.
 
         Args:
             guid: The mg hook point GUID to subscribe to.
-            handler: Callable with signature (request, ctx) -> response.
+            handler: An MgHookHandler (decorated with @mg_hook).
         """
         self._handlers.setdefault(guid, []).append(handler)
 
@@ -61,7 +61,19 @@ class MgHookRegistry:
         Returns:
             List of results from each handler.
         """
-        return [handler(request, ctx) for handler in self._handlers.get(guid, [])]
+        results = []
+        for handler in self._handlers.get(guid, []):
+            if not hasattr(handler, "_mg_hook_description") or not hasattr(
+                handler, "_mg_hook_source"
+            ):
+                raise RuntimeError(
+                    f"mg hook handler {handler!r} is missing required attributes. "
+                    "All handlers must be registered via @mg_hook()."
+                )
+            source = Path(handler._mg_hook_source).relative_to(ctx.paths.root)
+            ctx.print(f"{handler._mg_hook_description} ({source})")
+            results.append(handler(request, ctx))
+        return results
 
     def reset(self) -> None:
         """Reset all state. For testing only."""
@@ -152,6 +164,11 @@ def collect_mg_handlers(module: ModuleType) -> list[tuple[str, MgHookHandler]]:
     return handlers
 
 
+# Only these first-party packages are allowed to provide mg hooks.
+# Third-party packages must not run hooks without an explicit trust mechanism.
+_TRUSTED_HOOK_PACKAGES = {"mg_core", "mg_project", "mg_user"}
+
+
 def configure_mg_hooks(pkg_roots: list[Path]) -> MgHookRegistry:
     """Discover, load, and register all mg hooks from the given package roots.
 
@@ -159,17 +176,29 @@ def configure_mg_hooks(pkg_roots: list[Path]) -> MgHookRegistry:
     Discovers mg hook modules in each package's mg_hook_handlers/ directory, loads them,
     collects @mg_hook-marked handlers, and registers them on a new MgHookRegistry.
 
+    Only first-party packages (mg_core, mg_project, mg_user) are trusted to
+    provide hooks. Any other package root is rejected with an error.
+
     Args:
         pkg_roots: Package roots in discovery order (core first, user last).
 
     Returns:
         Populated MgHookRegistry ready for use.
+
+    Raises:
+        RuntimeError: If a pkg_root is not a trusted first-party package.
     """
     registry = MgHookRegistry()
     for pkg_root in pkg_roots:
+        if pkg_root.name not in _TRUSTED_HOOK_PACKAGES:
+            raise RuntimeError(
+                f"Untrusted package '{pkg_root.name}' cannot provide mg hooks. "
+                f"Only first-party packages are allowed: {sorted(_TRUSTED_HOOK_PACKAGES)}."
+            )
         for path in discover_mg_hooks(pkg_root):
             module = load_mg_hook_module(path)
             if module is not None:
                 for guid, handler in collect_mg_handlers(module):
+                    handler._mg_hook_source = str(path)
                     registry.register(guid, handler)
     return registry

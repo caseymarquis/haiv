@@ -31,7 +31,7 @@ Usage -- handling (in an mg_hook_handlers/ module):
     from mg.mg_hooks import mg_hook
     from mg_core.mg_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
 
-    @mg_hook(AFTER_WORKTREE_CREATED)
+    @mg_hook(AFTER_WORKTREE_CREATED, description="Syncing packages")
     def sync_packages(req: WorktreeCreated, ctx: cmd.Ctx) -> None:
         ...
 
@@ -59,10 +59,15 @@ class MgHookHandler(Protocol):
     """A callable that has been marked as an mg hook handler.
 
     Created by the ``@mg_hook`` decorator, which stamps ``_mg_hook_guid``
-    on the function. Used by ``collect_mg_handlers()`` during discovery.
+    and ``_mg_hook_description`` on the function. ``_mg_hook_source`` is
+    stamped later during ``configure_mg_hooks()`` when the file path is known.
+
+    Used by ``collect_mg_handlers()`` during discovery.
     """
 
     _mg_hook_guid: str
+    _mg_hook_description: str
+    _mg_hook_source: str
 
     def __call__(self, req: Any, ctx: Any) -> Any: ...
 
@@ -105,24 +110,27 @@ class MgHookPoint(Generic[TReq, TRes]):
 
 def mg_hook(
     point: MgHookPoint[TReq, TRes],
+    *,
+    description: str,
 ) -> Callable[[Callable[..., TRes]], MgHookHandler]:
     """Decorator to mark a function as an mg hook handler.
 
-    Sets ``_mg_hook_guid`` on the function for later collection by
-    collect_mg_handlers(). Does not register immediately -- registration
-    happens at CLI startup during configure_mg_hooks().
+    Sets ``_mg_hook_guid`` and ``_mg_hook_description`` on the function for
+    later collection by collect_mg_handlers(). Does not register immediately --
+    registration happens at CLI startup during configure_mg_hooks().
 
     Handler signature: (request: TReq, ctx: cmd.Ctx) -> TRes
 
     Example::
 
-        @mg_hook(AFTER_WORKTREE_CREATED)
+        @mg_hook(AFTER_WORKTREE_CREATED, description="Syncing packages")
         def sync_packages(req: WorktreeCreated, ctx: cmd.Ctx) -> None:
             run_uv_sync(req.worktree_path)
     """
 
     def decorator(fn: Callable[..., TRes]) -> MgHookHandler:
         fn._mg_hook_guid = point.guid  # type: ignore[attr-defined]
+        fn._mg_hook_description = description  # type: ignore[attr-defined]
         return fn  # type: ignore[return-value]
 
     return decorator
