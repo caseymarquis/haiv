@@ -21,6 +21,17 @@ class BranchStats:
     behind: int = -1
     changed_files: int = -1
 
+    def format(self) -> str:
+        """Human-readable stats string, e.g. '↑0 ↓2 ✓' or '(no branch)'."""
+        if self.changed_files < 0:
+            return "(no branch)"
+        parts = [f"↑{self.ahead}", f"↓{self.behind}"]
+        if self.changed_files > 0:
+            parts.append(f"~{self.changed_files}")
+        else:
+            parts.append("✓")
+        return " ".join(parts)
+
 
 class GitError(CommandError):
     """Raised when a git command fails.
