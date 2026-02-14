@@ -17,6 +17,7 @@ from textual.widgets import Static, Tree
 from mg.helpers.tui import helpers
 from mg.helpers.tui.TuiModel import SessionEntry
 from mg.helpers.utils.trees import TreeNode, build_tree
+from mg.wrappers.git import BranchStats
 
 
 class SessionPreview(Static):
@@ -96,17 +97,8 @@ class SessionsWidget(Vertical):
 
             base = f"[{entry.short_id}] {entry.mind}: {entry.task}"
 
-            # Git stats suffix (-1 means no data)
-            has_stats = entry.changed_files >= 0
-            if has_stats:
-                parts = [f"↑{entry.ahead}", f"↓{entry.behind}"]
-                if entry.changed_files > 0:
-                    parts.append(f"~{entry.changed_files}")
-                else:
-                    parts.append("✓")
-                suffix = f"  {' '.join(parts)}"
-            else:
-                suffix = "  (no branch)"
+            stats = BranchStats(entry.ahead, entry.behind, entry.changed_files)
+            suffix = f"  {stats.format()}"
 
             style = "bold on dark_green" if is_active else ""
             return Text(f"{base}{suffix}", style=style)
