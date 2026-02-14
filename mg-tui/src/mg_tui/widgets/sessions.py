@@ -106,7 +106,7 @@ class SessionsWidget(Vertical):
                     parts.append("✓")
                 suffix = f"  {' '.join(parts)}"
             else:
-                suffix = "  --"
+                suffix = "  (no branch)"
 
             style = "bold on dark_green" if is_active else ""
             return Text(f"{base}{suffix}", style=style)
