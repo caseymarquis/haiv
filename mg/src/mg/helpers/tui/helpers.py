@@ -160,6 +160,40 @@ def mind_launch(
     return session
 
 
+def mind_try_send_text(
+    terminal: TerminalManager, mind_name: str, text: str, *, submit: bool = False,
+) -> bool:
+    """Send text to a mind's pane, returning whether it was found.
+
+    Args:
+        terminal: TerminalManager for pane operations.
+        mind_name: Name of the mind to send text to.
+        text: Text to send.
+        submit: If True, submit the text as if Enter was pressed.
+
+    Returns:
+        True if the mind's pane was found and text was sent.
+    """
+    return terminal.try_send_text_to_mind(mind_name, text, submit=submit)
+
+
+def mind_send_text(
+    terminal: TerminalManager, mind_name: str, text: str, *, submit: bool = False,
+) -> None:
+    """Send text to a mind's pane, raising if not found.
+
+    Args:
+        terminal: TerminalManager for pane operations.
+        mind_name: Name of the mind to send text to.
+        text: Text to send.
+        submit: If True, submit the text as if Enter was pressed.
+
+    Raises:
+        CommandError: If no pane found for the mind.
+    """
+    terminal.send_text_to_mind(mind_name, text, submit=submit)
+
+
 def mind_close_pane(terminal: TerminalManager, mind_name: str) -> None:
     """Close a parked mind's pane.
 

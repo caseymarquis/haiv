@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mg.errors import CommandError
 from mg.helpers.tui.terminal import TerminalManager
 from mg.wrappers.wezterm import Pane, PaneSize
 
@@ -188,3 +189,123 @@ class TestGetActiveMindName:
         ]
 
         assert manager.get_active_mind_name() is None
+
+
+class TestTrySendTextToMind:
+    """Tests for try_send_text_to_mind — returns bool, never raises."""
+
+    def test_sends_to_active_mind(self, manager, wezterm):
+        """Finds the active mind's pane (right side of hud) and sends text."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project):wren", left_col=0),
+            make_pane(pane_id=2, tab_title="mg(my-project):wren", left_col=40),
+        ]
+
+        result = manager.try_send_text_to_mind("wren", "hello")
+
+        assert result is True
+        wezterm.send_text.assert_called_once_with(2, "hello")
+
+    def test_sends_to_parked_mind(self, manager, wezterm):
+        """Finds a parked mind's pane by tab title ~{mind}."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        result = manager.try_send_text_to_mind("wren", "hello")
+
+        assert result is True
+        wezterm.send_text.assert_called_once_with(5, "hello")
+
+    def test_returns_false_when_mind_not_found(self, manager, wezterm):
+        """Returns False when no pane exists for the mind."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+        ]
+
+        result = manager.try_send_text_to_mind("wren", "hello")
+
+        assert result is False
+        wezterm.send_text.assert_not_called()
+
+    def test_prefers_active_over_parked(self, manager, wezterm):
+        """When mind is both active and parked (shouldn't happen), uses active."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project):wren", left_col=0),
+            make_pane(pane_id=2, tab_title="mg(my-project):wren", left_col=40),
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        manager.try_send_text_to_mind("wren", "hello")
+
+        wezterm.send_text.assert_called_once_with(2, "hello")
+
+    def test_submit_false_uses_bracketed_paste(self, manager, wezterm):
+        """submit=False sends text with bracketed paste (no no_paste flag)."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        manager.try_send_text_to_mind("wren", "hello", submit=False)
+
+        wezterm.send_text.assert_called_once_with(5, "hello")
+
+    def test_submit_true_sends_text_then_newline(self, manager, wezterm):
+        """submit=True sends text via paste, then \\n with no_paste to press Enter."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        manager.try_send_text_to_mind("wren", "hello", submit=True)
+
+        assert wezterm.send_text.call_count == 2
+        # First call: text via bracketed paste
+        wezterm.send_text.assert_any_call(5, "hello")
+        # Second call: newline with no_paste to trigger submit
+        wezterm.send_text.assert_any_call(5, "\n", no_paste=True)
+
+    def test_does_not_match_wrong_mind(self, manager, wezterm):
+        """Active mind 'spark' doesn't match when looking for 'wren'."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project):spark", left_col=0),
+            make_pane(pane_id=2, tab_title="mg(my-project):spark", left_col=40),
+        ]
+
+        result = manager.try_send_text_to_mind("wren", "hello")
+
+        assert result is False
+        wezterm.send_text.assert_not_called()
+
+
+class TestSendTextToMind:
+    """Tests for send_text_to_mind — raises CommandError on failure."""
+
+    def test_sends_to_found_mind(self, manager, wezterm):
+        """Delegates to try_send_text_to_mind on success."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        manager.send_text_to_mind("wren", "hello")
+
+        wezterm.send_text.assert_called_once_with(5, "hello")
+
+    def test_raises_when_mind_not_found(self, manager, wezterm):
+        """Raises CommandError when no pane exists for the mind."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+        ]
+
+        with pytest.raises(CommandError, match="wren"):
+            manager.send_text_to_mind("wren", "hello")
+
+    def test_passes_submit_flag_through(self, manager, wezterm):
+        """submit flag is forwarded to the underlying send."""
+        wezterm.list_panes.return_value = [
+            make_pane(pane_id=5, tab_title="~wren"),
+        ]
+
+        manager.send_text_to_mind("wren", "hello", submit=True)
+
+        assert wezterm.send_text.call_count == 2

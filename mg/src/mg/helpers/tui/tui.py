@@ -74,6 +74,14 @@ class Tui:
         """Read sessions from disk and push into the TUI model."""
         helpers.sessions_refresh(self._require_client(), self._sessions_file, git=self._git)
 
+    def mind_try_send_text(self, mind_name: str, text: str, *, submit: bool = False) -> bool:
+        """Send text to a mind's pane, returning whether it was found."""
+        return helpers.mind_try_send_text(self._terminal, mind_name, text, submit=submit)
+
+    def mind_send_text(self, mind_name: str, text: str, *, submit: bool = False) -> None:
+        """Send text to a mind's pane, raising if not found."""
+        helpers.mind_send_text(self._terminal, mind_name, text, submit=submit)
+
     def mind_close_pane(self, mind_name: str) -> None:
         """Close a parked mind's pane."""
         helpers.mind_close_pane(self._terminal, mind_name)

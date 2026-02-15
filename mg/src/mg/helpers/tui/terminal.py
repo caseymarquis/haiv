@@ -185,6 +185,43 @@ class TerminalManager:
         self.wezterm.activate_pane(hud_pane.pane_id)
         print(f"mg window for '{self.project}' is ready.")
 
+    def try_send_text_to_mind(self, mind: str, text: str, *, submit: bool = False) -> bool:
+        """Send text to a mind's pane, whether active or parked.
+
+        Args:
+            mind: Name of the mind to send text to.
+            text: Text to send.
+            submit: If False (default), text appears in input without submitting.
+                If True, text is submitted as if the user pressed Enter.
+
+        Returns:
+            True if the mind's pane was found and text was sent, False otherwise.
+        """
+        pane = self._find_pane_for_mind(mind)
+        if pane is None:
+            return False
+
+        self.wezterm.send_text(pane.pane_id, text)
+        if submit:
+            self.wezterm.send_text(pane.pane_id, "\n", no_paste=True)
+
+        return True
+
+    def send_text_to_mind(self, mind: str, text: str, *, submit: bool = False) -> None:
+        """Send text to a mind's pane, raising if not found.
+
+        Args:
+            mind: Name of the mind to send text to.
+            text: Text to send.
+            submit: If False (default), text appears in input without submitting.
+                If True, text is submitted as if the user pressed Enter.
+
+        Raises:
+            CommandError: If no pane found for the mind.
+        """
+        if not self.try_send_text_to_mind(mind, text, submit=submit):
+            raise CommandError(f"No pane found for mind: {mind}")
+
     # -- Queries (public) --
 
     def close_parked_mind(self, mind: str) -> None:
@@ -240,6 +277,12 @@ class TerminalManager:
             if pane.tab_title.startswith(self.hud_tab_prefix) and pane.left_col != 0:
                 return pane
         return None
+
+    def _find_pane_for_mind(self, mind: str) -> Pane | None:
+        """Find a mind's pane — active (hud right pane) or parked (~mind tab)."""
+        if self.get_active_mind_name() == mind:
+            return self._find_mind_pane()
+        return self._find_parked_mind(mind)
 
     def _find_parked_mind(self, mind: str) -> Pane | None:
         """Find a parked mind's pane by tab title."""
