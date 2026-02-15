@@ -1,5 +1,6 @@
 """Tests for mg.helpers.sessions module."""
 
+import re
 import pytest
 from datetime import datetime, timezone
 
@@ -588,3 +589,98 @@ class TestGetCurrentSession:
         with patch.dict("os.environ", {"MG_SESSION": "nonexistent-id"}):
             with pytest.raises(CommandError, match="Session not found"):
                 get_current_session(sessions_file)
+
+
+class TestAsFilename:
+    """Tests for Session.as_filename()."""
+
+    def test_simple_task(self):
+        """Normal task becomes lowercase hyphenated."""
+        s = _session("id", task="Add Session.as_filename() method")
+        assert s.as_filename() == "add-session-as-filename-method"
+
+    def test_special_characters_replaced(self):
+        """Colons, parens, slashes, and quotes become hyphens."""
+        s = _session("id", task='Research: notify "all" /instances/')
+        assert s.as_filename() == "research-notify-all-instances"
+
+    def test_consecutive_specials_collapsed(self):
+        """Runs of special characters collapse to a single hyphen."""
+        s = _session("id", task="fix --- the ::: bug")
+        assert s.as_filename() == "fix-the-bug"
+
+    def test_leading_trailing_stripped(self):
+        """Leading and trailing non-alphanumeric chars are stripped."""
+        s = _session("id", task="...hello world!!!")
+        assert s.as_filename() == "hello-world"
+
+    def test_numbers_preserved(self):
+        """Digits are alphanumeric and kept as-is."""
+        s = _session("id", task="Fix bug #42 in v2")
+        assert s.as_filename() == "fix-bug-42-in-v2"
+
+    def test_empty_task(self):
+        """Empty task returns empty string."""
+        s = _session("id", task="")
+        assert s.as_filename() == ""
+
+    def test_all_special_characters(self):
+        """Task with only special characters returns empty string."""
+        s = _session("id", task="!@#$%^&*()")
+        assert s.as_filename() == ""
+
+    def test_short_task_no_hash(self):
+        """Tasks within the length limit don't get a hash appended."""
+        s = _session("id", task="Short task")
+        result = s.as_filename()
+        assert result == "short-task"
+
+    def test_exactly_at_limit_no_hash(self):
+        """Task sanitizing to exactly the limit gets no hash."""
+        task = "a" * 50
+        s = _session("id", task=task)
+        assert s.as_filename() == "a" * 50
+
+    def test_one_over_limit_gets_hash(self):
+        """Task sanitizing to limit+1 triggers truncation with hash."""
+        task = "a" * 51
+        s = _session("id", task=task)
+        result = s.as_filename()
+        assert len(result) <= 50
+        assert re.search(r"-[a-f0-9]{4}$", result)
+
+    def test_long_task_truncated_with_hash(self):
+        """Long tasks are truncated and get a hash suffix."""
+        s = _session("id", task="Research: notify running Claude instances of external events")
+        result = s.as_filename()
+        assert len(result) <= 50
+        assert re.search(r"-[a-f0-9]{4}$", result)
+        assert result.startswith("research-notify-running-claude")
+
+    def test_truncation_prefers_word_boundary(self):
+        """Truncation breaks at a hyphen rather than mid-word."""
+        s = _session("id", task="Research: notify running Claude instances of external events")
+        result = s.as_filename()
+        # The base (before the hash) should end on "of" — a clean word
+        # boundary — rather than cutting mid-word into "external"
+        base = result[: result.rfind("-")]
+        assert base.endswith("-of") or base.endswith("of")
+
+    def test_deterministic(self):
+        """Same task always produces the same filename."""
+        s1 = _session("id1", task="Research: notify running Claude instances of external events")
+        s2 = _session("id2", task="Research: notify running Claude instances of external events")
+        assert s1.as_filename() == s2.as_filename()
+
+    def test_different_long_tasks_differ(self):
+        """Different long tasks produce different filenames via hash."""
+        s1 = _session("id", task="This is a very long task description that will definitely need truncation abc")
+        s2 = _session("id", task="This is a very long task description that will definitely need truncation xyz")
+        assert s1.as_filename() != s2.as_filename()
+
+    def test_cross_platform_safe(self):
+        """Result contains no characters problematic on any OS."""
+        s = _session("id", task='File: "test/path" <value> pipe|char back\\slash')
+        result = s.as_filename()
+        unsafe = set('<>:"/\\|?*') | {chr(c) for c in range(32)}
+        assert not any(c in unsafe for c in result)
