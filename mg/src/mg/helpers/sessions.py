@@ -8,6 +8,8 @@ Stored in sessions.ig.toml (git-ignored). One active session per mind.
 
 from __future__ import annotations
 
+import hashlib
+import re
 import uuid
 import tomllib
 import tomli_w
@@ -38,6 +40,30 @@ class Session:
     base_branch: str = ""  # Branch this worktree was created from
     claude_session_id: str = ""  # Current Claude session id
     old_claude_session_ids: list[str] = field(default_factory=list)
+
+    _MAX_FILENAME_LENGTH = 50
+
+    def as_filename(self) -> str:
+        """Return a sanitized, filesystem-safe filename from the task.
+
+        Lowercase, replaces non-alphanumeric runs with hyphens, strips edges.
+        Long names are truncated at a word boundary with a short hash appended
+        to avoid collisions. Returns without extension.
+        """
+        name = re.sub(r"[^a-z0-9]+", "-", self.task.lower()).strip("-")
+
+        if not name or len(name) <= self._MAX_FILENAME_LENGTH:
+            return name
+
+        task_hash = hashlib.sha256(self.task.encode()).hexdigest()[:4]
+        max_base = self._MAX_FILENAME_LENGTH - len(task_hash) - 1  # room for "-" + hash
+
+        truncated = name[:max_base]
+        last_hyphen = truncated.rfind("-")
+        if last_hyphen > max_base // 2:
+            truncated = truncated[:last_hyphen]
+
+        return f"{truncated}-{task_hash}"
 
 
 def load_sessions(sessions_file: Path) -> list[Session]:
