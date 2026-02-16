@@ -1,6 +1,8 @@
-# Task: Design and implement a command hook system for mg
+# Task Assignment
 
-Commands need extensibility points. Example: after worktree creation, auto-run `uv sync`. After merge, trigger cleanup. The system should let each layer (mg_core, mg_project, mg_user) register hooks that respond to events emitted by commands.
+**Implement Claude Code hook integration for mind status**
+
+Build the pipeline that lets Claude Code lifecycle events flow into the TUI as live mind status. Spark's research has a complete design — read it first.
 
 **Location:** `worktrees/echo/`
 
@@ -8,95 +10,34 @@ Commands need extensibility points. Example: after worktree creation, auto-run `
 
 ## Context
 
-The immediate pain point: every time a worktree is created, the packages inside need `uv sync` run. Today this is manual and easy to forget. Hooks would let mg_project register a post-worktree-creation hook that handles it automatically.
+We manage multiple minds working in parallel. Right now there's no way to see who's idle and needs attention vs who's actively working. Claude Code provides hooks that fire on lifecycle events (idle, working, waiting for approval, session start/end). We need to capture these and surface them in the TUI.
 
-### Prior sketch (from our problems list — starting point for discussion, not finalized)
+## Essential Reading
 
-**Desired pattern:** Observer/event system where commands emit events and hooks subscribe.
+- `temp-aar/claude-hook-integration.md` — Spark's full research and implementation plan. This is your roadmap. It covers typed models, IPC changes, the dispatch command, and TUI integration across 6 phases.
+- `temp-aar/luna-mg-hooks.md` — The existing mg hook system (different from Claude Code hooks). Understand the distinction.
 
-Type-safe hook points with request/response generics:
-```python
-# mg/src/mg/hooks.py
-@dataclass
-class HookPoint(Generic[TRequest, TResponse]):
-    guid: str
+## Key files
 
-    def emit(self, request: TRequest) -> list[TResponse]:
-        """Call all registered hooks, return array of results."""
-        ...
-```
+- `mg/src/mg/_infrastructure/TuiServer/` — IPC server, needs message wrapper extension
+- `mg/src/mg/helpers/tui/TuiClient.py` — IPC client
+- `mg/src/mg/helpers/tui/TuiModel.py` — `SessionEntry` needs status fields
+- `mg-tui/src/mg_tui/widgets/sessions.py` — TUI rendering
 
-Commands define typed hook points:
-```python
-# mg-core/src/mg_core/commands/minds/new.py
-from mg.hooks import HookPoint
+## Scope
 
-@dataclass
-class WorktreeCreatedRequest:
-    worktree_path: Path
-    branch_name: str
-
-@dataclass
-class WorktreeCreatedResponse:
-    success: bool
-    message: str | None = None
-
-AFTER_WORKTREE_CREATED = HookPoint[WorktreeCreatedRequest, WorktreeCreatedResponse](
-    guid="mg-core:minds:new:after-worktree-created"
-)
-```
-
-Hooks subscribe with type safety:
-```python
-# mg_project/src/mg_project/hooks/uv_sync_worktree.py
-from mg_core.commands.minds.new import AFTER_WORKTREE_CREATED, WorktreeCreatedRequest, WorktreeCreatedResponse
-from mg.hooks import hook
-
-@hook(AFTER_WORKTREE_CREATED)
-def sync_packages(req: WorktreeCreatedRequest) -> WorktreeCreatedResponse:
-    # Run uv sync for each package in worktree
-    return WorktreeCreatedResponse(success=True)
-```
-
-Caller decides how to handle multiple results:
-```python
-# In minds/new.py execute()
-results = AFTER_WORKTREE_CREATED.emit(WorktreeCreatedRequest(path, branch))
-# results is list[WorktreeCreatedResponse] - caller decides what to do
-```
-
-**Key elements:**
-- Generic `HookPoint[TRequest, TResponse]` for type safety
-- Returns `list[TResponse]` — caller handles multiple hooks
-- Opens up RPC-style patterns beyond pure observation
-- GUIDs for unique identification
-- Hooks in `hooks/` directories (project or user level)
-- Resolution order: mg_core → mg_project → mg_user
+This is a substantial project. The research doc has 6 phases — you may not get through all of them. Focus on getting the plumbing right (phases 1-3) so events can flow, then wire status into the TUI (phases 4-6). Discuss priorities with Casey.
 
 ---
 
-## Key Files
+## Success Criteria
 
-| File | Role |
-|------|------|
-| `users/casey/state/minds/wren/work/docs/problems.md` | Problem #17 — original hook system sketch |
-| `mg-core/src/mg_core/commands/minds/stage.py` | Worktree creation — first hook consumer |
-| `mg-core/src/mg_core/commands/pop.py` | Session close-out — another hook consumer |
-| `mg/src/mg/` | Core mg package — where hook infrastructure likely lives |
+- Claude Code hook events can be received and dispatched
+- Mind status is visible in the TUI
+- Existing IPC and TUI functionality isn't broken
 
 ---
 
-## Requirements
+## Before You Begin
 
-- Existing tests must still pass
-- Follow existing code patterns and conventions
-- Resolution order should follow mg's layering: mg_core → mg_project → mg_user
-
----
-
-## Verification
-
-```bash
-cd mg && uv run pytest -v
-cd mg-core && uv run pytest -v
-```
+Read the full assignment, then discuss your understanding and approach with your human collaborator before writing code. The task description is a starting point — not a spec. Do not use planning tools unless your human explicitly requests it. You work best together.

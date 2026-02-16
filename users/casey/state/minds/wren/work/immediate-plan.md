@@ -1,54 +1,69 @@
 # Immediate Plan
 
-**Updated:** 2026-02-07
+**Updated:** 2026-02-14
 
 ---
 
-## Current Focus: TUI Launch UX & Session Completion
+## Current Focus: Role Evolution & Visibility
 
-The session-aware delegation model is built and the pane management is verified working. Next priorities are making the TUI the primary control surface for launching/switching minds, and adding session completion so test sessions can be cleaned up.
+Delegation loop is mature. Now evolving the platform: role-appropriate launch experiences, live mind status, smarter TUI.
+
+Run `mg sessions` to see current active work.
 
 ---
 
-## Priority 1: TUI-Driven Mind Switching
+## Active Initiatives
 
-The TUI sessions list should let the human interact with minds directly.
+- **Mind launch settings** — spark [4]: `settings.toml` per mind, starting with `launch.system_prompt` to give strategic minds a lighter Claude Code experience. Exploring with Casey.
 
-**Actions from session list:**
-- **Enter on staged session** → start it (transition session, spawn pane, switch to it)
-- **Enter on started session** → switch to it (find parked tab, swap into hud)
-- **Detection:** if a started session's pane is gone from WezTerm, it's dead — offer restart
+---
 
-**Pane identity:** Per-mind tabs with naming convention:
-- `mg({project}):mind` — active in hud
-- `~mind` — parked
+## Next Up
 
-Tab titles are queryable via `wezterm cli list`. No user vars needed (not in list output for our WezTerm version).
+- **Live mind status via Claude Code hooks** — spark's research (temp-aar/claude-hook-integration.md) mapped all lifecycle events. Plumbing → TUI status → leaf prioritization → idle automation.
+- **TUI leaf sorting** — recently active leaves float to top (stacked trees → operate at leaves)
+- **Idle timeout automation** — trigger summaries when a mind sits idle too long
+- **Guided close-out prompting** — `mg pop` checklist creates TODOs, mind works through them
 
-**Implementation path:**
-- TUI needs to call `switch_to_mind()` or trigger `mg start` when user selects a session
-- `switch_to_mind()` already exists in `TerminalManager` — needs wiring to TUI actions
-- For "start staged": TUI could shell out to `mg start <mind>` or call the underlying Python directly
+---
 
-**Open question:** Should the TUI shell out to `mg start` (clean separation, domain logic stays in command) or call TerminalManager directly (avoids subprocess, but domain logic leaks)?
+## Recently Completed
 
-## Priority 2: Session Completion
+- Hook system (`mg_hooks`) — typed hook points, lazy discovery, fault-tolerant loading
+- `uv sync` auto-runs on worktree creation (quiet mode)
+- Active mind indicator in TUI (highlight background)
+- Git branch stats in TUI sessions (ahead/behind, dirty/clean)
+- `mg pop` command with merge, cleanup-only mode, session removal, work/ wipe
+- Parent-child tree display in `mg sessions` CLI and TUI
+- Non-destructive `scaffold_mind` with `skip_existing` for reused minds
+- Welcome template now includes discussion-first guidance
+- Staging: always worktree, auto-detect base branch, clean tree enforcement
 
-Sessions currently have two states: `staged` and `started`. No way to mark them done.
+---
 
-**Needed:**
-- A `completed` status (or similar)
-- A way to trigger it: `mg sessions complete`? Mind marks itself done? Parent reviews?
-- TUI filtering: hide completed sessions by default, show on demand
-- Enables cleanup of test sessions that accumulate
+## Lessons Learned
 
-## Priority 3: TUI Delegation Tree
+- Check live state via `mg sessions`, don't maintain worker tables in notes — they go stale between interactions
+- Time is paused between interactions. Design for clear handoffs, not speed.
+- Task descriptions: describe the landscape and destination, not the route
+- Always worktree, always commit first — one path, clean branch points
+- Push regularly — safety net for main
+- Research deliverables should go in `temp-aar/`, not `work/` — `work/` gets wiped on pop
 
-Display parent relationships in the sessions widget. Data is already there (`parent` field). The Tree widget is already in use. Straightforward once priorities 1-2 are stable.
+---
 
-## Priority 4: Session Detail Pane
+## Architecture
 
-Richer preview when selecting a session: description, parent's task, claude_session_id, time info. Not urgent — current preview is functional.
+```
+mg commands:  ctx.tui.mind_launch(mind)       # facade assembles deps
+TUI app:      helpers.mind_launch(term, ...)   # app passes deps directly
+```
+
+- **helpers.py** — all domain logic as standalone functions, explicit deps
+- **tui.py (Tui class)** — thin facade, one-line passthroughs to helpers
+- **terminal.py (TerminalManager)** — WezTerm abstraction, nothing leaks
+- **sessions.py** — `resolve_session()` always succeeds (crash recovery friendly)
+- **hooks.py** — `HookPoint[TReq]`, `@mg_hook` decorator, lazy discovery via `configure()`
 
 ---
 
@@ -56,28 +71,17 @@ Richer preview when selecting a session: description, parent's task, claude_sess
 
 | File | Role |
 |------|------|
-| `mg/src/mg/helpers/tui/terminal.py` | WezTerm pane management, tab naming, launch/switch/park |
-| `mg/src/mg/helpers/tui/tui.py` | Thin facade: `launch_in_mind_pane()`, `switch_to_mind()`, `sessions_refresh()` |
-| `mg/src/mg/helpers/sessions.py` | Session model, CRUD, `update_session` mutator pattern |
-| `mg/src/mg/cmd.py` | `Ctx.tui` wired with TuiClient and sessions_file |
-| `mg-core/src/mg_core/commands/start/_mind_.py` | Session-aware launch flow |
-| `mg-core/src/mg_core/commands/minds/stage.py` | Creates staged sessions |
-| `mg-core/src/mg_core/commands/tui/debug.py` | `mg tui debug` — WezTerm layout inspector |
-| `mg-tui/src/mg_tui/widgets/sessions.py` | Sessions tree widget + preview |
+| `mg/src/mg/mg_hooks.py` | Hook public API: HookPoint, @mg_hook, configure |
+| `mg/src/mg/helpers/tui/helpers.py` | All TUI logic |
+| `mg/src/mg/helpers/tui/terminal.py` | WezTerm abstraction |
+| `mg/src/mg/helpers/sessions.py` | Session model, CRUD |
+| `mg-core/src/mg_core/commands/pop.py` | Session close-out |
+| `mg-core/src/mg_core/commands/minds/stage.py` | Staging |
+| `mg-tui/src/mg_tui/widgets/sessions.py` | Sessions tree widget |
 
 ---
 
 ## Known Issues
 
-- **MarkdownViewer scroll lag** — Occasional hitches during scroll. Likely Textual rendering overhead. Living with it for now.
-- **TUI crash recovery** — If the TUI pane crashes, `mg start` should detect and restart it. Currently requires manual restart.
-- **Test sessions accumulate** — No completion mechanism yet. Priority 2.
-
----
-
-## Active Minds
-
-| Mind | Task | Status |
-|------|------|--------|
-| wren | TUI launch UX and session lifecycle | Active (this session) |
-| sage | `mg minds suggest_role` | Paused, WIP committed |
+- **Manual prompting for mg pop** — minds need to be told to run it
+- **No push in close-out** — base branch not pushed after merge; acceptable for now

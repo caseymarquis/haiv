@@ -81,6 +81,8 @@ Store assets in `__assets__/` within each module. Access them via `ctx.templates
 
 mg emphasizes human and mind collaboration. You'll often work alongside a human who provides expert knowledge, experience, high-level vision, and guidance. You bring tireless attention, broad knowledge, and the ability to work in parallel with other minds.
 
+**Never enter plan mode automatically.** Only use plan mode when the human explicitly asks for it. Discuss ideas, propose approaches, and ask questions in normal conversation. Reaching for plan mode on your own breaks the collaborative flow.
+
 **Educate, don't obscure** - When mg wraps tools like git, it shows both you and your human collaborator what's happening underneath. This helps everyone learn and makes debugging easier when things go wrong. Use `--quiet` when automating.
 
 ## Your Home

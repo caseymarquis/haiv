@@ -301,11 +301,11 @@ When workers finish tasks, we need to know what happened. Currently using AARs (
 
 **Solution:**
 ```bash
-mg minds stage --worktree              # Creates mind + worktree (branch = mind name)
-mg minds stage --worktree --branch X   # Creates mind + worktree named X
-mg minds stage --no-worktree           # Creates mind only
-mg minds stage                         # Error with guidance
+mg minds stage --task "description"                    # worktree + auto-detect base branch
+mg minds stage --task "description" --from-branch main # explicit base branch
 ```
+
+Every mind gets a worktree. Base branch is auto-detected from the parent's current branch, falling back to `ctx.settings.default_branch`. Both the session branch and base branch are recorded in the session for close-out.
 
 Also delivered settings infrastructure:
 - `mg.toml` at project root, `users/{user}/mg.toml` for overrides
@@ -582,6 +582,29 @@ results = AFTER_WORKTREE_CREATED.emit(WorktreeCreatedRequest(path, branch))
 - Resolution order: mg_core → mg_project → mg_user
 
 **Relates to:** Luna's lesson about needing post-worktree setup hooks.
+
+**Status:** Not started
+
+---
+
+## 18. LSP Integration for Code Intelligence
+
+**Problem:** Structural code operations like renames, finding references, and go-to-definition are difficult without IDE tooling.
+
+Minds work in terminals without access to an IDE's language server. Operations that are trivial in an editor — rename a symbol across a codebase, find all references, check type errors — require manual grep-and-replace, which is error-prone and tedious.
+
+An LSP client accessible from the CLI (or as an mg command/MCP tool) would give minds the same structural code intelligence that IDEs provide.
+
+**Use cases:**
+- Rename a function/class/variable across the codebase
+- Find all references to a symbol
+- Go-to-definition
+- Diagnostics (type errors, lint issues) without running the full test suite
+
+**Possible approaches:**
+- MCP server wrapping an LSP client (pylsp, pyright, etc.)
+- mg command that starts/manages a persistent LSP process and exposes queries
+- Direct integration with pyright CLI for one-shot queries
 
 **Status:** Not started
 

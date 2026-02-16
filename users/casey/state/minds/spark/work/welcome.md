@@ -1,43 +1,49 @@
-# Task: Research mind status detection
+# Task Assignment
 
-Research how we can detect and display the current status of each mind. Possible states include: thinking (actively processing), waiting on tool approval, idle (waiting for human input), and not running.
+**Mind-level launch settings — `settings.toml`**
 
-**This is a research task — produce a written report, not code.**
+Add an optional `settings.toml` file to mind directories that configures how the mind launches. The first setting to implement is `launch.system_prompt`, which controls the Claude Code system prompt behavior for that mind.
+
+**Location:** `worktrees/spark/`
 
 ---
 
 ## Context
 
-We run multiple Claude Code instances in parallel, each in its own WezTerm pane. We need visibility into what each instance is doing so the human and coordinating minds know where attention is needed.
+Different minds have different roles. A COO (strategic, ideas, delegation) doesn't need the full Claude Code software engineering system prompt — it takes up context and encourages behaviors that aren't relevant. A code worker needs the full toolkit.
 
-Our existing solution (`mg next` using `tmux capture-pane`) is outdated — we've moved from tmux to WezTerm. See Problem #1 in `users/casey/state/minds/wren/work/docs/problems.md` for background.
+We want minds to be able to opt into a different launch experience through a settings file in their home directory.
+
+## What Exists
+
+- Minds live at `users/{user}/state/minds/{mind}/`
+- `mg start {mind}` launches a mind (see `mg-core` commands)
+- `mg become {mind}` loads context for an existing session
+- There's already project-level settings infrastructure (`mg.toml`, `ctx.settings`)
+- `references.toml` already exists as a per-mind config file
+
+## The Setting
+
+```toml
+# minds/{mind}/settings.toml
+
+[launch]
+system_prompt = "minimal"   # or "full" (default)
+```
+
+The details of what "minimal" means and how it integrates with Claude Code's launch flags are for you and Casey to figure out together. This is a new area — discuss the approach before building.
 
 ---
 
-## Areas to Research
+## Success Criteria
 
-### Claude Code hooks
-
-Claude Code supports a hooks system. Investigate what hook events are available, what data they provide, and whether they can signal status changes (e.g., "waiting for user input", "tool approval needed", "processing"). Look at the official Claude Code documentation and any configuration files in `~/.claude/`.
-
-### Claude Code status line
-
-Claude Code has a status line feature. Can we read it programmatically? Does it expose state information?
-
-### WezTerm pane content
-
-WezTerm has `cli get-text` for reading pane content. Could we detect status from the terminal output (prompt patterns, spinner, etc.)? How reliable would this be?
-
-### File-based signaling
-
-Could hooks write to a known file that our TUI polls? What would the latency and reliability look like?
+- `settings.toml` is loaded during mind launch
+- `launch.system_prompt` setting is respected
+- Minds without a `settings.toml` get the current default behavior
+- Clean integration with existing `mg start` / launch infrastructure
 
 ---
 
-## Deliverable
+## Before You Begin
 
-Write your findings to `work/research-report.md`. For each approach, cover:
-- How it works
-- What status information it can provide
-- Limitations and reliability concerns
-- How it could integrate with our TUI and `mg sessions` display
+Read the full assignment, then discuss your understanding and approach with your human collaborator before writing code. The task description is a starting point — not a spec. Do not use planning tools unless your human explicitly requests it. You work best together.

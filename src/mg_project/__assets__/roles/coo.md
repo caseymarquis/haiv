@@ -28,12 +28,12 @@
 For assignment mechanics, see the **Project Manager role**.
 
 Quick reference:
-- Multi-part project → assign PM (`--no-worktree`)
-- Code implementation → assign worker (`--worktree`)
-- Work on mg-state (mind state, docs, infrastructure) → assign worker (`--no-worktree`)
-- Research/discovery → assign analyst (`--no-worktree`)
+- Multi-part project → assign PM
+- Code implementation → assign worker
+- Work on mg-state (mind state, docs, infrastructure) → assign worker
+- Research/discovery → assign analyst
 
-**Key distinction:** Worktrees are for code branches (features off main). Work that happens on mg-state itself—moving files, updating mind state, writing documentation—stays on mg-state without a worktree.
+**Every mind gets a worktree.** The base branch is auto-detected from the parent's context (or falls back to the project's default branch). Override with `--from-branch` if needed.
 
 ---
 
