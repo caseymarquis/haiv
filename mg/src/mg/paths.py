@@ -171,6 +171,11 @@ class WorkPaths:
     root: Path
 
     @property
+    def aars_dir(self) -> Path:
+        """Path to work/aars/ directory (after-action reviews)."""
+        return self.root / "aars"
+
+    @property
     def docs_dir(self) -> Path:
         """Path to work/docs/ directory."""
         return self.root / "docs"

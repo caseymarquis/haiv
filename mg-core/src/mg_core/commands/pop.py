@@ -14,6 +14,7 @@ import shutil
 from mg import cmd
 from mg.errors import CommandError
 from mg.helpers.sessions import find_session, get_current_session, remove_session
+from mg.paths import MindPaths
 
 
 def define() -> cmd.Def:
@@ -44,27 +45,43 @@ def execute(ctx: cmd.Ctx) -> None:
 
 
 def _print_checklist(ctx: cmd.Ctx) -> None:
-    """Print the wind-down checklist."""
+    """Print the wind-down checklist, scaffolding an AAR for the parent mind."""
+    session = get_current_session(ctx.paths.user.sessions_file)
+    parent = find_session(ctx.paths.user.sessions_file, session.parent_id) if session.parent_id else None
+
+    aar_item = None
+    if parent:
+        parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, mg_root=ctx.paths.root)
+        aar_path = parent_paths.work.aars_dir / f"{session.as_filename()}.md"
+        parent_paths.work.aars_dir.mkdir(parents=True, exist_ok=True)
+        ctx.templates.write("pop/aar.md.j2", aar_path, skip_existing=True, task=session.task)
+        aar_rel = aar_path.relative_to(ctx.paths.root)
+        aar_item = f"Fill in your AAR at `{aar_rel}`."
+
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
         merge_step = f'Run `cd "{cd_to}" && mg pop --merge`'
     else:
         merge_step = "Run `mg pop --merge`"
 
+    items = [
+        "Review your original assignment for gaps in completion.",
+        "Review for small improvements that are easy to add.",
+        "Discuss your findings.",
+        "Ensure proper test coverage and run tests.",
+        "Commit all changes to your worktree branch.",
+    ]
+    if aar_item:
+        items.append(aar_item)
+    items.append(merge_step)
+    items.append("Run `mg pop --session`")
+
     ctx.mind.checklist(
         postamble=(
             "This is an opportunity to consider your work as a whole "
             "and ensure it is aligned with the spirit of the original task."
         ),
-        items=[
-            "Review your original assignment for gaps in completion.",
-            "Review for small improvements that are easy to add.",
-            "Discuss your findings.",
-            "Ensure proper test coverage and run tests.",
-            "Commit all changes to your worktree branch.",
-            merge_step,
-            "Run `mg pop --session`",
-        ],
+        items=items,
     )
 
 
@@ -131,6 +148,16 @@ def _do_session(ctx: cmd.Ctx) -> None:
         )
 
     mind_name = session.mind
+
+    # Notify parent mind about the AAR (best-effort, pane may not exist)
+    parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, mg_root=ctx.paths.root)
+    aar_path = parent_paths.work.aars_dir / f"{session.as_filename()}.md"
+    aar_rel = aar_path.relative_to(ctx.paths.root)
+    ctx.tui.try_send_text_to_mind(
+        parent.mind,
+        f"<mg>{mind_name} finished. Please read '{aar_rel}'</mg>",
+    )
+
     remove_session(ctx.paths.user.sessions_file, session.id)
 
     # Clear work/ directory for next assignment

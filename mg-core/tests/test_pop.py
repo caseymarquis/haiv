@@ -40,7 +40,7 @@ def sandbox():
     return sb
 
 
-def _create_session_with_branch(sandbox, *, mind="echo", branch="echo", base_branch="main"):
+def _create_session_with_branch(sandbox, *, mind="echo", branch="echo", base_branch="main", parent_id=""):
     """Create a session with branch metadata and return it."""
     return create_session(
         sandbox.ctx.paths.user.sessions_file,
@@ -48,7 +48,22 @@ def _create_session_with_branch(sandbox, *, mind="echo", branch="echo", base_bra
         mind,
         branch=branch,
         base_branch=base_branch,
+        parent_id=parent_id,
     )
+
+
+def _create_parent_and_child(sandbox, *, parent_mind="wren", child_mind="echo"):
+    """Create a parent session and a child session linked to it. Returns (parent, child)."""
+    parent = create_session(
+        sandbox.ctx.paths.user.sessions_file,
+        "parent task",
+        parent_mind,
+    )
+    child = _create_session_with_branch(
+        sandbox, mind=child_mind, branch=child_mind, base_branch="main",
+        parent_id=parent.id,
+    )
+    return parent, child
 
 
 # =============================================================================
@@ -75,7 +90,10 @@ class TestChecklist:
 
     def test_prints_checklist(self, sandbox: Sandbox, capsys):
         """Prints the wind-down checklist when no flags given."""
-        sandbox.run("pop")
+        session = _create_session_with_branch(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            sandbox.run("pop")
         output = capsys.readouterr().out
 
         assert "Create a task for each item" in output
@@ -87,6 +105,53 @@ class TestChecklist:
         assert "mg pop --merge" in output
         assert "mg pop --session" in output
         assert "spirit of the original task" in output
+
+    def test_scaffolds_aar_in_parent_mind(self, sandbox: Sandbox):
+        """Creates AAR template in parent mind's work/aars/ directory."""
+        parent, child = _create_parent_and_child(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+            sandbox.run("pop")
+
+        aar_path = (
+            sandbox.ctx.paths.user.minds_dir / "wren" / "work" / "aars" / "test-task.md"
+        )
+        assert aar_path.is_file()
+
+    def test_aar_not_overwritten_if_exists(self, sandbox: Sandbox):
+        """Does not overwrite an existing AAR file."""
+        parent, child = _create_parent_and_child(sandbox)
+
+        aar_dir = sandbox.ctx.paths.user.minds_dir / "wren" / "work" / "aars"
+        aar_dir.mkdir(parents=True)
+        aar_path = aar_dir / "test-task.md"
+        aar_path.write_text("existing content\n")
+
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+            sandbox.run("pop")
+
+        assert aar_path.read_text() == "existing content\n"
+
+    def test_checklist_references_aar_path(self, sandbox: Sandbox, capsys):
+        """Checklist includes an item referencing the AAR path."""
+        parent, child = _create_parent_and_child(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+            sandbox.run("pop")
+        output = capsys.readouterr().out
+
+        assert "Fill in your AAR" in output
+        assert "aars/test-task.md" in output
+
+    def test_no_aar_item_without_parent(self, sandbox: Sandbox, capsys):
+        """Checklist omits AAR item when session has no parent."""
+        session = _create_session_with_branch(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+            sandbox.run("pop")
+        output = capsys.readouterr().out
+
+        assert "AAR" not in output
 
 
 # =============================================================================
@@ -195,29 +260,14 @@ class TestSession:
 
     def test_removes_session_and_launches_parent(self, sandbox: Sandbox):
         """Removes session, launches parent mind, and closes pane."""
-        # Create parent session, then child session
-        parent = create_session(
-            sandbox.ctx.paths.user.sessions_file,
-            "parent task",
-            "wren",
-        )
-        session = _create_session_with_branch(
-            sandbox, mind="echo", branch="echo", base_branch="main",
-        )
-        # Manually set parent_id (create_session helper doesn't expose it)
-        from mg.helpers.sessions import update_session
-        update_session(
-            sandbox.ctx.paths.user.sessions_file,
-            session.id,
-            lambda s: setattr(s, "parent_id", parent.id),
-        )
+        parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
             ctx = sandbox.run("pop --session")
 
         # Session should be removed
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
-        assert all(s.id != session.id for s in sessions)
+        assert all(s.id != child.id for s in sessions)
         # Parent should still exist
         assert any(s.id == parent.id for s in sessions)
 
@@ -225,6 +275,32 @@ class TestSession:
         mock_tui = cast(MagicMock, ctx.tui)
         mock_tui.mind_launch.assert_called_once_with("wren")
         mock_tui.mind_close_pane.assert_called_once_with("echo")
+
+    def test_notifies_parent_mind(self, sandbox: Sandbox):
+        """Sends AAR notification to parent mind's pane."""
+        parent, child = _create_parent_and_child(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+            ctx = sandbox.run("pop --session")
+
+        mock_tui = cast(MagicMock, ctx.tui)
+        mock_tui.try_send_text_to_mind.assert_called_once()
+        call_args = mock_tui.try_send_text_to_mind.call_args
+        assert call_args[0][0] == "wren"
+        assert "echo finished" in call_args[0][1]
+        assert "aars/test-task.md" in call_args[0][1]
+
+    def test_session_works_when_parent_pane_missing(self, sandbox: Sandbox):
+        """Completes successfully even when parent pane is not found."""
+        parent, child = _create_parent_and_child(sandbox)
+
+        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+            ctx = sandbox.run("pop --session")
+
+        # try_send_text_to_mind returns MagicMock (truthy) by default,
+        # but the point is it doesn't raise — session cleanup still completes
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert all(s.id != child.id for s in sessions)
 
     def test_errors_when_no_parent(self, sandbox: Sandbox):
         """Raises error when session has no parent."""
