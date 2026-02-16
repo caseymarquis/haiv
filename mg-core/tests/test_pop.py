@@ -284,8 +284,8 @@ class TestSession:
             ctx = sandbox.run("pop --session")
 
         mock_tui = cast(MagicMock, ctx.tui)
-        mock_tui.try_send_text_to_mind.assert_called_once()
-        call_args = mock_tui.try_send_text_to_mind.call_args
+        mock_tui.mind_try_send_text.assert_called_once()
+        call_args = mock_tui.mind_try_send_text.call_args
         assert call_args[0][0] == "wren"
         assert "echo finished" in call_args[0][1]
         assert "aars/test-task.md" in call_args[0][1]
@@ -297,7 +297,7 @@ class TestSession:
         with patch.dict("os.environ", {"MG_SESSION": child.id}):
             ctx = sandbox.run("pop --session")
 
-        # try_send_text_to_mind returns MagicMock (truthy) by default,
+        # mind_try_send_text returns MagicMock (truthy) by default,
         # but the point is it doesn't raise — session cleanup still completes
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert all(s.id != child.id for s in sessions)

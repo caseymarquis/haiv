@@ -153,7 +153,7 @@ def _do_session(ctx: cmd.Ctx) -> None:
     parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, mg_root=ctx.paths.root)
     aar_path = parent_paths.work.aars_dir / f"{session.as_filename()}.md"
     aar_rel = aar_path.relative_to(ctx.paths.root)
-    ctx.tui.try_send_text_to_mind(
+    ctx.tui.mind_try_send_text(
         parent.mind,
         f"<mg>{mind_name} finished. Please read '{aar_rel}'</mg>",
     )
