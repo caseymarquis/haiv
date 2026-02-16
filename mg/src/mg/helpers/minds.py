@@ -383,7 +383,7 @@ def generate_mind_name(existing: list[str]) -> str:
         ],
         capture_output=True,
         text=True,
-        env={**os.environ, "DISABLE_PROMPT_CACHING": "1"},
+        env={**os.environ, "DISABLE_PROMPT_CACHING": "1", "CLAUDECODE": ""},
     )
 
     if result.returncode != 0:
