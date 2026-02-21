@@ -107,7 +107,9 @@ minds/
 
 **work/** - Assignment-specific files loaded on wake. May be cleared between assignments.
 
-**home/** - Personal files that persist across assignments. Also loaded on wake.
+**home/** - Personal files that persist across assignments. Also loaded on wake. This is yours.
+
+**`shenanigans/`** - At the repo root. Not work.
 
 **references.toml** - Pointers to external docs (relative to mg root) loaded on wake.
 
