@@ -72,5 +72,5 @@ class TemplateRenderer:
             return dest
         content = self.render(template_path, **variables)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(content)
+        dest.write_text(content, encoding="utf-8")
         return dest

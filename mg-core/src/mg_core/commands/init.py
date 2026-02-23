@@ -162,7 +162,7 @@ def _init_fresh_empty(
         )
     else:
         # Create README and commit
-        (worktree_path / "README.md").write_text(f"# {branch}\n")
+        (worktree_path / "README.md").write_text(f"# {branch}\n", encoding="utf-8")
         worktree_git.run("add README.md", intent="stage README")
         worktree_git.run('commit -m "Initial commit"', intent="create initial commit")
 

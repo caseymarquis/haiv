@@ -75,7 +75,7 @@ def _load_settings(path: Path, default_text: str) -> MgSettings:
     """
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(default_text)
+        path.write_text(default_text, encoding="utf-8")
         return MgSettings()
 
     with open(path, "rb") as f:
