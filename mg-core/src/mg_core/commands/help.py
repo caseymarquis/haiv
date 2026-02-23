@@ -49,7 +49,7 @@ def _show_command_detail(ctx: cmd.Ctx, info, pkg_name: str, commands_dir) -> Non
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    package_commands = discover_commands(ctx.paths.root)
+    package_commands = discover_commands(ctx.paths.root_or_none)
 
     # Handle --for flag
     if ctx.args.has("for"):

@@ -132,7 +132,7 @@ def commands_for_package(package: PackageInfo) -> list[CommandInfo]:
     return sorted(commands, key=lambda c: c.name)
 
 
-def discover_commands(mg_root: Path) -> list[PackageCommands]:
+def discover_commands(mg_root: Path | None) -> list[PackageCommands]:
     """Discover all commands across all packages.
 
     Returns commands grouped by package in discovery order (core first,
