@@ -60,6 +60,10 @@ class MgDeps:
 
 def init(on_error: Callable[[str], None]) -> MgDeps:
     """Resolve all mg dependencies in one shot."""
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
     paths = resolve_paths(on_error)
     settings = load_settings(paths, on_error) if paths else MgSettings()
 

@@ -239,6 +239,9 @@ def main():
     2. Project package (mg_project) - if in mg-managed repo
     3. User package (mg_user) - deferred until user identity exists
     """
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
     # MG_PROG allows the wrapper script to pass its name (e.g., when using python -c)
     prog = os.environ.get(env.MG_PROG) or Path(sys.argv[0]).name
     args = sys.argv[1:]
