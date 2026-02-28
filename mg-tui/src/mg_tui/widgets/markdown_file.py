@@ -59,6 +59,8 @@ class MarkdownFileWidget(MarkdownViewer):
         self._observer: Observer | None = None
 
     def on_mount(self) -> None:
+        if not self.file_path.parent.exists():
+            return
         handler = _FileChangeHandler(self)
         self._observer = Observer()
         self._observer.schedule(handler, str(self.file_path.parent), recursive=False)

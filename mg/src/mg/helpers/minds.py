@@ -141,7 +141,7 @@ class Mind:
                 message="Missing references.toml",
             )
             if fix:
-                self.paths.references_file.write_text("# External document references\n")
+                self.paths.references_file.write_text("# External document references\n", encoding="utf-8")
                 issue.fixed = True
             issues.append(issue)
 
@@ -459,7 +459,7 @@ def scaffold_mind(
 
     def _write_if_missing(path: Path, content: str) -> None:
         if not skip_existing or not path.exists():
-            path.write_text(content)
+            path.write_text(content, encoding="utf-8")
 
     _write_if_missing(paths.work.immediate_plan_file, "# Immediate Plan\n")
     _write_if_missing(paths.work.long_term_vision_file, "# Long-Term Vision\n")

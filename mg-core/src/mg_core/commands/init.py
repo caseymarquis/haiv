@@ -162,7 +162,7 @@ def _init_fresh_empty(
         )
     else:
         # Create README and commit
-        (worktree_path / "README.md").write_text(f"# {branch}\n")
+        (worktree_path / "README.md").write_text(f"# {branch}\n", encoding="utf-8")
         worktree_git.run("add README.md", intent="stage README")
         worktree_git.run('commit -m "Initial commit"', intent="create initial commit")
 
@@ -276,13 +276,14 @@ def _init_peer_mode(
     # Set up mg structure in peer directory
     git = Git(peer_dir, quiet=quiet)
 
-    # Create mg-state orphan branch (switch --orphan clears index and working tree)
-    git.run("switch --orphan mg-state", intent="create mg-state orphan branch")
-
-    # Create mg-state structure and commit
-    _write_mg_state_files(peer_dir, ctx)
-    git.run("add .", intent="stage mg-state files")
-    git.run('commit -m "Initialize mg"', intent="create initial commit on mg-state")
+    # Set up mg-state branch
+    if _has_remote_mg_state(git):
+        git.run("switch mg-state", intent="switch to existing mg-state branch")
+    else:
+        git.run("switch --orphan mg-state", intent="create mg-state orphan branch")
+        _write_mg_state_files(peer_dir, ctx)
+        git.run("add .", intent="stage mg-state files")
+        git.run('commit -m "Initialize mg"', intent="create initial commit on mg-state")
 
     # Create worktree for target branch
     git.run(
@@ -291,6 +292,12 @@ def _init_peer_mode(
     )
 
     _print_next_steps(ctx, branch=target_branch, quiet=quiet)
+
+
+def _has_remote_mg_state(git: Git) -> bool:
+    """Check if mg-state exists as a remote tracking branch after clone."""
+    output = git.run("branch -r --list origin/mg-state", intent="check for existing mg-state")
+    return bool(output.strip())
 
 
 def _get_remote_url(git: Git) -> str | None:

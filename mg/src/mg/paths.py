@@ -356,6 +356,11 @@ class Paths:
         return self._mg_root
 
     @property
+    def root_or_none(self) -> Path | None:
+        """The mg project root directory, or None if not set."""
+        return self._mg_root
+
+    @property
     def git_dir(self) -> Path:
         """The .git directory."""
         return self.root / ".git"
