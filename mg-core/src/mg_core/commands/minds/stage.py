@@ -32,10 +32,20 @@ from mg_core.mg_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
 
 def define() -> cmd.Def:
     return cmd.Def(
-        description="Prep a mind for a new task",
+        description="Prep a mind for a new task (see details for usage conventions)",
         enable_mg_hooks=True,
         flags=[
-            cmd.Flag("task", type=str, description="Task summary (required)"),
+            cmd.Flag(
+                "task",
+                type=str,
+                description=(
+                    "Task summary (required). Keep it short like a git commit subject: "
+                    "50 chars recommended, 72 max. "
+                    "Conventional commit style encouraged, e.g. "
+                    '"feat(session): add timeout support". '
+                    "Use --description for longer context."
+                ),
+            ),
             cmd.Flag("description", type=str, min_args=0, max_args=1, description="Long-form description"),
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
             cmd.Flag(
@@ -62,6 +72,14 @@ def execute(ctx: cmd.Ctx) -> None:
         raise CommandError("--task is required\n\n  mg minds stage --task \"description\"")
 
     task = ctx.args.get_one("task")
+    if len(task) > 72:
+        raise CommandError(
+            f"--task is too long ({len(task)} chars, max 72).\n\n"
+            "  Keep it short like a git commit subject.\n"
+            "  Use --description for longer context."
+        )
+    if len(task) > 50:
+        ctx.print(f"Hint: --task is {len(task)} chars (recommended: 50 or fewer)")
     description = ctx.args.get_one("description") if ctx.args.has("description") else ""
 
     # Check for available minds (no active session) when name not provided
