@@ -64,7 +64,8 @@ def sessions_refresh(
         entries.append(
             SessionEntry(
                 id=s.id, mind=s.mind, task=s.task,
-                short_id=s.short_id, status=s.status, parent_id=s.parent_id,
+                short_id=s.short_id, status=s.status,
+                description=s.description, parent_id=s.parent_id,
                 ahead=stats.ahead, behind=stats.behind,
                 changed_files=stats.changed_files,
             )

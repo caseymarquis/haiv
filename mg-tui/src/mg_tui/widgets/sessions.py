@@ -36,12 +36,13 @@ class SessionPreview(Static):
         if entry is None:
             self.update("")
             return
-        self.update(
-            f"Task: {entry.task}\n"
-            f"Mind: {entry.mind}\n"
-            f"Status: {entry.status or 'none'}\n"
-            f"Session: {entry.short_id}"
-        )
+        lines = [
+            f"{entry.mind}: {entry.task}",
+            f"Status: {entry.status or 'none'} | Session: {entry.short_id}",
+        ]
+        if entry.description:
+            lines += ["", entry.description]
+        self.update("\n".join(lines))
 
 
 class SessionsWidget(Vertical):

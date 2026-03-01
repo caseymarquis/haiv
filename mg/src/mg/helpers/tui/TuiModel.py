@@ -29,6 +29,7 @@ class SessionEntry:
     task: str = ""
     short_id: int = 0
     status: str = "started"  # staged / started
+    description: str = ""
     parent_id: str = ""
     ahead: int = -1
     behind: int = -1
