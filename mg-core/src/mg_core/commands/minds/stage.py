@@ -46,7 +46,17 @@ def define() -> cmd.Def:
                     "Use --description for longer context."
                 ),
             ),
-            cmd.Flag("description", type=str, min_args=0, max_args=1, description="Long-form description"),
+            cmd.Flag(
+                "description",
+                type=str,
+                min_args=0,
+                max_args=1,
+                description=(
+                    "Additional high-level context. Keep it brief — "
+                    "templates for detailed task instructions are "
+                    "provided after the mind is created."
+                ),
+            ),
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
             cmd.Flag(
                 "from-branch",
