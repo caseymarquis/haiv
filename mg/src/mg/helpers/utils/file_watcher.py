@@ -11,18 +11,20 @@ Usage:
     def _refresh_on_worker_thread(paths: list[Path]) -> None:
         client.write(...)  # TuiLocalClient is thread-safe
 
-    watcher = FileWatcher(_refresh_on_worker_thread, debounce_seconds=1.0)
-    watcher.watch_file(sessions_file)
-    watcher.watch_directory(minds_dir)
-    watcher.start()
+    # Chained setup with context manager
+    with FileWatcher(_refresh_on_worker_thread).watch_file(sessions_file).start() as w:
+        ...  # stops automatically on exit
 
-    # ... later ...
+    # Or manual lifetime control
+    watcher = FileWatcher(_refresh_on_worker_thread).watch_file(f).watch_directory(d).start()
+    ...
     watcher.stop()
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from types import TracebackType
 from typing import Callable
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
@@ -63,7 +65,7 @@ class FileWatcher:
         self._observer = Observer()
         self._watches: list[tuple[str, bool, set[str] | None]] = []
 
-    def watch_file(self, path: Path) -> None:
+    def watch_file(self, path: Path) -> FileWatcher:
         """Watch a single file for changes.
 
         Internally watches the parent directory and filters to only the
@@ -71,18 +73,32 @@ class FileWatcher:
         """
         resolved = path.resolve()
         self._watches.append((str(resolved.parent), False, {str(resolved)}))
+        return self
 
-    def watch_directory(self, path: Path) -> None:
+    def watch_directory(self, path: Path) -> FileWatcher:
         """Watch a directory recursively for changes."""
         self._watches.append((str(path.resolve()), True, None))
+        return self
 
-    def start(self) -> None:
+    def start(self) -> FileWatcher:
         """Start watching for file system changes."""
         for watch_path, recursive, file_filter in self._watches:
             bridge = _BridgeHandler(self._mh, file_filter)
             self._observer.schedule(bridge, watch_path, recursive=recursive)
         self._mh.start()
         self._observer.start()
+        return self
+
+    def __enter__(self) -> FileWatcher:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.stop()
 
     def stop(self) -> None:
         """Stop watching and flush any pending changes."""
@@ -104,6 +120,8 @@ class _BridgeHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         src = event.src_path
+        if not isinstance(src, str):
+            raise TypeError(f"Expected str path from watchdog, got {type(src).__name__}: {src!r}")
         if self._file_filter is not None and src not in self._file_filter:
             return
         self._mh.queue(Path(src))

@@ -44,6 +44,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
 from mg._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
 from mg.helpers.tui import helpers
+from mg.helpers.utils.file_watcher import FileWatcher
 from mg.wrappers.git import Git
 from mg_tui.init import init as init_mg_deps
 from mg_tui.store import TuiStore
@@ -98,6 +99,7 @@ class MindGamesApp(App):
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
         self._last_write_counter = -1
+        self._file_watcher: FileWatcher | None = None
 
     def on_mount(self) -> None:
         """Start the TUI server and load initial state."""
@@ -107,6 +109,7 @@ class MindGamesApp(App):
 
         if self.paths is not None:
             helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file, git=self.git)
+            self._start_file_watcher()
 
         # Immediate first read, then start polling
         self._poll_model()
@@ -177,5 +180,21 @@ class MindGamesApp(App):
         self.exit(return_code=RESTART_EXIT_CODE)
 
     def shutdown(self) -> None:
-        """Stop the TUI server. Called after app.run() returns."""
+        """Stop the TUI server and file watcher. Called after app.run() returns."""
         self._server.stop()
+        if self._file_watcher is not None:
+            self._file_watcher.stop()
+
+    def _start_file_watcher(self) -> None:
+        """Watch sessions file for external changes and refresh the TUI."""
+        sessions_file = self.paths.user.sessions_file
+        sessions_file.parent.mkdir(parents=True, exist_ok=True)
+
+        def _refresh_sessions_on_worker_thread(changed_paths: list[Path]) -> None:
+            helpers.sessions_refresh(self.tui_client, sessions_file, git=self.git)
+
+        self._file_watcher = (
+            FileWatcher(_refresh_sessions_on_worker_thread)
+            .watch_file(sessions_file)
+            .start()
+        )

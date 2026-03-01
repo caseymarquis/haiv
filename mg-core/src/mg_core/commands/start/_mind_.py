@@ -45,7 +45,6 @@ def _launch_here(
 ) -> None:
     """Resolve a session and launch Claude in the current terminal."""
     session = resolve_session(ctx.paths.user.sessions_file, mind_name, task=task, parent_id=parent_id)
-    ctx.tui.sessions_refresh()
     env = build_env(mind_name, session.id, ctx.paths.root)
     claude_cmd = build_claude_command(mind_name, session.claude_session_id)
 

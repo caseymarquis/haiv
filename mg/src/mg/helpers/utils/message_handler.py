@@ -19,6 +19,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable
+from types import TracebackType
 from typing import Generic, TypeVar
 
 TMessage = TypeVar("TMessage")
@@ -61,11 +62,12 @@ class MessageHandler(Generic[TMessage]):
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def start(self) -> None:
+    def start(self) -> MessageHandler[TMessage]:
         """Launch the worker thread."""
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+        return self
 
     def stop(self) -> None:
         """Signal shutdown, flush pending messages, and join the thread."""
@@ -78,6 +80,17 @@ class MessageHandler(Generic[TMessage]):
 
         # Flush anything left in the queue
         self._flush()
+
+    def __enter__(self) -> MessageHandler[TMessage]:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.stop()
 
     def queue(self, message: TMessage) -> None:
         """Add a message to the pending queue. Thread-safe.
