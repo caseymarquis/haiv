@@ -7,6 +7,10 @@ exercise the full request path.
 
 import pytest
 
+# All tests in this module share a TuiServer socket, so they must run
+# on the same xdist worker to avoid address conflicts.
+pytestmark = pytest.mark.xdist_group("tui_server")
+
 from mg._infrastructure.TuiServer import TuiLocalClient, TuiServer
 from mg.helpers.tui.TuiClient import TuiClient
 from mg.helpers.tui.TuiClient import ConcurrencyError

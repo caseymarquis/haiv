@@ -1,17 +1,42 @@
 #!/bin/bash
-# Run tests for all packages in the workspace
+# Run tests for all packages in the workspace (parallel across and within packages)
+
+dir="$(dirname "$0")"
+pids=()
+tmpfiles=()
 
 for pkg in mg mg-core mg-cli; do
-  echo -n "$pkg: "
-  output=$(cd "$(dirname "$0")/$pkg" && uv run pytest -q --tb=no "$@" 2>&1)
-  echo "$output" | grep -E "^[0-9]+ passed|^FAILED|^ERROR|failed|error" | tail -1
+  tmp=$(mktemp)
+  tmpfiles+=("$tmp")
+  (cd "$dir/$pkg" && uv run pytest -n auto --dist loadgroup -q --tb=no "$@" 2>&1 | tail -1 | sed "s/^/$pkg: /") > "$tmp" &
+  pids+=($!)
 done
 
-# Type checking
-type_errors=""
+for i in "${!pids[@]}"; do
+  wait "${pids[$i]}"
+  cat "${tmpfiles[$i]}"
+  rm -f "${tmpfiles[$i]}"
+done
+
+# Type checking (parallel)
+type_pids=()
+type_tmps=()
+
 for pkg in mg mg-core mg-cli; do
-  if ! (cd "$(dirname "$0")/$pkg" && uv run ty check 2>&1) > /dev/null; then
-    type_errors="$type_errors $pkg"
+  tmp=$(mktemp)
+  type_tmps+=("$tmp")
+  (cd "$dir/$pkg" && uv run ty check 2>&1 > /dev/null && echo "ok" || echo "fail") > "$tmp" &
+  type_pids+=($!)
+done
+
+type_errors=""
+for i in "${!type_pids[@]}"; do
+  wait "${type_pids[$i]}"
+  result=$(cat "${type_tmps[$i]}")
+  rm -f "${type_tmps[$i]}"
+  if [ "$result" = "fail" ]; then
+    pkgs=(mg mg-core mg-cli)
+    type_errors="$type_errors ${pkgs[$i]}"
   fi
 done
 
