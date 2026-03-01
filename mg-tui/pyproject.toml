@@ -3,7 +3,7 @@ name = "mg-tui"
 version = "0.1.0"
 description = "Terminal UI for mind-games"
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     { name = "Casey Marquis" }
 ]

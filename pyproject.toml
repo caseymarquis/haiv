@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [
     { name = "Casey Marquis" }
 ]
