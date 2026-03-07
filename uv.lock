@@ -4,9 +4,9 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "haiv",
     "haiv-cli",
     "haiv-core",
+    "haiv-lib",
     "haiv-tui",
     "haiv-workspace",
 ]
@@ -39,9 +39,59 @@ wheels = [
 ]
 
 [[package]]
-name = "haiv"
+name = "haiv-cli"
 version = "0.1.0"
-source = { editable = "haiv" }
+source = { editable = "haiv-cli" }
+dependencies = [
+    { name = "haiv-core" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+    { name = "ty" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "haiv-core", editable = "haiv-core" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-xdist", specifier = ">=3.0" },
+    { name = "ty" },
+]
+
+[[package]]
+name = "haiv-core"
+version = "0.1.0"
+source = { editable = "haiv-core" }
+dependencies = [
+    { name = "haiv-lib" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+    { name = "ty" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "haiv-lib", editable = "haiv-lib" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-xdist", specifier = ">=3.0" },
+    { name = "ty" },
+]
+
+[[package]]
+name = "haiv-lib"
+version = "0.1.0"
+source = { editable = "haiv-lib" }
 dependencies = [
     { name = "jinja2" },
     { name = "punq" },
@@ -72,62 +122,12 @@ dev = [
 ]
 
 [[package]]
-name = "haiv-cli"
-version = "0.1.0"
-source = { editable = "haiv-cli" }
-dependencies = [
-    { name = "haiv-core" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-xdist" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "haiv-core", editable = "haiv-core" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-xdist", specifier = ">=3.0" },
-    { name = "ty" },
-]
-
-[[package]]
-name = "haiv-core"
-version = "0.1.0"
-source = { editable = "haiv-core" }
-dependencies = [
-    { name = "haiv" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-xdist" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "haiv", editable = "haiv" }]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-xdist", specifier = ">=3.0" },
-    { name = "ty" },
-]
-
-[[package]]
 name = "haiv-tui"
 version = "0.1.0"
 source = { editable = "haiv-tui" }
 dependencies = [
     { name = "blinker" },
-    { name = "haiv" },
+    { name = "haiv-lib" },
     { name = "textual" },
     { name = "watchdog" },
 ]
@@ -140,7 +140,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "blinker" },
-    { name = "haiv", editable = "haiv" },
+    { name = "haiv-lib", editable = "haiv-lib" },
     { name = "textual" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]

@@ -1,5 +1,5 @@
 [project]
-name = "haiv"
+name = "haiv-lib"
 version = "0.1.0"
 description = "API for building haiv commands and workflows"
 readme = "README.md"

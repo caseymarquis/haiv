@@ -18,11 +18,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "haiv",
+    "haiv-lib",
 ]
 
 [tool.uv.sources]
-haiv = { workspace = true }
+haiv-lib = { workspace = true }
 
 [project.urls]
 Homepage = "https://github.com/caseymarquis/haiv"

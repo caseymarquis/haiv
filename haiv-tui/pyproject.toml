@@ -18,13 +18,13 @@ classifiers = [
 ]
 dependencies = [
     "textual",
-    "haiv",
+    "haiv-lib",
     "blinker",
     "watchdog>=6.0.0",
 ]
 
 [tool.uv.sources]
-haiv = { workspace = true }
+haiv-lib = { workspace = true }
 
 [project.scripts]
 haiv-tui = "haiv_tui:main"
