@@ -1,7 +1,7 @@
 ```index
 @memory-persistence
 Memory persistence for long-running minds. Defines directory conventions,
-references.toml format, and mg wake/start/mine commands.
+references.toml format, and hv wake/start/mine commands.
 ```
 
 ```toml
@@ -89,30 +89,30 @@ Mind names cannot start with underscore. Directories starting with `_` are organ
 
 ```toml
 [[references]]
-path = "src/mg_project/__assets__/roles/coo.md"
+path = "src/haiv_project/__assets__/roles/coo.md"
 
 [[references]]
 path = "users/casey/state/minds/wren/docs/problems.md"
 ```
 
-Paths are relative to the mg-state root.
+Paths are relative to the haiv-hq root.
 
 ### Common Reference Targets
 
-- `src/mg_project/__assets__/roles/` - shared roles
+- `src/haiv_project/__assets__/roles/` - shared roles
 - `minds/{mind}/docs/` - mind-specific documents (specs, problem backlogs, etc.)
 - `minds/{mind}/startup/` - documents loaded directly (identity, current focus)
 
 ---
 
-## mg wake
+## hv wake
 
 Outputs a list of files for the mind to read.
 
 ### Basic Usage
 
 <input>
-Command: mg wake wren
+Command: hv wake wren
 
 minds/wren/startup/ contains:
   - references.toml (points to roles/coo.md, docs/problems.md)
@@ -122,7 +122,7 @@ minds/wren/startup/ contains:
 
 <output>
 Read the following files in their entirety:
-- src/mg_project/__assets__/roles/coo.md
+- src/haiv_project/__assets__/roles/coo.md
 - users/casey/state/minds/wren/docs/problems.md
 - users/casey/state/minds/wren/startup/identity.md
 - users/casey/state/minds/wren/startup/current-focus.md
@@ -131,7 +131,7 @@ Read the following files in their entirety:
 ### Mind in Organizational Directory
 
 <input>
-Command: mg wake reed
+Command: hv wake reed
 
 minds/_new/reed/startup/ contains:
   - references.toml (points to roles/analyst.md)
@@ -139,14 +139,14 @@ minds/_new/reed/startup/ contains:
 
 <output>
 Read the following files in their entirety:
-- src/mg_project/__assets__/roles/analyst.md
+- src/haiv_project/__assets__/roles/analyst.md
 - users/casey/state/minds/_new/reed/startup/references.toml
 </output>
 
 ### Mind Not Found
 
 <input>
-Command: mg wake unknown
+Command: hv wake unknown
 </input>
 
 <output>
@@ -162,7 +162,7 @@ When searching for a mind:
 If found in multiple locations, error.
 
 <input>
-Command: mg wake reed
+Command: hv wake reed
 
 minds/reed/ exists
 minds/_new/reed/ exists
@@ -176,39 +176,39 @@ Error: Mind 'reed' found in multiple locations:
 
 ---
 
-## mg start
+## hv start
 
 Launches Claude with a mind's context.
 
 ### Current Terminal (no --tmux)
 
 <input>
-Command: mg start wren
+Command: hv start wren
 </input>
 
 <output>
 Terminal is cleared.
 Claude is started.
-Initial prompt injected: "Run `mg wake wren`"
+Initial prompt injected: "Run `hv wake wren`"
 </output>
 
 ### New tmux Window (--tmux)
 
 <input>
-Command: mg start wren --tmux
+Command: hv start wren --tmux
 </input>
 
 <output>
 New tmux window created, named "wren".
 Terminal is cleared.
 Claude is started in that window.
-Initial prompt injected: "Run `mg wake wren`"
+Initial prompt injected: "Run `hv wake wren`"
 </output>
 
 ### Mind Not Found
 
 <input>
-Command: mg start unknown
+Command: hv start unknown
 </input>
 
 <output>
@@ -217,15 +217,15 @@ Error: Mind 'unknown' not found in minds/ or any organizational subdirectory.
 
 ---
 
-## mg mine
+## hv mine
 
 Displays important locations for the calling mind.
 
 ### Basic Usage
 
 <input>
-Command: mg mine
-Environment: MG_MIND=wren
+Command: hv mine
+Environment: HV_MIND=wren
 </input>
 
 <output>
@@ -237,19 +237,19 @@ Startup context:
   Files loaded on wake. Add references.toml for external docs.
 
 Role:
-  src/mg_project/__assets__/roles/coo.md
+  src/haiv_project/__assets__/roles/coo.md
   (from references.toml)
 </output>
 
 ### No Mind Set
 
 <input>
-Command: mg mine
-Environment: MG_MIND not set
+Command: hv mine
+Environment: HV_MIND not set
 </input>
 
 <output>
-Error: MG_MIND environment variable not set. Run via `mg start {mind}`.
+Error: HV_MIND environment variable not set. Run via `hv start {mind}`.
 </output>
 
 ---
@@ -271,16 +271,16 @@ Any other files in `startup/` are included in the wake output. Common patterns:
 
 ## Environment
 
-### MG_MIND
+### HV_MIND
 
-Set by `mg start`. Contains the mind name.
+Set by `hv start`. Contains the mind name.
 
 <input>
-Command: mg start wren
+Command: hv start wren
 </input>
 
 <output>
-MG_MIND=wren is set in the Claude process environment.
+HV_MIND=wren is set in the Claude process environment.
 </output>
 
-Used by `mg mine` and potentially other commands that need to know the current mind.
+Used by `hv mine` and potentially other commands that need to know the current mind.

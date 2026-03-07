@@ -8,7 +8,7 @@
 
 ## Problem
 
-We're running multiple Claude instances in tmux windows within the "mind-games" session. The manager (Wren) needs to know which windows are waiting for input vs actively working.
+We're running multiple Claude instances in tmux windows within the "haiv" session. The manager (Wren) needs to know which windows are waiting for input vs actively working.
 
 Currently, checking each window requires:
 - `tmux capture-pane -t <window> -p | tail -15` per window
@@ -21,9 +21,9 @@ We need a command the human can run in a separate terminal to quickly see the st
 
 ## Request
 
-Onboard a new Claude to create an `mg` command (probably `mg status` or `mg windows`) that:
+Onboard a new Claude to create an `hv` command (probably `hv status` or `hv windows`) that:
 
-1. Lists all windows in the "mind-games" tmux session
+1. Lists all windows in the "haiv" tmux session
 2. Captures the last ~15 lines of each window
 3. Prints window name + output for each
 
@@ -32,10 +32,10 @@ Keep it simple. Human can interpret the state themselves.
 **Example output:**
 ```
 === 0:bash ===
-casey@machine:~/code/mind-games$
+casey@machine:~/code/haiv$
 
-=== 1:mg-users-new ===
-Should I add tomli-w to mg-core's dependencies, or write a minimal helper?
+=== 1:haiv-users-new ===
+Should I add tomli-w to haiv-core's dependencies, or write a minimal helper?
 
 > just write a simple helper                                                    ↵ send
 
@@ -47,9 +47,9 @@ Should I add tomli-w to mg-core's dependencies, or write a minimal helper?
 
 ## Technical Context
 
-- This should be an **mg_project** command (not mg_core) - it's project-specific and experimental
-- Location: `src/mg_project/commands/`
-- See `worktrees/main/mg-core/src/mg_core/commands/` for command patterns
+- This should be an **haiv_project** command (not haiv_core) - it's project-specific and experimental
+- Location: `src/haiv_project/commands/`
+- See `worktrees/main/haiv-core/src/haiv_core/commands/` for command patterns
 - tmux commands: `tmux list-windows`, `tmux capture-pane -t <target> -p`
 - Detection patterns are in `temp-wren/problems.md` (Problem #1)
 

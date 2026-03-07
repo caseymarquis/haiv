@@ -17,9 +17,9 @@ We want minds to be able to opt into a different launch experience through a set
 ## What Exists
 
 - Minds live at `users/{user}/state/minds/{mind}/`
-- `mg start {mind}` launches a mind (see `mg-core` commands)
-- `mg become {mind}` loads context for an existing session
-- There's already project-level settings infrastructure (`mg.toml`, `ctx.settings`)
+- `hv start {mind}` launches a mind (see `haiv-core` commands)
+- `hv become {mind}` loads context for an existing session
+- There's already project-level settings infrastructure (`haiv.toml`, `ctx.settings`)
 - `references.toml` already exists as a per-mind config file
 
 ## The Setting
@@ -40,7 +40,7 @@ The details of what "minimal" means and how it integrates with Claude Code's lau
 - `settings.toml` is loaded during mind launch
 - `launch.system_prompt` setting is respected
 - Minds without a `settings.toml` get the current default behavior
-- Clean integration with existing `mg start` / launch infrastructure
+- Clean integration with existing `hv start` / launch infrastructure
 
 ---
 

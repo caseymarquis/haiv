@@ -19,14 +19,14 @@ owner = "casey"           # who owns this spec
 reviewers = []            # who should review changes
 blocks = []               # what's waiting on this
 blocked_by = []           # what this is waiting on
-related = ["mg-init-checklist.md"]
+related = ["hv-init-checklist.md"]
 
 [location]
-current = "minds/specs/documents/mg-init-spec.md"
-future = "mg-core/specs/mg-init.md"
+current = "minds/specs/documents/haiv-init-spec.md"
+future = "haiv-core/specs/haiv-init.md"
 ```
 
-# mg init - Specification
+# hv init - Specification
 
 ---
 
@@ -41,7 +41,7 @@ future = "mg-core/specs/mg-init.md"
 
 ## Purpose
 
-Set up the mind-games structure, either as a peer to an existing repo or fresh in the current directory.
+Set up the haiv structure, either as a peer to an existing repo or fresh in the current directory.
 
 ---
 
@@ -49,23 +49,23 @@ Set up the mind-games structure, either as a peer to an existing repo or fresh i
 
 | Context | Behavior |
 |---------|----------|
-| In a git repo | Create peer `project-mg/` alongside (non-destructive) |
-| Not in a repo, empty dir | Create mg structure in current directory |
+| In a git repo | Create peer `project-haiv/` alongside (non-destructive) |
+| Not in a repo, empty dir | Create haiv-hq structure in current directory |
 | Not in a repo, non-empty dir | Require `--force`; move contents into worktree |
 
 ---
 
 ## Directory Structure
 
-mg-state is the root. Code worktrees are children.
+haiv-hq is the root. Code worktrees are children.
 
 ```
-project-mg/                    # IS mg-state (orphan branch)
+project-haiv/                    # IS haiv-hq (orphan branch)
 ├── .git/                      # bare repo data
 ├── .claude/                   # Claude Code config
-├── CLAUDE.md                  # describes mg system
-├── mg.toml                    # mg configuration
-├── src/mg_project/            # project-level commands, etc.
+├── CLAUDE.md                  # describes haiv system
+├── haiv.toml                    # haiv configuration
+├── src/haiv_project/            # project-level commands, etc.
 ├── users/casey/state/minds/   # where minds live
 └── worktrees/
     ├── main/                  # code worktree
@@ -74,7 +74,7 @@ project-mg/                    # IS mg-state (orphan branch)
 
 **Rationale:**
 - Control plane at top level - where humans and AIs start
-- `cd project-mg` → immediately in useful context
+- `cd project-hv` → immediately in useful context
 - Claude instances initialize here, navigate to `worktrees/` for code
 - `worktrees/` not hidden - first-class concept, only exists on orphan branch
 
@@ -97,7 +97,7 @@ Specify which branch to create worktree for:
 ### `--empty`
 
 Skip worktree creation (fresh mode only):
-- Creates mg structure without any code worktree
+- Creates haiv-hq structure without any code worktree
 - Useful when you want to add worktrees manually later
 
 ### `--quiet`
@@ -115,9 +115,9 @@ Suppress educational output for automation scenarios.
 ### Steps
 1. Find repo root (walk up from current directory)
 2. Get remote URL (origin)
-3. Create `../project-mg/` with bare clone from remote
+3. Create `../project-haiv/` with bare clone from remote
 4. Create `worktrees/` directory
-5. Create mg-state orphan branch (root of project-mg/)
+5. Create haiv-hq orphan branch (root of project-haiv/)
 6. Create worktree for current branch (or --branch if specified)
 7. Print success message with next steps
 
@@ -133,7 +133,7 @@ Suppress educational output for automation scenarios.
 ### Empty Directory
 
 1. `git init` with bare repo structure
-2. Create mg-state orphan branch (root)
+2. Create haiv-hq orphan branch (root)
 3. Create `worktrees/` directory
 4. Create worktree for main branch (or `--branch` if specified; skip if `--empty`)
 5. Create README.md and initial commit in worktree
@@ -142,7 +142,7 @@ Suppress educational output for automation scenarios.
 ### Non-Empty Directory (requires --force)
 
 1. `git init` with bare repo structure
-2. Create mg-state orphan branch (root)
+2. Create haiv-hq orphan branch (root)
 3. Create `worktrees/<branch>/` (default: main)
 4. Move existing files into `worktrees/<branch>/`
 5. Commit moved files on that branch
@@ -166,6 +166,6 @@ Per the vision doc's "Educate, don't obscure" principle:
 
 ## Related
 
-- **Checklist:** `mg-init-checklist.md` (working document with test scenarios)
-- **Vision:** `mind-games-vision-exploration.md`
-- **Next phase:** `mg worktree add/remove/list` (Phase 0.2)
+- **Checklist:** `hv-init-checklist.md` (working document with test scenarios)
+- **Vision:** `haiv-vision-exploration.md`
+- **Next phase:** `hv worktree add/remove/list` (Phase 0.2)

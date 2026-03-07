@@ -4,7 +4,7 @@
 
 **Role:** Project Manager - delegate work, don't implement.
 
-**Goal:** Implement `mg minds suggest_role --name {mind}` command via sequential delegation.
+**Goal:** Implement `hv minds suggest_role --name {mind}` command via sequential delegation.
 
 **Worktree:** `worktrees/suggest-role/`
 
@@ -20,7 +20,7 @@
 
 ## Completed Work
 
-### claude helper skeleton (`mg/src/mg/helpers/claude.py`)
+### claude helper skeleton (`haiv/src/haiv/helpers/claude.py`)
 
 ```python
 class MatchCertainty(Enum):
@@ -57,7 +57,7 @@ def identify_matching_items(
     ...
 ```
 
-### roles helper skeleton (`mg/src/mg/helpers/roles.py`)
+### roles helper skeleton (`haiv/src/haiv/helpers/roles.py`)
 
 ```python
 @dataclass
@@ -76,7 +76,7 @@ def parse_role(path: Path) -> Role:
     ...
 ```
 
-### packages helper addition (`mg/src/mg/helpers/packages.py`)
+### packages helper addition (`haiv/src/haiv/helpers/packages.py`)
 
 ```python
 def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
@@ -88,15 +88,15 @@ def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
 
 ## Work Packages
 
-### WP1: Convert `mg/test.py` to `mg/test/` module
+### WP1: Convert `haiv/test.py` to `haiv/test/` module
 
-**Location:** `mg/src/mg/`
+**Location:** `haiv/src/haiv/`
 
 **Current state:** Single 400-line file.
 
 **Goal:** Convert to a module so we can add caching and other test infrastructure.
 
-**Constraint:** Preserve public API - `from mg import test` must continue to work.
+**Constraint:** Preserve public API - `from haiv import test` must continue to work.
 
 **Needs research:** How to best organize the split.
 
@@ -104,7 +104,7 @@ def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
 
 ### WP2: Claude caching infrastructure
 
-**Location:** TBD - likely `mg/src/mg/helpers/` (general purpose, not test-specific)
+**Location:** TBD - likely `haiv/src/haiv/helpers/` (general purpose, not test-specific)
 
 **Purpose:** Cache Claude responses to avoid repeated API calls. Useful for:
 - Tests (deterministic, fast)
@@ -123,7 +123,7 @@ def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
 
 ### WP3: Implement `identify_matching_items`
 
-**Location:** `mg/src/mg/helpers/claude.py`
+**Location:** `haiv/src/haiv/helpers/claude.py`
 
 **Problem:** Need to call Claude and get structured results matching our `MatchingResult` interface. Must handle the round-trip: our data structures → Claude → parsed response.
 
@@ -133,7 +133,7 @@ def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
 
 ### WP4: Implement roles helper
 
-**Location:** `mg/src/mg/helpers/roles.py`
+**Location:** `haiv/src/haiv/helpers/roles.py`
 
 **Tasks:**
 1. Implement `parse_role(path)` - extract name, purpose, content
@@ -146,7 +146,7 @@ def discover_all_packages(ctx: cmd.Ctx) -> list[PackageInfo]:
 
 ### WP5: Implement `suggest_role` command
 
-**Location:** `mg-core/src/mg_core/commands/minds/suggest_role.py`
+**Location:** `haiv-core/src/haiv_core/commands/minds/suggest_role.py`
 
 **Intended calling code:**
 ```python
@@ -179,7 +179,7 @@ def execute(ctx: cmd.Ctx) -> None:
 
 ### WP6: Test infrastructure enhancements
 
-**Location:** `mg/src/mg/test/`
+**Location:** `haiv/src/haiv/test/`
 
 **Problem:** Tests for commands using Claude need to:
 - Set up minds and roles without verbose boilerplate

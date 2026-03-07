@@ -1,9 +1,9 @@
 # External document references
-# Paths are relative to the mg-state root
+# Paths are relative to the haiv-hq root
 # These are loaded on wake along with startup/ files
 
 [[references]]
-path = "src/mg_project/__assets__/roles/project-manager.md"
+path = "src/haiv_project/__assets__/roles/project-manager.md"
 
 [[references]]
 path = "temp-aar/suggest-role-design.md"

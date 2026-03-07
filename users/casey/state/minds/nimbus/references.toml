@@ -1,9 +1,9 @@
 # External document references
-# Paths are relative to the mg-state root
+# Paths are relative to the haiv-hq root
 # These are loaded on wake along with work/ and home/ files
 
 [[references]]
-path = "src/mg_project/__assets__/roles/generalist.md"
+path = "src/haiv_project/__assets__/roles/generalist.md"
 
 [[references]]
-path = "src/mg_project/__assets__/roles/mg-python-dev.md"
+path = "src/haiv_project/__assets__/roles/haiv-python-dev.md"

@@ -32,7 +32,7 @@ The new system separates two distinct concepts:
 - How to operate, what to prioritize, communication style
 - Reusable across many minds and projects
 - Example: "analyst" role can be assigned to any mind doing analysis work
-- Lives in `__assets__/roles/` in any mg package
+- Lives in `__assets__/roles/` in any haiv package
 - Human-maintained, evolves based on what works
 
 ### 2. Long-Running Mind (particular work)
@@ -66,27 +66,27 @@ The alpha system handled memory persistence well but was optimized for long-runn
 
 ### Role Storage (Shareable)
 
-Roles live in `__assets__/roles/` within any mg package:
+Roles live in `__assets__/roles/` within any haiv package:
 
 ```
-mg_core/
+haiv_core/
 └── __assets__/
     └── roles/
         └── default.md          # baseline role
 
-mg_project/
+haiv_project/
 └── __assets__/
     └── roles/
         └── analyst.md          # project-specific role
         └── coo.md
 
-mg_user/
+haiv_user/
 └── __assets__/
     └── roles/
         └── my-variant.md       # user customization
 ```
 
-Resolution follows mg convention: mg_core → mg_project → mg_user (later levels can override).
+Resolution follows haiv convention: haiv_core → haiv_project → haiv_user (later levels can override).
 
 A role is a markdown file explaining:
 - Purpose and responsibilities
@@ -123,7 +123,7 @@ users/{user}/state/minds/{mind}/
 
 ```toml
 [[references]]
-path = "mg_project/__assets__/roles/coo.md"
+path = "haiv_project/__assets__/roles/coo.md"
 description = "My operating role"
 
 [[references]]
@@ -137,20 +137,20 @@ Later, we may also support @syntax for document references (e.g., `ref = "@memor
 
 ## Startup Flow
 
-### The `mg start` Command
+### The `hv start` Command
 
 ```
-mg start {mind} [--tmux]
+hv start {mind} [--tmux]
 ```
 
 Single command for all scenarios:
 
 **Without `--tmux` (current terminal):**
 ```
-mg start wren
+hv start wren
   → Clears terminal
   → Starts Claude
-  → Injects prompt: "Run mg wake wren"
+  → Injects prompt: "Run hv wake wren"
 ```
 
 Use this for:
@@ -159,27 +159,27 @@ Use this for:
 
 **With `--tmux` (new window):**
 ```
-mg start wren --tmux
+hv start wren --tmux
   → Creates new tmux window named "wren"
   → Clears the window
   → Starts Claude
-  → Injects prompt: "Run mg wake wren"
+  → Injects prompt: "Run hv wake wren"
 ```
 
 Use this for:
 - Manager assigning a new worker
 - Launching additional minds in parallel
 
-### The `mg wake` Command
+### The `hv wake` Command
 
-Called by the mind after `mg start` injects the prompt:
+Called by the mind after `hv start` injects the prompt:
 
 ```
-mg wake {mind}
+hv wake {mind}
   → Locates minds/{mind}/ or minds/_new/{mind}/
   → Reads startup/ folder and references.toml
   → Outputs: "Read the following files in their entirety:
-      - mg_project/__assets__/roles/coo.md
+      - haiv_project/__assets__/roles/coo.md
       - users/casey/state/minds/wren/startup/identity.md
       - ..."
   → Mind reads files, now has full context
@@ -210,11 +210,11 @@ users/{user}/state/minds/
 - `_new/` is the convention for minds being onboarded
 - Other organizational dirs as needed: `_archived/`, `_project-x/`, etc.
 
-**Resolution:** `mg wake reed` searches for `minds/reed/` or `minds/**/reed/` (finds it in `_new/reed/`)
+**Resolution:** `hv wake reed` searches for `minds/reed/` or `minds/**/reed/` (finds it in `_new/reed/`)
 
 **Separation of concerns:**
 - **Onboarding prep** = create folder, populate startup context
-- **Launch** = `mg start {mind}`, works the same regardless of where the mind lives
+- **Launch** = `hv start {mind}`, works the same regardless of where the mind lives
 
 **Promotion:** Move from `_new/reed/` to `minds/reed/` when established. Or start at top-level if you know they'll be long-running.
 
@@ -243,7 +243,7 @@ users/{user}/state/minds/_new/reed/
 ### When to Save
 
 Start with manual triggers:
-- Mind runs `mg sleep` when done for now
+- Mind runs `hv sleep` when done for now
 - Human prompts mind to update context before ending session
 
 Future: automatic threshold detection via status line integration.
@@ -299,16 +299,16 @@ How does the system know which mind this Claude instance is?
 
 | Approach | How it works |
 |----------|--------------|
-| **Environment variable** | `MG_MIND=wren` set at launch |
+| **Environment variable** | `HV_MIND=wren` set at launch |
 | **tmux environment** | Store in tmux window's environment |
 | **Initial prompt** | First message identifies the mind |
 
-**Recommendation:** Environment variable, set by `mg start {mind}`.
+**Recommendation:** Environment variable, set by `hv start {mind}`.
 
-`mg wake` can read it:
+`hv wake` can read it:
 ```bash
-mg wake           # uses MG_MIND env var
-mg wake wren      # explicit override
+hv wake           # uses HV_MIND env var
+hv wake wren      # explicit override
 ```
 
 ---
@@ -338,23 +338,23 @@ mg wake wren      # explicit override
 ## Minimal Implementation Path
 
 ### Phase 1: Structure
-- Create `__assets__/roles/` in mg_project
+- Create `__assets__/roles/` in haiv_project
 - Create `users/{user}/state/minds/{mind}/startup/` structure
 - Manually create identity.md and current-focus.md for existing minds
 
 ### Phase 2: Wake Command
-- `mg wake {mind}` reads startup folder
+- `hv wake {mind}` reads startup folder
 - Outputs file list for mind to read
-- Optionally uses MG_MIND env var
+- Optionally uses HV_MIND env var
 
 ### Phase 3: Sleep Command (or template)
 - Template for capturing current-focus.md
 - Mind fills it out before ending session
 
 ### Phase 4: Start Command
-- Sets MG_MIND environment
+- Sets HV_MIND environment
 - Creates tmux window
-- Injects "Run mg wake" prompt
+- Injects "Run hv wake" prompt
 
 ---
 
@@ -373,8 +373,8 @@ mg wake wren      # explicit override
 - references.toml - pointers to external docs
 
 **Commands:**
-- `mg wake` - output files to read on startup
-- `mg sleep` - template for capturing state before compaction
-- `mg start` - set identity and launch with context
+- `hv wake` - output files to read on startup
+- `hv sleep` - template for capturing state before compaction
+- `hv start` - set identity and launch with context
 
 This gives long-running minds persistent memory while keeping roles as shareable artifacts.

@@ -6,8 +6,8 @@ Read all 17 AARs in `temp-aar/` and extracted forward-looking items. Of 13 open 
 
 ## Key Decisions
 
-- Omitted items from `memory-persistence-design` (mg start/wake/mine, folder structure) — confirmed implemented by later AARs
-- Omitted `mg sessions` command — `branch-stats-display` AAR confirms it exists
+- Omitted items from `memory-persistence-design` (hv start/wake/mine, folder structure) — confirmed implemented by later AARs
+- Omitted `hv sessions` command — `branch-stats-display` AAR confirms it exists
 - Kept full context for surviving items since source AARs will be deleted
 - Claude Code hook integration (largest item) dropped — already in progress
 

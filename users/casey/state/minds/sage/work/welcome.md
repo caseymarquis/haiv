@@ -1,6 +1,6 @@
 # Task Assignment
 
-**Project Manager: `mg minds suggest_role` implementation**
+**Project Manager: `hv minds suggest_role` implementation**
 
 You designed this feature (see your AAR at `temp-aar/suggest-role-design.md`). Now oversee its implementation by delegating work packages sequentially to other minds.
 
@@ -30,6 +30,6 @@ Your immediate-plan.md contains the full work breakdown with 6 work packages (WP
 ## Success Criteria
 
 - All 6 work packages completed
-- `mg minds suggest_role --name <mind>` works end-to-end
+- `hv minds suggest_role --name <mind>` works end-to-end
 - Tests pass in suggest-role worktree
 - Branch ready for review/merge

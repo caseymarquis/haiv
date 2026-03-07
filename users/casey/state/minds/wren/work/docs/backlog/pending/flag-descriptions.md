@@ -1,7 +1,7 @@
 # Flag descriptions in command definitions
 
 **Source:** Mind feedback
-**Area:** mg command framework
+**Area:** hv command framework
 
 Command flags should have a "description" field that explains what they do. Currently only the flag name is defined.
 

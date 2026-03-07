@@ -15,14 +15,14 @@ We manage multiple minds working in parallel. Right now there's no way to see wh
 ## Essential Reading
 
 - `temp-aar/claude-hook-integration.md` — Spark's full research and implementation plan. This is your roadmap. It covers typed models, IPC changes, the dispatch command, and TUI integration across 6 phases.
-- `temp-aar/luna-mg-hooks.md` — The existing mg hook system (different from Claude Code hooks). Understand the distinction.
+- `temp-aar/luna-haiv-hooks.md` — The existing haiv hook system (different from Claude Code hooks). Understand the distinction.
 
 ## Key files
 
-- `mg/src/mg/_infrastructure/TuiServer/` — IPC server, needs message wrapper extension
-- `mg/src/mg/helpers/tui/TuiClient.py` — IPC client
-- `mg/src/mg/helpers/tui/TuiModel.py` — `SessionEntry` needs status fields
-- `mg-tui/src/mg_tui/widgets/sessions.py` — TUI rendering
+- `haiv/src/haiv/_infrastructure/TuiServer/` — IPC server, needs message wrapper extension
+- `haiv/src/haiv/helpers/tui/TuiClient.py` — IPC client
+- `haiv/src/haiv/helpers/tui/TuiModel.py` — `SessionEntry` needs status fields
+- `haiv-tui/src/haiv_tui/widgets/sessions.py` — TUI rendering
 
 ## Scope
 

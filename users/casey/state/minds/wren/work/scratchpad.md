@@ -12,7 +12,7 @@ Key decisions made with Casey:
 - **Always worktree, always commit first** — eliminates mode complexity
 - **Worker merges directly** — human was there during work, review happened live
 - **Base branch recorded at staging** — close-out always knows where to merge
-- **Guided steps in `mg pop`** — checklist first, then `--merge` and `--session` as explicit steps
+- **Guided steps in `hv pop`** — checklist first, then `--merge` and `--session` as explicit steps
 
 ### Hooks system (2026-02-14)
 
@@ -31,6 +31,6 @@ Claude Code hooks fully cover status detection — 6 lifecycle events map to our
 
 ## Things to Remember
 
-- Use `mg sessions` for live state, not notes
+- Use `hv sessions` for live state, not notes
 - `flatpak run org.wezfurlong.wezterm` is the wezterm command
-- `mg tui debug` shows WezTerm pane layout
+- `hv tui debug` shows WezTerm pane layout

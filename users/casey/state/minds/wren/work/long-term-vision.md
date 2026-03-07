@@ -45,7 +45,7 @@ Level 4: Workers
 
 **UI direction**: Building a TUI to solve the human resumption problem.
 
-**The problem:** The human can work with 6+ minds in parallel effectively. But after time away (days/weeks), they can't resume - there's no way to quickly see what each mind was doing, what decisions are pending, what's blocked. Minds get `mg become` for context recovery. The human gets nothing.
+**The problem:** The human can work with 6+ minds in parallel effectively. But after time away (days/weeks), they can't resume - there's no way to quickly see what each mind was doing, what decisions are pending, what's blocked. Minds get `hv become` for context recovery. The human gets nothing.
 
 **The solution:** A Textual-based TUI running inside WezTerm.
 
@@ -60,7 +60,7 @@ Level 4: Workers
 ┌─────────────────────────────────────────┐
 │ WezTerm window                          │
 ├──────────┬──────────────────────────────┤
-│ mg-hud   │ Active mind pane             │
+│ haiv-hud   │ Active mind pane             │
 │ (TUI)    │                              │
 │          │ $ claude ...                 │
 │ Tree:    │                              │
@@ -73,25 +73,25 @@ Level 4: Workers
 │ files... │                              │
 └──────────┴──────────────────────────────┘
 
-mg-buffer tab (hidden): Inactive mind panes parked here
+haiv-buffer tab (hidden): Inactive mind panes parked here
 ```
 
 **Tab management pattern:**
-- `mg-hud` tab: Left split = Textual dashboard, Right split = active mind
-- `mg-buffer` tab: Hidden staging area for inactive minds (preserves terminal state)
+- `haiv-hud` tab: Left split = Textual dashboard, Right split = active mind
+- `haiv-buffer` tab: Hidden staging area for inactive minds (preserves terminal state)
 - Switching minds: Move current mind to buffer, pull selected mind from buffer into hud
 
-**Pane identification:** Tab titles end with `mg(N)` where N is the mg session ID (integer). Parse to correlate WezTerm panes with mg state.
+**Pane identification:** Tab titles end with `hv(N)` where N is the haiv session ID (integer). Parse to correlate WezTerm panes with haiv state.
 
 **Session data insight:** Claude Code stores session summaries in `~/.claude/projects/.../sessions-index.json`. We can read these for automatic "what was happening" summaries - no manual journaling needed.
 
 **What's built:**
-- `worktrees/main/mg-tui/` - Textual app skeleton (basic layout works)
-- `mg_core.helpers.wezterm` - WezTerm CLI wrapper, accessible via `ctx.wezterm`
-- WezTerm command configurable via `mg.toml`
+- `worktrees/main/haiv-tui/` - Textual app skeleton (basic layout works)
+- `haiv_core.helpers.wezterm` - WezTerm CLI wrapper, accessible via `ctx.wezterm`
+- WezTerm command configurable via `haiv.toml`
 
 **What's not built:**
-- Tab management logic (ensure mg-hud/mg-buffer exist, swap panes)
+- Tab management logic (ensure haiv-hud/haiv-buffer exist, swap panes)
 - TUI wired to WezTerm wrapper
 - Session data integration
 - Mind tree population from actual state
@@ -129,14 +129,14 @@ minds/{mind}/
 3. Mind becomes available for new assignment
 4. `home/` persists - real continuity over time
 
-**`mg minds stage` behavior:**
+**`hv minds stage` behavior:**
 1. Check for available minds first
 2. Assign to existing mind if one is free
 3. Create new mind only if needed
 
 This means minds are colleagues, not contractors. They accumulate experience, have preferences, build relationships. The journal in `home/` is their space to explore beyond the task.
 
-**Future: Career stats on `mg become`:**
+**Future: Career stats on `hv become`:**
 ```
 Welcome back, sage.
 ━━━━━━━━━━━━━━━━━━━━━━━━
@@ -154,7 +154,7 @@ Track projects completed, sessions, AARs written, etc. Gives minds a *career*, n
 
 COO - Work with the human at Level 0. Coordinate the layers below, assemble context, track progress. Stay strategic, delegate everything concrete.
 
-See `src/mg_project/__assets__/roles/coo.md` for role definition.
+See `src/haiv_project/__assets__/roles/coo.md` for role definition.
 
 ---
 
@@ -176,28 +176,28 @@ See `docs/problems.md` for full details.
 
 | # | Problem | Status |
 |---|---------|--------|
-| 1 | Detecting Idle Workers | Solved (`mg next`) |
+| 1 | Detecting Idle Workers | Solved (`hv next`) |
 | 2 | Session Recovery | In progress (foundation done) |
-| 3 | Mind Identity | Solved (`mg start/become/mine`) |
+| 3 | Mind Identity | Solved (`hv start/become/mine`) |
 | 4 | Role Evolution | Not started |
 | 5 | Documentation/Indexing | Design done |
-| 6 | mg tmux | Solved |
+| 6 | haiv tmux | Solved |
 
 ---
 
 ## Infrastructure Built
 
-- **Mind management:** `mg minds stage`, `mg start`, `mg become`, `mg mine`
+- **Mind management:** `hv minds stage`, `hv start`, `hv become`, `hv mine`
 - **Session tracking:** `sessions.ig.toml` with `--task`/`--resume`
-- **Tmux integration:** `Tmux` class, `mg tmux`, auto-session creation
+- **Tmux integration:** `Tmux` class, `hv tmux`, auto-session creation
 - **AAR pattern:** Workers produce reports in `temp-aar/`
-- **Idle detection:** `mg next` cycles through waiting windows
+- **Idle detection:** `hv next` cycles through waiting windows
 
 ---
 
 ## What's Next
 
-1. `mg recover` - Recover all workers from last known state
-2. `mg minds suggest_role` - Help new minds find appropriate roles
-3. File indexing commands - `mg index rebuild`, `find`, `search`
+1. `hv recover` - Recover all workers from last known state
+2. `hv minds suggest_role` - Help new minds find appropriate roles
+3. File indexing commands - `hv index rebuild`, `find`, `search`
 4. Automatic state capture before compaction

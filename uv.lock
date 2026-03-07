@@ -155,9 +155,9 @@ wheels = [
 ]
 
 [[package]]
-name = "mg"
+name = "haiv"
 version = "0.1.0"
-source = { editable = "worktrees/main/mg" }
+source = { editable = "worktrees/main/haiv" }
 dependencies = [
     { name = "jinja2" },
     { name = "punq" },
@@ -180,41 +180,41 @@ dev = [
 ]
 
 [[package]]
-name = "mg-cli"
+name = "haiv-cli"
 version = "0.1.0"
-source = { editable = "worktrees/main/mg-cli" }
+source = { editable = "worktrees/main/haiv-cli" }
 dependencies = [
-    { name = "mg-core" },
+    { name = "haiv-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mg-core", editable = "worktrees/main/mg-core" }]
+requires-dist = [{ name = "haiv-core", editable = "worktrees/main/haiv-core" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ty" }]
 
 [[package]]
-name = "mg-core"
+name = "haiv-core"
 version = "0.1.0"
-source = { editable = "worktrees/main/mg-core" }
+source = { editable = "worktrees/main/haiv-core" }
 dependencies = [
-    { name = "mg" },
+    { name = "haiv" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mg", editable = "worktrees/main/mg" }]
+requires-dist = [{ name = "haiv", editable = "worktrees/main/haiv" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ty" }]
 
 [[package]]
-name = "mg-project"
+name = "haiv-project"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "mg" },
-    { name = "mg-cli" },
-    { name = "mg-tui" },
+    { name = "haiv" },
+    { name = "haiv-cli" },
+    { name = "haiv-tui" },
 ]
 
 [package.dev-dependencies]
@@ -224,21 +224,21 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mg", editable = "worktrees/main/mg" },
-    { name = "mg-cli", editable = "worktrees/main/mg-cli" },
-    { name = "mg-tui", editable = "worktrees/main/mg-tui" },
+    { name = "haiv", editable = "worktrees/main/haiv" },
+    { name = "haiv-cli", editable = "worktrees/main/haiv-cli" },
+    { name = "haiv-tui", editable = "worktrees/main/haiv-tui" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
 
 [[package]]
-name = "mg-tui"
+name = "haiv-tui"
 version = "0.1.0"
-source = { editable = "worktrees/main/mg-tui" }
+source = { editable = "worktrees/main/haiv-tui" }
 dependencies = [
     { name = "blinker" },
-    { name = "mg" },
+    { name = "haiv" },
     { name = "textual" },
     { name = "watchdog" },
 ]
@@ -246,7 +246,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "blinker" },
-    { name = "mg", editable = "worktrees/main/mg" },
+    { name = "haiv", editable = "worktrees/main/haiv" },
     { name = "textual" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]

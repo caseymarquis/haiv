@@ -43,7 +43,7 @@ This is a collaborative design session with Casey. The mind should:
 ## Relevant Context
 
 - `temp-wren/problems.md` - Problem #2 (Mind Identity on Startup) is related
-- `docs/mind-games-vision-exploration.md` - overall vision
+- `docs/haiv-vision-exploration.md` - overall vision
 - Casey has alpha project knowledge to share
 
 ---

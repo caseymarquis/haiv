@@ -6,7 +6,7 @@
 - Resolvers: file-based discovery in `resolvers/` dirs, loaded dynamically, layered (core → project → user)
 - Commands: file-based routing, `define()` + `execute()` + optional `setup()`/`teardown()`
 - CLI wiring: `_find_command()` → `load_command()` → `make_resolver()` → `build_ctx()` → `run_command()`
-- Package hierarchy: core (installed) → project_local (src/mg_project/) → user_local (users/*/src/mg_user/)
+- Package hierarchy: core (installed) → project_local (src/haiv_project/) → user_local (users/*/src/haiv_user/)
 
 **Hook integration points identified:**
 - `minds/stage.py:111-114` — after worktree creation (git worktree add)
@@ -28,4 +28,4 @@ Flow:
 
 **Difference from resolvers:** resolvers override (later wins), hooks accumulate (all run, returns list).
 
-**Cross-package imports:** mg_project hooks import HookPoints from mg_core — this is fine since mg_core is an installed package dependency.
+**Cross-package imports:** haiv_project hooks import HookPoints from haiv_core — this is fine since haiv_core is an installed package dependency.

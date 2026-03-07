@@ -1,5 +1,5 @@
 # External document references
-# Paths are relative to the mg-state root
+# Paths are relative to the haiv-hq root
 
 [[references]]
-path = "src/mg_project/__assets__/roles/analyst.md"
+path = "src/haiv_project/__assets__/roles/analyst.md"

@@ -1,26 +1,14 @@
 [[sessions]]
-id = "7c23810d-2ba6-4da7-8372-7f3780056dfb"
-task = "Fix: TUI not updating when new mind launches"
-started = 2026-02-16 20:26:25.396796+00:00
-mind = "pulse"
-short_id = 9
+id = "b90b6e51-0dbe-47e5-9b50-cccd0f872252"
+task = "Build relay infrastructure for cross-venv command execution"
+started = 2026-03-07 10:46:14.515964+00:00
+mind = "pixel"
+short_id = 8
 status = "started"
 parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
-branch = "pulse"
+branch = "pixel"
 base_branch = "main"
-description = "When mg start launches a new mind, the TUI sessions tree doesn't update to show the new session. Suspect a missing TuiClient.write() call during the start flow. The session gets added to sessions.ig.toml but the TUI model isn't notified. Compare with how other commands (like mg minds stage) update the TUI."
-claude_session_id = "4fe2fc7c-4a16-443e-bdb0-2285cdb736a1"
-
-[[sessions]]
-id = "0b0e7bc3-ebff-4113-ad57-db837898e0f2"
-task = "Smoke test Claude Code hook with $CLAUDE_PROJECT_DIR expansion"
-started = 2026-02-15 17:32:34.976018+00:00
-mind = "smoke"
-short_id = 8
-status = "staged"
-parent = "5d01fba9-18e1-40b1-b64a-e3ae066b4fe3"
-branch = "smoke"
-base_branch = "echo"
+claude_session_id = "11f0c6d5-5acd-4b16-86c6-1b38357b06cc"
 
 [[sessions]]
 id = "5d01fba9-18e1-40b1-b64a-e3ae066b4fe3"
@@ -32,33 +20,11 @@ status = "started"
 parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
 branch = "echo"
 base_branch = "main"
-description = "Spark's research (temp-aar/claude-hook-integration.md) has a complete design. Implement: typed hook event models, IPC message wrapper on TuiServer channel, mg claude_hook dispatch command, status fields in TuiModel, TUI status display, and setup command. Six phases detailed in the research doc."
-claude_session_id = "0ed3e1a0-7960-4032-b4a5-2550ef7266c6"
-
-[[sessions]]
-id = "605fa99b-8e8a-444f-a1db-ff67a07d0df2"
-task = "Show session description in TUI preview"
-started = 2026-02-15 13:25:27.464115+00:00
-mind = "luna"
-short_id = 6
-status = "started"
-parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
-branch = "luna"
-base_branch = "main"
-description = "The SessionPreview widget and SessionEntry model already support a description field, but it may not be populated for any sessions. Wire it up end-to-end: ensure description flows from sessions.ig.toml through TuiModel to the preview pane."
-claude_session_id = "102a14ce-d8dc-4b56-9c6a-976446e5b9aa"
-
-[[sessions]]
-id = "718cf8bb-a1a3-44c7-8de4-f531f6169adf"
-task = "Enforce short task descriptions in mg minds stage"
-started = 2026-02-15 13:23:48.010366+00:00
-mind = "pixel"
-short_id = 5
-status = "started"
-parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
-branch = "pixel"
-base_branch = "main"
-claude_session_id = "73cf93f0-64c5-4dd1-bad8-f0d02e9637f0"
+description = "Spark's research (temp-aar/claude-hook-integration.md) has a complete design. Implement: typed hook event models, IPC message wrapper on TuiServer channel, haiv claude_hook dispatch command, status fields in TuiModel, TUI status display, and setup command. Six phases detailed in the research doc."
+claude_session_id = "dd75a565-ca8f-4bf8-a342-3ab659a51303"
+old_claude_session_ids = [
+    "0ed3e1a0-7960-4032-b4a5-2550ef7266c6",
+]
 
 [[sessions]]
 id = "fa1418d4-0f79-4b25-abcb-aec6f14ccd81"
@@ -80,7 +46,7 @@ mind = "sage"
 short_id = 3
 status = "started"
 parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
-description = "mg minds suggest_role and related AI-driven role suggestion/rating infrastructure. Design work completed, implementation paused."
+description = "haiv minds suggest_role and related AI-driven role suggestion/rating infrastructure. Design work completed, implementation paused."
 claude_session_id = "13e31d2f-f7d1-4dfd-8842-633d1522ad2e"
 old_claude_session_ids = [
     "8428e600-d4cc-4737-9422-322ff4ae88b0",
@@ -94,7 +60,7 @@ started = 2026-02-01 23:23:22.092324+00:00
 mind = "wren"
 short_id = 2
 status = "started"
-claude_session_id = "4aca1f51-6b99-47b4-9236-2bbc45a44fc1"
+claude_session_id = "4bf0b4be-a966-416c-8ab4-a5507d6ee0e8"
 old_claude_session_ids = [
     "308f9093-f00f-4197-bda0-ae264fdb4e99",
     "30e3033f-ebbc-4d56-be94-4884fad44a26",
@@ -103,4 +69,6 @@ old_claude_session_ids = [
     "6f3bd799-6f35-41bb-9a28-e4e6a2cf3ff2",
     "6fe18eeb-ad55-4ebf-bc07-97c9a4cf27c7",
     "f1fd65f3-2ea6-4a20-8822-2fd3b3a23ada",
+    "4aca1f51-6b99-47b4-9236-2bbc45a44fc1",
+    "6459d379-aa82-4f98-a005-9f10d3067992",
 ]

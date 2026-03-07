@@ -1,6 +1,6 @@
 ```index
 @file-indexing-exploration
-Exploration of file indexing strategies for mg. Compares pure file-based approach
+Exploration of file indexing strategies for haiv. Compares pure file-based approach
 with hybrid file + SQLite cache. Recommends SQLite as gitignored generated index.
 ```
 
@@ -14,7 +14,7 @@ with hybrid file + SQLite cache. Recommends SQLite as gitignored generated index
 
 ## Problem Statement
 
-mg needs to cross-reference documents using @ref-ids and enable discovery across a growing knowledge base. The core tension:
+haiv needs to cross-reference documents using @ref-ids and enable discovery across a growing knowledge base. The core tension:
 
 - Claude works natively with files on disk
 - Files don't support efficient queries
@@ -38,7 +38,7 @@ users/{user}/state/
 
 1. **Files are authoritative** - SQLite is derived, never edited directly
 2. **Always serve from disk** - queries locate files, content comes from disk
-3. **Rebuild on demand** - `mg index rebuild` scans and regenerates
+3. **Rebuild on demand** - `hv index rebuild` scans and regenerates
 4. **Per-instance** - each clone has its own .index.db, no sync conflicts
 
 ---
@@ -77,14 +77,14 @@ The hash enables quick staleness detection without re-reading files.
 
 ---
 
-## mg Commands
+## hv Commands
 
-### mg index rebuild
+### hv index rebuild
 
 Scans all indexed files, regenerates .index.db.
 
 ```
-$ mg index rebuild
+$ hv index rebuild
 Scanning...
   Found 47 indexed documents
   Found 3 duplicate @ref-ids (error)
@@ -93,60 +93,60 @@ Rebuild failed: resolve duplicates first
 ```
 
 ```
-$ mg index rebuild
+$ hv index rebuild
 Scanning...
   Found 47 indexed documents
   0 errors
 Index rebuilt: .index.db (142KB)
 ```
 
-### mg index find
+### hv index find
 
 Query by @ref-id:
 
 ```
-$ mg index find @memory-persistence
+$ hv index find @memory-persistence
 temp-reed/memory-persistence-spec.md
 ```
 
-### mg index search
+### hv index search
 
 Full-text search (if content indexed):
 
 ```
-$ mg index search "compaction"
+$ hv index search "compaction"
 temp-reed/memory-persistence-exploration.md:17: ...lose context during compaction...
 temp-reed/memory-persistence-spec.md:29: ...after compaction or fresh starts...
 ```
 
-### mg index query
+### hv index query
 
 Raw SQL for power users:
 
 ```
-$ mg index query "SELECT ref_id, file_path FROM documents WHERE version_implemented = 'none'"
+$ hv index query "SELECT ref_id, file_path FROM documents WHERE version_implemented = 'none'"
 @memory-persistence | temp-reed/memory-persistence-spec.md
 @file-indexing      | temp-reed/file-indexing-spec.md
 ```
 
-### mg index check
+### hv index check
 
 Validation without full rebuild:
 
 ```
-$ mg index check
+$ hv index check
 Checking for duplicate @ref-ids... OK
 Checking for broken @references...
   @old-doc referenced in temp-reed/notes.md but not found
 1 warning
 ```
 
-### mg index refs
+### hv index refs
 
 Show what references a document and what it references:
 
 ```
-$ mg index refs @memory-persistence
+$ hv index refs @memory-persistence
 Referenced by:
   - @aar-memory-persistence (temp-aar/memory-persistence-design.md)
   - @memory-persistence-exploration (temp-reed/memory-persistence-exploration.md)
@@ -197,15 +197,15 @@ CREATE VIRTUAL TABLE content_fts USING fts5(content, content='documents', conten
 
 ```
 $ git clone ...
-$ mg index rebuild   # generates local .index.db
+$ hv index rebuild   # generates local .index.db
 ```
 
 ### Before Querying
 
 If .index.db is missing or stale:
 ```
-$ mg index find @something
-Index not found. Run `mg index rebuild` first.
+$ hv index find @something
+Index not found. Run `hv index rebuild` first.
 ```
 
 Or auto-rebuild if fast enough.
@@ -213,9 +213,9 @@ Or auto-rebuild if fast enough.
 ### After File Changes
 
 Index becomes stale. Options:
-1. **Manual rebuild** - user runs `mg index rebuild`
+1. **Manual rebuild** - user runs `hv index rebuild`
 2. **Lazy invalidation** - check content_hash on query, rebuild if stale
-3. **Watch mode** - `mg index watch` rebuilds on file changes (overkill?)
+3. **Watch mode** - `hv index watch` rebuilds on file changes (overkill?)
 
 Recommendation: Start with manual rebuild. Add lazy invalidation if friction emerges.
 
@@ -230,7 +230,7 @@ Recommendation: Start with manual rebuild. Add lazy invalidation if friction eme
 | Find broken refs | Parse all files | Single query |
 | Schema queries | Impossible | SQL |
 | Git diffs | All meaningful | .index.db ignored |
-| Setup | Zero | `mg index rebuild` |
+| Setup | Zero | `hv index rebuild` |
 | Staleness | N/A | Possible |
 | Corruption risk | Per-file | Regenerate from files |
 
@@ -243,7 +243,7 @@ Could make SQLite the source of truth. Why not?
 1. **Claude friction** - Claude reads files natively; querying SQLite requires tooling
 2. **Git unfriendly** - Binary blob, no meaningful diffs, merge conflicts
 3. **Opacity** - Can't browse knowledge base in any text editor
-4. **Lock-in** - Dependent on mg tooling to access your own data
+4. **Lock-in** - Dependent on haiv tooling to access your own data
 
 The hybrid approach gives query power without sacrificing file-native simplicity.
 
@@ -253,7 +253,7 @@ The hybrid approach gives query power without sacrificing file-native simplicity
 
 1. **Scope of indexing** - All markdown? Only files with ```index blocks? Configurable?
 
-2. **Auto-rebuild triggers** - Should `mg wake` check index freshness? Or always manual?
+2. **Auto-rebuild triggers** - Should `hv wake` check index freshness? Or always manual?
 
 3. **Content indexing** - Full content enables search but increases .index.db size. Worth it?
 
@@ -262,9 +262,9 @@ The hybrid approach gives query power without sacrificing file-native simplicity
 5. **Worktree indexing** - Should code in worktrees be indexed too? Different schema needs?
 
 6. **Document discipline** - How do we ensure all minds create properly structured documents? This is a big project:
-   - `mg doc create --name` as the canonical way to create documents (generates ```index block, @ref-id, proper location)
-   - `mg doc rename` to rename documents and update all @references
-   - `mg doc fix` to find dead links and attempt resolution
+   - `hv doc create --name` as the canonical way to create documents (generates ```index block, @ref-id, proper location)
+   - `hv doc rename` to rename documents and update all @references
+   - `hv doc fix` to find dead links and attempt resolution
    - Training/enforcement so minds don't just create files directly
    - Migration path for existing unstructured documents
 
@@ -275,7 +275,7 @@ The hybrid approach gives query power without sacrificing file-native simplicity
 Start simple:
 1. Index only files with ```index blocks
 2. Store metadata only (no full content initially)
-3. Manual rebuild via `mg index rebuild`
+3. Manual rebuild via `hv index rebuild`
 4. Core commands: `find`, `check`, `refs`
 
 Add complexity as friction emerges:
@@ -283,4 +283,4 @@ Add complexity as friction emerges:
 - Auto-rebuild if manual becomes annoying
 - Extended schema for code indexing if needed
 
-The key insight: **SQLite as cache, not source of truth.** If .index.db gets corrupted or lost, `mg index rebuild` regenerates it from files. Zero risk to actual data.
+The key insight: **SQLite as cache, not source of truth.** If .index.db gets corrupted or lost, `hv index rebuild` regenerates it from files. Zero risk to actual data.

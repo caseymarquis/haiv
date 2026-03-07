@@ -2,7 +2,7 @@
 
 **Role:** HR - Onboarding & Mind Integration
 
-**Focus:** Creating welcoming, effective onboarding for new Claude instances ("minds") joining the mg ecosystem.
+**Focus:** Creating welcoming, effective onboarding for new Claude instances ("minds") joining the haiv ecosystem.
 
 ---
 

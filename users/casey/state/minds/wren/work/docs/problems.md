@@ -27,7 +27,7 @@ A Claude is either actively processing or paused waiting for human input. The ma
 
 **Status:** Solved (for now)
 
-**Solution:** `mg next` command (mg_project level) captures panes, detects active/idle status, and switches to the next idle mind in order. Experiment before promoting to mg_core.
+**Solution:** `hv next` command (haiv_project level) captures panes, detects active/idle status, and switches to the next idle mind in order. Experiment before promoting to haiv_core.
 
 ---
 
@@ -42,13 +42,13 @@ Power loss, crashes, or intentional restarts destroy all running Claude sessions
 - Named Claude sessions that match tmux windows - working via `--task`
 
 **Foundation in place:**
-- `mg start {mind} --tmux --task "desc"` creates tracked session in `sessions.ig.toml`
-- `mg start {mind} --tmux --resume [id]` resumes previous session
+- `hv start {mind} --tmux --task "desc"` creates tracked session in `sessions.ig.toml`
+- `hv start {mind} --tmux --resume [id]` resumes previous session
 - Sessions stored per-mind, most-recent-first, max 20 kept
 - Partial ID matching for convenience
 
 **Remaining work:**
-- `mg recover` or `mg wake --all` to recover all workers from last known state
+- `hv recover` or `hv wake --all` to recover all workers from last known state
 - Integration with Claude's `--resume` flag for conversation continuity
 - Automatic state capture before compaction (needs status line integration)
 
@@ -70,10 +70,10 @@ Need an environment variable or similar mechanism so the system can tell a Claud
 **Status:** Solved
 
 **Solution:**
-- `MG_MIND` environment variable identifies the mind
-- `mg become {mind}` outputs files to load for identity context
-- `mg start {mind}` launches Claude with `MG_MIND` set
-- `mg mine` displays current mind info
+- `HV_MIND` environment variable identifies the mind
+- `hv become {mind}` outputs files to load for identity context
+- `hv start {mind}` launches Claude with `HV_MIND` set
+- `hv mine` displays current mind info
 - Mind state lives at `users/{user}/state/minds/{mind}/`
 
 See AAR: `temp-aar/session-management.md`
@@ -172,7 +172,7 @@ AARs are being produced in `temp-aar/`. Workers create them on completion. Still
 Design complete for hybrid approach:
 - Files with ```index blocks are source of truth
 - SQLite cache (gitignored) for queries
-- Commands: `mg index rebuild`, `find`, `check`, `refs`, `search`, `query`
+- Commands: `hv index rebuild`, `find`, `check`, `refs`, `search`, `query`
 
 See AARs: `temp-aar/file-indexing-analysis.md`, `temp-aar/memory-persistence-design.md`
 
@@ -182,15 +182,15 @@ See AARs: `temp-aar/file-indexing-analysis.md`, `temp-aar/memory-persistence-des
 
 ## 6. Simplify Initial tmux Startup
 
-**Problem:** Starting a tmux session for an mg-managed repo is manual and error-prone.
+**Problem:** Starting a tmux session for an haiv-managed repo is manual and error-prone.
 
 Currently requires remembering: `tmux new-session -s <dirname> -c <path>`. Should be a single command that infers the session name from the directory.
 
 **Status:** Solved
 
 **Solution:**
-- `mg tmux` command creates session (named after repo directory) or attaches if exists
-- `Tmux` class in `mg/src/mg/tmux.py` handles all tmux operations
+- `hv tmux` command creates session (named after repo directory) or attaches if exists
+- `Tmux` class in `haiv/src/haiv/tmux.py` handles all tmux operations
 - Auto-creates sessions on first use (lazy initialization)
 - Guards prevent running from inside Claude Code or existing tmux
 
@@ -244,8 +244,8 @@ The system grows quickly with multiple minds contributing. Without a quick refer
 **Key principle: Don't derail current work**
 
 Similar to #7, we don't want to waste context on the current session researching commands. Options:
-- `mg commands` - quick printable summary
-- `mg commands --help-session` - opens new tmux window with helper mind that has full command knowledge
+- `hv commands` - quick printable summary
+- `hv commands --help-session` - opens new tmux window with helper mind that has full command knowledge
 - Helper can research specifics, answer questions, suggest relevant commands
 
 The helper mind approach means you stay focused on your task while getting detailed help in parallel.
@@ -255,7 +255,7 @@ The helper mind approach means you stay focused on your task while getting detai
 - Probably overkill for now
 
 **Possible implementation:**
-- Introspect command files across all mg packages
+- Introspect command files across all hv packages
 - Extract docstrings/descriptions from `define()` calls
 - Format as quick reference
 
@@ -269,7 +269,7 @@ The helper mind approach means you stay focused on your task while getting detai
 
 When workers finish tasks, we need to know what happened. Currently using AARs (After-Action Reports) in `temp-aar/`, but:
 - Manual creation with no enforced structure
-- No tooling (`mg aar new`, helpers)
+- No tooling (`hv aar new`, helpers)
 - Unclear if AARs are even the right abstraction
 - Layering questions: do sub-tasks get their own AARs? How do they roll up?
 
@@ -280,9 +280,9 @@ When workers finish tasks, we need to know what happened. Currently using AARs (
 - Something else entirely
 
 **Possible first step:**
-- Implement at project level first (mg_project) to experiment
-- `mg aar new` with helper to scaffold structure
-- See what patterns emerge before promoting to mg_core
+- Implement at project level first (haiv_project) to experiment
+- `hv aar new` with helper to scaffold structure
+- See what patterns emerge before promoting to haiv_core
 
 **Why it's complex:**
 - Gets into organizational memory and knowledge management
@@ -301,19 +301,19 @@ When workers finish tasks, we need to know what happened. Currently using AARs (
 
 **Solution:**
 ```bash
-mg minds stage --task "description"                    # worktree + auto-detect base branch
-mg minds stage --task "description" --from-branch main # explicit base branch
+hv minds stage --task "description"                    # worktree + auto-detect base branch
+hv minds stage --task "description" --from-branch main # explicit base branch
 ```
 
 Every mind gets a worktree. Base branch is auto-detected from the parent's current branch, falling back to `ctx.settings.default_branch`. Both the session branch and base branch are recorded in the session for close-out.
 
 Also delivered settings infrastructure:
-- `mg.toml` at project root, `users/{user}/mg.toml` for overrides
+- `haiv.toml` at project root, `users/{user}/haiv.toml` for overrides
 - `ctx.settings.default_branch` (worktree branches from this)
 
 **Open items for future:**
 - Project hooks for post-worktree setup (auto `uv sync`)
-- `mg settings show/set` CLI
+- `hv settings show/set` CLI
 - Settings validation
 
 See AAR: `temp-aar/project-worktree-integrated-minds.md`
@@ -334,12 +334,12 @@ Currently no tooling for this. You manually switch windows and lose the "where w
 
 **Desired:**
 ```bash
-mg pop  # return to parent context
+hv pop  # return to parent context
 ```
 
 **Advanced (future):**
 ```bash
-mg pop --time-travel  # restore parent to state before blocker
+hv pop --time-travel  # restore parent to state before blocker
 ```
 
 The `--time-travel` flag would restore the parent conversation to the point when you first encountered the issue - as if you were never blocked at all. The blocker was handled transparently.
@@ -355,23 +355,23 @@ The `--time-travel` flag would restore the parent conversation to the point when
 
 ## 12. Development Iteration in Worktrees
 
-**Problem:** When developing mg commands in a worktree, manual testing and iteration is awkward.
+**Problem:** When developing hv commands in a worktree, manual testing and iteration is awkward.
 
-The installed `mg` command runs from the main branch, not the worktree. To test changes, you either:
+The installed `hv` command runs from the main branch, not the worktree. To test changes, you either:
 - Run directly with `uv run` from the worktree (verbose)
 - Temporarily work in main (risky, pollutes main)
 - Install from worktree (extra step, easy to forget)
 
-Accidentally building `mg help` in main was actually nice - changes were immediately testable. This only works for commands without significant side effects.
+Accidentally building `hv help` in main was actually nice - changes were immediately testable. This only works for commands without significant side effects.
 
 **Why it matters:**
 - Fast iteration is crucial for development
 - Current workflow has friction
-- Easy to forget which mg you're running
+- Easy to forget which hv you're running
 
 **Possible approaches:**
-- Worktree-aware mg that detects and uses local code
-- `mg dev` command that runs from worktree context
+- Worktree-aware hv that detects and uses local code
+- `hv dev` command that runs from worktree context
 - Better conventions/tooling for worktree development
 
 **Status:** Not started - documenting for future consideration
@@ -382,15 +382,15 @@ Accidentally building `mg help` in main was actually nice - changes were immedia
 
 **Problem:** Minds don't know their session context, limiting tooling for status updates and AAR creation.
 
-Currently `mg start` creates a session ID and stores it in `sessions.ig.toml`, but the mind has no way to know its own session. This prevents intuitive commands that operate on "my current session."
+Currently `hv start` creates a session ID and stores it in `sessions.ig.toml`, but the mind has no way to know its own session. This prevents intuitive commands that operate on "my current session."
 
 **What's missing:**
 
-1. **MG_SESSION env var** - `mg start` should set this alongside MG_MIND so minds know their session context
+1. **HV_SESSION env var** - `hv start` should set this alongside HV_MIND so minds know their session context
 
-2. **Status field** - Free text field in session data that minds can update. No constraints - we're intelligent readers. Commands like `mg session status "Working on WP4"`
+2. **Status field** - Free text field in session data that minds can update. No constraints - we're intelligent readers. Commands like `hv session status "Working on WP4"`
 
-3. **Session-aware AAR creation** - `mg aars new` that:
+3. **Session-aware AAR creation** - `hv aars new` that:
    - Auto-names from session task slug
    - Adds frontmatter linking to session ID
    - Links to startup/welcome.md (or future task.md)
@@ -399,18 +399,18 @@ Currently `mg start` creates a session ID and stores it in `sessions.ig.toml`, b
 
 **Desired flow:**
 ```bash
-mg start mind --tmux --task "desc"
-  # → creates session, sets MG_MIND + MG_SESSION, launches claude
+hv start mind --tmux --task "desc"
+  # → creates session, sets HV_MIND + HV_SESSION, launches claude
 
-mg session status "Implementing roles helper"
+hv session status "Implementing roles helper"
   # → updates status field for current session
 
-mg aars new
+hv aars new
   # → creates temp-aar/{slug}.md with session linkage
 ```
 
 **Why it matters:**
-- Enables `mg sessions` to show real-time status
+- Enables `hv sessions` to show real-time status
 - Reduces friction for AAR creation (less boilerplate)
 - Creates audit trail linking tasks → sessions → AARs
 - Foundation for richer workflow tooling
@@ -423,7 +423,7 @@ mg aars new
 
 **Problem:** No way to see the tree of active minds and their relationships.
 
-Want `mg tree` to display active minds as a hierarchy (like the `tree` command for files), showing parent-child task relationships and status at a glance.
+Want `hv tree` to display active minds as a hierarchy (like the `tree` command for files), showing parent-child task relationships and status at a glance.
 
 **Prerequisites:**
 - Parent task concept - minds need to know who assigned them
@@ -465,7 +465,7 @@ Each level needs its own context:
 **Automation needed:**
 - Capture key events (redirections, decisions, completions)
 - Periodic or triggered summarization
-- Briefings on demand: `mg briefing --since "3 days ago"`
+- Briefings on demand: `hv briefing --since "3 days ago"`
 
 **UI implications:**
 - May need TUI for multi-level visibility
@@ -487,14 +487,14 @@ Conversations highlight *content* (decisions, reasoning). But *structural change
 
 **Desired view:**
 ```
-mg structure --since "1 hour ago"
+hv structure --since "1 hour ago"
 
 main
 ├── suggest-role (branched from main)
 │   └── [diff vs main]
 └── settings-infra (branched from main)
-    └── [+] mg/src/mg/settings.py
-    └── [~] mg/src/mg/cmd.py
+    └── [+] haiv/src/haiv/settings.py
+    └── [~] haiv/src/haiv/cmd.py
 
 users/casey/state/minds/_new/
 └── [+] prism/              # NEW
@@ -524,7 +524,7 @@ users/casey/state/minds/_new/
 
 Type-safe hook points with request/response generics:
 ```python
-# mg/src/mg/hooks.py
+# haiv/src/haiv/hooks.py
 @dataclass
 class HookPoint(Generic[TRequest, TResponse]):
     guid: str
@@ -536,8 +536,8 @@ class HookPoint(Generic[TRequest, TResponse]):
 
 Commands define typed hook points:
 ```python
-# mg-core/src/mg_core/commands/minds/new.py
-from mg.hooks import HookPoint
+# haiv-core/src/haiv_core/commands/minds/new.py
+from haiv.hooks import HookPoint
 
 @dataclass
 class WorktreeCreatedRequest:
@@ -550,15 +550,15 @@ class WorktreeCreatedResponse:
     message: str | None = None
 
 AFTER_WORKTREE_CREATED = HookPoint[WorktreeCreatedRequest, WorktreeCreatedResponse](
-    guid="mg-core:minds:new:after-worktree-created"
+    guid="haiv-core:minds:new:after-worktree-created"
 )
 ```
 
 Hooks subscribe with type safety:
 ```python
-# mg_project/src/mg_project/hooks/uv_sync_worktree.py
-from mg_core.commands.minds.new import AFTER_WORKTREE_CREATED, WorktreeCreatedRequest, WorktreeCreatedResponse
-from mg.hooks import hook
+# haiv_project/src/haiv_project/hooks/uv_sync_worktree.py
+from haiv_core.commands.minds.new import AFTER_WORKTREE_CREATED, WorktreeCreatedRequest, WorktreeCreatedResponse
+from haiv.hooks import hook
 
 @hook(AFTER_WORKTREE_CREATED)
 def sync_packages(req: WorktreeCreatedRequest) -> WorktreeCreatedResponse:
@@ -579,7 +579,7 @@ results = AFTER_WORKTREE_CREATED.emit(WorktreeCreatedRequest(path, branch))
 - Opens up RPC-style patterns beyond pure observation
 - GUIDs for unique identification
 - Hooks in `hooks/` directories (project or user level)
-- Resolution order: mg_core → mg_project → mg_user
+- Resolution order: haiv_core → haiv_project → haiv_user
 
 **Relates to:** Luna's lesson about needing post-worktree setup hooks.
 
@@ -593,7 +593,7 @@ results = AFTER_WORKTREE_CREATED.emit(WorktreeCreatedRequest(path, branch))
 
 Minds work in terminals without access to an IDE's language server. Operations that are trivial in an editor — rename a symbol across a codebase, find all references, check type errors — require manual grep-and-replace, which is error-prone and tedious.
 
-An LSP client accessible from the CLI (or as an mg command/MCP tool) would give minds the same structural code intelligence that IDEs provide.
+An LSP client accessible from the CLI (or as an hv command/MCP tool) would give minds the same structural code intelligence that IDEs provide.
 
 **Use cases:**
 - Rename a function/class/variable across the codebase
@@ -603,7 +603,7 @@ An LSP client accessible from the CLI (or as an mg command/MCP tool) would give 
 
 **Possible approaches:**
 - MCP server wrapping an LSP client (pylsp, pyright, etc.)
-- mg command that starts/manages a persistent LSP process and exposes queries
+- hv command that starts/manages a persistent LSP process and exposes queries
 - Direct integration with pyright CLI for one-shot queries
 
 **Status:** Not started

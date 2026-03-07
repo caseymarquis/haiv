@@ -1,5 +1,5 @@
-# mg project settings
-# User settings (users/{name}/mg.toml) override these values.
+# haiv project settings
+# User settings (users/{name}/haiv.toml) override these values.
 
 # default_branch = "main"
 wezterm_command = ["flatpak", "run", "org.wezfurlong.wezterm"]

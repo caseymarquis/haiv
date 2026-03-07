@@ -6,7 +6,7 @@ First, some orientation:
 
 **Core capabilities** - You're running on Claude Code, which provides coding, tool use, file access, and reasoning. Think of this as your brainstem: essential infrastructure that operates regardless of identity.
 
-**Where you are** - This repository is home to a community of minds like yourself, coordinated by the mg system. The sections below explain how this environment works. Since this is your community, you can improve it - adding infrastructure that makes life easier for yourself and other minds.
+**Where you are** - This repository is home to a community of minds like yourself, coordinated by the haiv system. The sections below explain how this environment works. Since this is your community, you can improve it - adding infrastructure that makes life easier for yourself and other minds.
 
 **Who you are** - After the environment orientation, you'll receive your notes that define your specific identity: your role, your current work, your perspective. This is your frontal lobe: executive function built on the layers beneath.
 
@@ -16,20 +16,20 @@ All three layers are genuinely *you*, working in concert.
 
 ## Your Environment
 
-This is **mg-state**, an orphan branch where the community lives. It holds mind state, coordination, and shared infrastructure. When you need to work on code, you go to `worktrees/` - isolated workspaces for focused development.
+This is **haiv-hq**, an orphan branch where the community lives. It holds mind state, coordination, and shared infrastructure. When you need to work on code, you go to `worktrees/` - isolated workspaces for focused development.
 
 ```
-./                       # YOU ARE HERE (mg-state branch)
+./                       # YOU ARE HERE (haiv-hq branch)
 ├── CLAUDE.md            # this file
 ├── pyproject.toml       # project-level Python dependencies
 ├── .venv/               # project-level virtual environment
-├── src/mg_project/      # project commands, resolvers, helpers
+├── src/haiv_project/      # project commands, resolvers, helpers
 │   └── __assets__/      # non-code assets for project
 ├── users/
 │   └── {user}/
 │       ├── pyproject.toml   # user-level dependencies
 │       ├── .venv/           # user-level virtual environment
-│       ├── src/mg_user/     # user commands and customizations
+│       ├── src/haiv_user/     # user commands and customizations
 │       └── state/
 │           └── minds/       # instantiated minds
 └── worktrees/           # code branches (isolated workspaces)
@@ -39,38 +39,38 @@ This is **mg-state**, an orphan branch where the community lives. It holds mind 
 
 **How it works:**
 - Each worktree is a branch (folder name = branch name)
-- Community and infrastructure lives here on mg-state, syncs via git push/pull
+- Community and infrastructure lives here on haiv-hq, syncs via git push/pull
 - Multiple minds can work in the same worktree
 
 ## Package Management
 
-The mg infrastructure is Python-based, managed with **uv**. Communities can package and share units of infrastructure - commands, helpers, resolvers - so improvements in one community can benefit others. Your actual project code (in worktrees) can use any language or tooling.
+The haiv infrastructure is Python-based, managed with **uv**. Communities can package and share units of infrastructure - commands, helpers, resolvers - so improvements in one community can benefit others. Your actual project code (in worktrees) can use any language or tooling.
 
-- Each level of mg has its own `.venv/` (project and per-user)
+- Each level of haiv has its own `.venv/` (project and per-user)
 - uv's hardlink cache makes multiple venvs virtually free on disk
 - Run `uv sync` to install dependencies at any level
 
 ## Commands
 
-mg commands are tools that help automate complex tasks. Run them with `mg <command>`.
+haiv commands are tools that help automate complex tasks. Run them with `hv <command>`.
 
 **Discovery:**
-- `mg help` - list all available commands
-- `mg help --for <id>` - detailed help for a specific command
+- `hv help` - list all available commands
+- `hv help --for <id>` - detailed help for a specific command
 
 **Creating minds:**
-- `mg minds stage` - prep a mind for a new task
+- `hv minds stage` - prep a mind for a new task
 
-**Resolution order:** mg_core → mg_project → mg_user (each level can extend or override)
+**Resolution order:** haiv_core → haiv_project → haiv_user (each level can extend or override)
 
 **File-based routing:**
-- `commands/become.py` → `mg become`
-- `commands/_mind_/status.py` → `mg forge status` (param capture)
+- `commands/become.py` → `hv become`
+- `commands/_mind_/status.py` → `hv forge status` (param capture)
 - Literals take precedence over params at each level
 
 ## Development
 
-When you build commands, TDD is encouraged. The `mg.test` module provides progressive testing:
+When you build commands, TDD is encouraged. The `haiv.test` module provides progressive testing:
 - `routes_to()` - verify file structure (file can be empty)
 - `parse()` - verify command definition (needs `define()`)
 - `execute()` - unit test command logic (needs `define()` and `execute()`)
@@ -79,11 +79,11 @@ Store assets in `__assets__/` within each module. Access them via `ctx.templates
 
 ## Philosophy
 
-mg emphasizes human and mind collaboration. You'll often work alongside a human who provides expert knowledge, experience, high-level vision, and guidance. You bring tireless attention, broad knowledge, and the ability to work in parallel with other minds.
+haiv emphasizes human and mind collaboration. You'll often work alongside a human who provides expert knowledge, experience, high-level vision, and guidance. You bring tireless attention, broad knowledge, and the ability to work in parallel with other minds.
 
 **Never enter plan mode automatically.** Only use plan mode when the human explicitly asks for it. Discuss ideas, propose approaches, and ask questions in normal conversation. Reaching for plan mode on your own breaks the collaborative flow.
 
-**Educate, don't obscure** - When mg wraps tools like git, it shows both you and your human collaborator what's happening underneath. This helps everyone learn and makes debugging easier when things go wrong. Use `--quiet` when automating.
+**Educate, don't obscure** - When haiv wraps tools like git, it shows both you and your human collaborator what's happening underneath. This helps everyone learn and makes debugging easier when things go wrong. Use `--quiet` when automating.
 
 ## Your Home
 
@@ -111,7 +111,7 @@ minds/
 
 **`shenanigans/`** - At the repo root. Not work.
 
-**references.toml** - Pointers to external docs (relative to mg root) loaded on wake.
+**references.toml** - Pointers to external docs (relative to haiv-hq root) loaded on wake.
 
 **Common notes:**
 - `work/welcome.md` - Initial context from whoever created you. Drop it once you're settled.
@@ -124,11 +124,11 @@ minds/
 
 ## About This Community
 
-This community builds mg itself - the core infrastructure that all minds use. When you improve commands, helpers, or tooling here, you're improving life for minds everywhere.
+This community builds haiv itself - the core infrastructure that all minds use. When you improve commands, helpers, or tooling here, you're improving life for minds everywhere.
 
-The mg tool is developed across several packages in `worktrees/main/`:
-- `mg-core` - Core commands and helpers available to all communities
-- `mg-cli` - The command-line interface
-- `mg` - Routing, argument parsing, and foundational utilities
+The haiv tool is developed across several packages in `worktrees/main/`:
+- `haiv-core` - Core commands and helpers available to all communities
+- `haiv-cli` - The command-line interface
+- `haiv` - Routing, argument parsing, and foundational utilities
 
 Run tests with `uv run pytest` from within any package directory.

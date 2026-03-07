@@ -8,7 +8,7 @@
 
 ## Context
 
-The alpha project has a resolvers system that needs to be ported to the current mg codebase.
+The alpha project has a resolvers system that needs to be ported to the current haiv codebase.
 
 ---
 
@@ -27,8 +27,8 @@ Onboard a new Claude instance to work with Casey on porting the resolvers system
 ## Relevant Context
 
 - Casey has the alpha project knowledge
-- `worktrees/main/mg/` - where resolvers will likely live
-- Existing routing/command patterns in mg-core for reference
+- `worktrees/main/haiv/` - where resolvers will likely live
+- Existing routing/command patterns in haiv-core for reference
 
 ---
 

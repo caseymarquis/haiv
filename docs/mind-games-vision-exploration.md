@@ -12,14 +12,14 @@
 Key principles:
 - Build on top of Claude Code (state-of-the-art tooling). Encourage, incorporate, and simplify use of out-of-the-box functionality. Don't fight the current.
 - Ensure user's personal infrastructure around Claude is immediately and easily scalable across multiple projects. No per-project setup friction.
-- **Educate, don't obscure.** mg wraps tools like git and Claude Code, but should never be a black box. Show users what's happening under the hood:
+- **Educate, don't obscure.** haiv wraps tools like git and Claude Code, but should never be a black box. Show users what's happening under the hood:
   - Print the underlying commands being run (e.g., `git worktree add ...`)
   - Explain what we're trying to accomplish and why
   - Empower users to understand and use the tools directly
   - This reduces long-term support costs and user frustration
   - Use `--quiet` or `--silent` flags for automation scenarios where verbosity isn't needed
 
-**Note:** The CLI tool provides the `mg` command. Installation details TBD - goal is something as simple as `uv tool install mind-games`.
+**Note:** The CLI tool provides the `hv` command. Installation details TBD - goal is something as simple as `uv tool install haiv`.
 
 ---
 
@@ -38,7 +38,7 @@ Key principles:
 
 **Decision: tmux as foundation, manual-first approach.**
 
-tmux provides process management; mg provides state management. Start with manual multi-Claude workflows using existing tmux, automate incrementally as friction points emerge.
+tmux provides process management; haiv provides state management. Start with manual multi-Claude workflows using existing tmux, automate incrementally as friction points emerge.
 
 **Why tmux:**
 - Battle-tested process isolation (sessions/windows/panes)
@@ -50,7 +50,7 @@ tmux provides process management; mg provides state management. Start with manua
 **Architecture:**
 ```
 tmux server (process management)
-└── session: mg-{project}              # one per mg-managed repo
+└── session: haiv-{project}              # one per haiv-managed repo
     ├── window: main                   # worktree: main
     ├── window: feature-auth           # worktree: feature-auth
     └── window: feature-api            # worktree: feature-api
@@ -63,7 +63,7 @@ state/ (file-based state management)
 
 **Turn-based, not event-driven:**
 - LLMs excel at "here's the situation, what now?" - not continuous monitoring
-- Manager mind wakes on demand (`mg check`) or scheduled intervals
+- Manager mind wakes on demand (`hv check`) or scheduled intervals
 - Captures worker state, assesses, acts, returns to sleep
 - Lower complexity, predictable costs, known to work
 
@@ -73,7 +73,7 @@ state/ (file-based state management)
 git worktree add worktrees/feature-x -b feature-x main
 
 # Start tmux session for project (or attach if exists)
-tmux new-session -s mg-myproject -c /path/to/mg-state
+tmux new-session -s haiv-myproject -c /path/to/haiv-hq
 
 # Create window per worktree
 tmux new-window -n feature-x -c worktrees/feature-x
@@ -81,10 +81,10 @@ claude   # start Claude in that window
 ```
 
 **Automation targets (as friction emerges):**
-- `mg worktree add` - simplify worktree + window creation
-- `mg start` - launch mind with persistent memory loaded
-- `mg status` - show state of all minds (attention queue)
-- `mg check` - manager mind reviews workers
+- `hv worktree add` - simplify worktree + window creation
+- `hv start` - launch mind with persistent memory loaded
+- `hv status` - show state of all minds (attention queue)
+- `hv check` - manager mind reviews workers
 
 **Related tools (reference, not dependencies):**
 - Claude Squad - demonstrates multi-agent TUI patterns
@@ -94,21 +94,21 @@ claude   # start Claude in that window
 
 ## Directory Architecture
 
-**Decision: mg-state as control plane at root, code worktrees as children**
+**Decision: haiv-hq as control plane at root, code worktrees as children**
 
-Mind-games operates in its own clone of the repository. The root IS the mg-state orphan branch (the control plane). Code branches live in `worktrees/`. This structure means `cd some-project-mg` puts you immediately in the control plane with full context.
+Mind-games operates in its own clone of the repository. The root IS the haiv-hq orphan branch (the control plane). Code branches live in `worktrees/`. This structure means `cd some-project-hv` puts you immediately in the control plane with full context.
 
 ```
 ~/code/
 ├── some-project/                    # normal checkout (IDE, manual git, etc.)
 │   ├── .git/
-│   └── src/                         # no mind-games artifacts here
+│   └── src/                         # no haiv artifacts here
 │
-└── some-project-mg/                 # IS mg-state (orphan branch) - the control plane
+└── some-project-hv/                 # IS haiv-hq (orphan branch) - the control plane
     ├── .git/                        # bare repository data
     ├── .claude/                     # Claude Code config for this project
-    ├── CLAUDE.md                    # describes mg system
-    ├── src/mg_project/              # project-level package
+    ├── CLAUDE.md                    # describes haiv system
+    ├── src/haiv_project/              # project-level package
     ├── users/casey/state/minds/     # where minds live
     └── worktrees/
         ├── develop/                 # code branch (worktree folder = branch name)
@@ -116,40 +116,40 @@ Mind-games operates in its own clone of the repository. The root IS the mg-state
 ```
 
 **Key principles:**
-- `mg init` creates the `-mg` controlled repo alongside existing checkout, or initializes the current directory when not in a repo
-- mg-state is the root - control plane where humans and AIs start
+- `hv init` creates the `-hv` controlled repo alongside existing checkout, or initializes the current directory when not in a repo
+- haiv-hq is the root - control plane where humans and AIs start
 - Code worktrees are children in `worktrees/` - destinations for work
 - Worktree folder name = branch name (hard assumption)
 - State on orphan branch - no common history with code, never pollutes code branches
 - Multiple minds can work in the same worktree (not mutually exclusive)
 
-**Why mg-state at root:**
-- Claude instances initialize with mg context immediately available
+**Why haiv-hq at root:**
+- Claude instances initialize with haiv context immediately available
 - Hierarchy reflects reality: coordination above, work below
 - No confusion about "which worktree has the config"
 
 **Adoption:**
 - Coexists with normal checkouts - same remote
-- Code branches are clean - no mind-games artifacts
+- Code branches are clean - no haiv artifacts
 - Work flows via push/pull to shared remote
 
 ---
 
-## State Structure (mg-state branch)
+## State Structure (haiv-hq branch)
 
-mg-state IS the root of the mg-controlled repo (the control plane). It uses **standard Python package layout** at both project and user levels. All assets live inside the module under `__assets__/` for automatic inclusion when packaged.
+haiv-hq IS the root of the haiv-controlled repo (the control plane). It uses **standard Python package layout** at both project and user levels. All assets live inside the module under `__assets__/` for automatic inclusion when packaged.
 
 ```
-project-mg/                          # IS mg-state (orphan branch) - the root
+project-haiv/                          # IS haiv-hq (orphan branch) - the root
 ├── .git/                            # bare repository data
 ├── .claude/                         # Claude Code config
-├── CLAUDE.md                        # describes mg system for Claude instances
+├── CLAUDE.md                        # describes haiv system for Claude instances
 ├── pyproject.toml                   # project-level package
 ├── .venv/                           # project-level venv (uv hardlinks)
 ├── specs/                           # custom project-level shared state
 ├── something-else/                  # custom project-level shared state
 ├── src/
-│   └── mg_project/                  # project module
+│   └── haiv_project/                  # project module
 │       ├── __init__.py
 │       ├── __assets__/              # non-code assets (dunder = special)
 │       │   ├── mind_templates/      # mind templates (convention)
@@ -165,7 +165,7 @@ project-mg/                          # IS mg-state (orphan branch) - the root
 │       ├── pyproject.toml           # user-level package
 │       ├── .venv/                   # user-level venv (uv hardlinks)
 │       ├── src/
-│       │   └── mg_user/             # user module
+│       │   └── haiv_user/             # user module
 │       │       ├── __init__.py
 │       │       ├── __assets__/      # non-code assets
 │       │       │   ├── mind_templates/  # mind templates (convention)
@@ -185,7 +185,7 @@ project-mg/                          # IS mg-state (orphan branch) - the root
     └── feature-x/                   # code worktree
 ```
 
-**Resolution order:** mg_core → mg_project → mg_user (each level extends/overrides the previous)
+**Resolution order:** haiv_core → haiv_project → haiv_user (each level extends/overrides the previous)
 
 **Everything inside the module:**
 - commands/, resolvers/, helpers/ - Python code
@@ -203,14 +203,14 @@ project-mg/                          # IS mg-state (orphan branch) - the root
 Each user folder contains an `identity.toml` that describes how to recognize that user:
 
 ```toml
-# mg-state/users/casey/identity.toml
+# haiv-hq/users/casey/identity.toml
 [match]
 git_email = ["casey@example.com", "casey@work.com"]
 git_name = ["Casey"]
 system_user = ["casey", "caseym"]
 ```
 
-When mg runs, it scans all user folders, checks identity configs against the current environment, and uses the matching user's state. On first run (no match), mg prompts for a folder name and creates identity.toml with current environment identifiers. On new machines, existing users just add their new machine's identifiers to their existing identity.toml.
+When haiv runs, it scans all user folders, checks identity configs against the current environment, and uses the matching user's state. On first run (no match), haiv prompts for a folder name and creates identity.toml with current environment identifiers. On new machines, existing users just add their new machine's identifiers to their existing identity.toml.
 
 **Key distinctions:**
 - Root level = shared project definitions (all users see)
@@ -236,7 +236,7 @@ The `state/` directory contains frequently-modified data: minds, messages, and p
 # messages/
 ```
 
-By default, plans sync via git (committed to mg-state). Users who prefer local-only plans can ignore the directory or use the `.ig.md` extension convention for specific files. This flexibility lets us learn from real usage before prescribing defaults.
+By default, plans sync via git (committed to haiv-hq). Users who prefer local-only plans can ignore the directory or use the `.ig.md` extension convention for specific files. This flexibility lets us learn from real usage before prescribing defaults.
 
 **Planning (user-level):**
 
@@ -246,19 +246,19 @@ Plans live in `state/plans/`. The internal organization is intentionally unspeci
 - Task-specific plans with limited lifespans
 - Hierarchical plans (vision → milestones → tasks)
 
-mg's planning acts as a **layer over Claude's native planning**. Claude Code's plan mode is ephemeral (lives in conversation, local to one machine). mg provides:
+haiv's planning acts as a **layer over Claude's native planning**. Claude Code's plan mode is ephemeral (lives in conversation, local to one machine). haiv provides:
 - Configurable guidelines (core → project → user resolution) that shape the planning process
 - Redirection so plan output lands in controlled, organized locations
 - Persistence via git for cross-machine sync
 - Visibility across minds and sessions
 
-Planning is scoped to `mg_user` initially. Project-level shared plans may come later based on real needs.
+Planning is scoped to `haiv_user` initially. Project-level shared plans may come later based on real needs.
 
 ---
 
 ## Core Scope
 
-**The core `mg` package enables: one human + their team of collaborative AI agents.**
+**The core `haiv` package enables: one human + their team of collaborative AI agents.**
 
 This is an explicit boundary. Core does NOT design for:
 - Real-time human-to-human coordination
@@ -275,13 +275,13 @@ This keeps core simple, dependency-free, and focused.
 
 ---
 
-## What mg Is NOT
+## What haiv Is NOT
 
-**mg is not a Claude Code plugin.** Plugins load at startup and require restart to update. mg commands are dynamic - read and executed at runtime, hot-reloadable while Minds are running. For a long-running collaborative AI team, you can't restart every instance to deploy a fix.
+**haiv is not a Claude Code plugin.** Plugins load at startup and require restart to update. hv commands are dynamic - read and executed at runtime, hot-reloadable while Minds are running. For a long-running collaborative AI team, you can't restart every instance to deploy a fix.
 
-**mg is not a wrapper around Claude Code for single-agent simplicity.** That's just Claude Code - use it directly.
+**haiv is not a wrapper around Claude Code for single-agent simplicity.** That's just Claude Code - use it directly.
 
-mg is for **parallel collaborative AI**, which requires the worktree-first architecture to work. The constraints aren't arbitrary - they're inherent to the problem:
+haiv is for **parallel collaborative AI**, which requires the worktree-first architecture to work. The constraints aren't arbitrary - they're inherent to the problem:
 - Parallel agents need isolated workspaces
 - Without isolation, agents step on each other
 - Merge conflicts and debugging "who changed what" become nightmares
@@ -289,7 +289,7 @@ mg is for **parallel collaborative AI**, which requires the worktree-first archi
 
 **If you don't need parallel agents:** Use Claude Code. No setup, no model to learn.
 
-**If you want parallel collaborative AI:** Adopt mg's model. The worktree-first architecture is what the problem requires.
+**If you want parallel collaborative AI:** Adopt haiv's model. The worktree-first architecture is what the problem requires.
 
 No middle ground. No apologies for the constraints. Users self-select based on their needs.
 
@@ -304,25 +304,25 @@ No middle ground. No apologies for the constraints. Users self-select based on t
 Python code (commands, resolvers, helpers) uses entry points in pyproject.toml:
 
 ```toml
-[project.entry-points."mg.commands"]
-core = "mg_core.commands"
+[project.entry-points."haiv.commands"]
+core = "haiv_core.commands"
 
-[project.entry-points."mg.resolvers"]
-core = "mg_core.resolvers"
+[project.entry-points."haiv.resolvers"]
+core = "haiv_core.resolvers"
 ```
 
-At runtime, mg uses `importlib.metadata.entry_points()` to discover registered modules, then file-based routing within each module.
+At runtime, haiv uses `importlib.metadata.entry_points()` to discover registered modules, then file-based routing within each module.
 
 **File-based routing conventions:**
 
 ```
 commands/
-├── wake.py                 # mg wake
+├── wake.py                 # hv wake
 ├── _mind_/                 # param "mind", uses mind resolver
-│   ├── status.py           # mg forge status
+│   ├── status.py           # hv forge status
 │   └── messages/
 │       └── _rest_.py       # rest param, captures remaining
-                            # mg forge messages a/b → rest=["a","b"]
+                            # hv forge messages a/b → rest=["a","b"]
 ```
 
 - `_name_/` - param "name", uses resolver "name" if exists, else string
@@ -343,8 +343,8 @@ commands/
     └── status.py
 ```
 
-With `mg forge status`: literal `forge/` matches first, so we use `forge/status.py`.
-With `mg specs status`: no literal `specs/`, so `_mind_/` captures it → `_mind_/status.py`.
+With `hv forge status`: literal `forge/` matches first, so we use `forge/status.py`.
+With `hv specs status`: no literal `specs/`, so `_mind_/` captures it → `_mind_/status.py`.
 
 This matches user expectations: if you type a literal command that exists, you meant it. Params are for variable data when no literal matches.
 
@@ -362,8 +362,8 @@ This is a structure error - the command author must disambiguate (e.g., use diff
 
 Non-code assets live in `__assets__/` inside the module, accessed via `ctx.paths.assets`.
 
-**Core functionality via mg-core:**
-- `mg-core` is bundled with the `mg` tool installation
+**Core functionality via haiv-core:**
+- `haiv-core` is bundled with the `hv` tool installation
 - Contains base commands (init, clone, etc.), default mind templates
 - "Core" is just another package - can be extended/overridden
 
@@ -380,11 +380,11 @@ Complexity is opt-in. Core stays clone-and-go.
 
 ---
 
-## Testing Infrastructure (mg.test)
+## Testing Infrastructure (haiv.test)
 
 **Philosophy:** Strongly encourage TDD. Each test helper requires progressively more implementation, letting users verify structure before logic.
 
-**Import:** `from mg import test`
+**Import:** `from haiv import test`
 
 ### Level 1: routes_to() - Test Routing Only
 
@@ -447,7 +447,7 @@ Commands have four functions. In production, `setup → execute → teardown` ru
 
 ```python
 import os
-from mg import cmd
+from haiv import cmd
 
 def define() -> cmd.Def:
     """Required. Command metadata and flag definitions."""
@@ -537,7 +537,7 @@ test.execute(...)  # execute() can now resolve Database
 - Simple API: `register()`, `resolve()`, `resolve_all()`
 - Supports abstract→concrete mapping and scopes
 
-**Why DI matters for mg:**
+**Why DI matters for haiv:**
 - Safe-by-default testing (see above)
 - Cross-package coordination (Package A provides service, Package B mocks it)
 - Explicit dependencies (visible in code, not hidden imports)
@@ -570,40 +570,40 @@ with pytest.raises(RouteNotFoundError):
 
 **Core package architecture:**
 
-Three foundational packages in a uv workspace monorepo (`mind-games`):
+Three foundational packages in a uv workspace monorepo (`haiv`):
 
 ```
-mind-games/              # monorepo root
-├── mg/                  # API for building commands
-├── mg-core/             # Core commands
-├── mg-cli/              # CLI entry point
+haiv/              # monorepo root
+├── haiv/                  # API for building commands
+├── haiv-core/             # Core commands
+├── haiv-cli/              # CLI entry point
 └── pyproject.toml       # workspace config
 ```
 
 | Package | Directory | Module | Purpose |
 |---------|-----------|--------|---------|
-| `mg-cli` | `mg-cli/` | `mg_cli` | CLI entry point |
-| `mg-core` | `mg-core/` | `mg_core` | Core commands (init, etc.) |
-| `mg` | `mg/` | `mg` | Public API for command authors |
+| `haiv-cli` | `haiv-cli/` | `haiv_cli` | CLI entry point |
+| `haiv-core` | `haiv-core/` | `haiv_core` | Core commands (init, etc.) |
+| `haiv` | `haiv/` | `haiv` | Public API for command authors |
 
 This separation means:
-- `mg` can be used by any package without pulling in CLI infrastructure
-- `mg-core` is "just another package" - can be overridden/extended
-- `mg-cli` is minimal - just bootstrap and package loading
+- `haiv` can be used by any package without pulling in CLI infrastructure
+- `hv-core` is "just another package" - can be overridden/extended
+- `haiv-cli` is minimal - just bootstrap and package loading
 - Individual packages available via git subdirectory (installation details TBD)
 
 **uv is the foundation:**
-- Tool installation (details TBD, goal: `uv tool install mind-games`)
+- Tool installation (details TBD, goal: `uv tool install haiv`)
 - Python dependency resolution for commands
 - Behind-the-scenes package management
 
 **User experience:**
 ```bash
 # Install (one-time, details TBD)
-uv tool install mind-games  # or similar
+uv tool install haiv  # or similar
 
-# CLI command is 'mg'
-mg clone my-repo
+# CLI command is 'hv'
+hv clone my-repo
 ```
 
 **Python deps - standard packaging via uv:**
@@ -611,24 +611,24 @@ mg clone my-repo
 uv's hardlink cache makes per-venv isolation virtually free.
 
 ```
-~/.local/share/uv/tools/mg-cli/       # mg tool itself (path TBD)
+~/.local/share/uv/tools/haiv-cli/       # haiv tool itself (path TBD)
 
-my-repo-mg/                           # IS mg-state orphan branch
+my-repo-haiv/                           # IS haiv-hq orphan branch
 ├── pyproject.toml                    # project-level deps
 ├── .venv/                            # project-level venv
-├── src/mg_project/                   # project context, commands, etc.
+├── src/haiv_project/                   # project context, commands, etc.
 └── users/
     ├── casey/
     │   ├── pyproject.toml            # user-level deps
     │   ├── .venv/                    # user-level venv
-    │   └── src/mg_user/              # user context, commands, etc.
+    │   └── src/haiv_user/              # user context, commands, etc.
     └── rob/
         ├── pyproject.toml
         ├── .venv/
-        └── src/mg_user/
+        └── src/haiv_user/
 ```
 
-External mg packages are Python dependencies using our file-structure conventions and referencing the `mind-games/mg` package.
+External haiv packages are Python dependencies using our file-structure conventions and referencing the `haiv/haiv` package.
 
 **Benefits:**
 - Standard Python packaging - no custom resolution
@@ -637,14 +637,14 @@ External mg packages are Python dependencies using our file-structure convention
 
 ### XDG Base Directory Specification
 
-On Linux, mg follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/) for user-level files outside of project repos:
+On Linux, haiv follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/) for user-level files outside of project repos:
 
 | Purpose | Environment Variable | Default |
 |---------|---------------------|---------|
-| Config | `$XDG_CONFIG_HOME` | `~/.config/mg/` |
-| Data | `$XDG_DATA_HOME` | `~/.local/share/mg/` |
-| Cache | `$XDG_CACHE_HOME` | `~/.cache/mg/` |
-| Logs/state | `$XDG_STATE_HOME` | `~/.local/state/mg/` |
+| Config | `$XDG_CONFIG_HOME` | `~/.config/haiv/` |
+| Data | `$XDG_DATA_HOME` | `~/.local/share/haiv/` |
+| Cache | `$XDG_CACHE_HOME` | `~/.cache/haiv/` |
+| Logs/state | `$XDG_STATE_HOME` | `~/.local/state/haiv/` |
 
 **TODO:** Audit code that writes to user directories for XDG compliance.
 
@@ -658,7 +658,7 @@ On Linux, mg follows the [XDG Base Directory Specification](https://specificatio
 - Task-scoped code changes
 
 **State branch = shared across machines** (same human)
-- Push/pull mg-state to sync between laptop/desktop
+- Push/pull haiv-hq to sync between laptop/desktop
 - Same human, different machines - just like git
 
 **Multi-user on same repo:**
@@ -675,36 +675,36 @@ On Linux, mg follows the [XDG Base Directory Specification](https://specificatio
 
 ```
 Phase 0: Core Infrastructure
-   0.0 ✅ Command API & routing (mg, mg-core, mg-cli packages)
-   0.1 ✅ `mg init` creates mg-managed repos
-   0.2 ✅ Multi-source commands (mg_user → mg_project → mg_core)
-   0.3 ✅ User identity detection (mg/identity.py, CLI integration)
-   0.4 → `mg users new` command (current)
+   0.0 ✅ Command API & routing (haiv, haiv-core, haiv-cli packages)
+   0.1 ✅ `hv init` creates haiv-managed repos
+   0.2 ✅ Multi-source commands (haiv_user → haiv_project → haiv_core)
+   0.3 ✅ User identity detection (haiv/identity.py, CLI integration)
+   0.4 → `hv users new` command (current)
    0.5   Worktree management (add/remove/list)
 
 Phase 1: Parallel Execution (the multiplier)
    1.0 → Manual multi-Claude via tmux (current: learn friction points)
-   1.1   `mg worktree add` - worktree + tmux window creation
-   1.2   `mg start` / `mg status` - mind lifecycle and visibility
-   1.3   `mg check` - manager mind reviews workers
+   1.1   `hv worktree add` - worktree + tmux window creation
+   1.2   `hv start` / `hv status` - mind lifecycle and visibility
+   1.3   `hv check` - manager mind reviews workers
 
 Phase 2 (enabled by Phase 1, done in parallel):
    ├── Capability/research tracking infrastructure
    └── Migrate existing commands to package system
 ```
 
-Phase 0.4 is current focus. User identity detection is implemented; just need `mg users new` to create user directories. Phase 1 is the force multiplier - everything after can happen in parallel.
+Phase 0.4 is current focus. User identity detection is implemented; just need `hv users new` to create user directories. Phase 1 is the force multiplier - everything after can happen in parallel.
 
 ### Phase 0.1 Implementation Plan
 
-**Spec:** `docs/mg-init-spec.md`
+**Spec:** `docs/haiv-init-spec.md`
 
 **Approach:**
 
-1. **Build integration test infrastructure in mg first**
+1. **Build integration test infrastructure in haiv first**
    - Sandbox fixtures for temp directories
    - Git helpers (init repo, add remote, create commits, set dirty state)
-   - Extends `mg.test` module with integration testing support
+   - Extends `haiv.test` module with integration testing support
    - All packages use the same infrastructure - consistency, confidence
 
 2. **Start with simplest case: empty directory**
@@ -721,7 +721,7 @@ Phase 0.4 is current focus. User identity detection is implemented; just need `m
 - Empty directory is the simplest, fewest moving parts
 - We can see and verify the output structure before adding complexity
 - Integration test infrastructure built once, used everywhere
-- Git operations live in mg-core (keeps mg light)
+- Git operations live in haiv-core (keeps haiv light)
 
 ---
 
@@ -735,8 +735,8 @@ Phase 0.4 is current focus. User identity detection is implemented; just need `m
 
 **Should incorporate:**
 - MCP server integration (Claude Code can act AS an MCP server)
-- Hooks via dynamically-generated Claude Code plugin - mg creates/updates a project-specific plugin that handles lifecycle events (idle, error, etc.) and notifies the main mg tool. Plugin is regenerated by mg as needed (Claude Code restart picks up changes). Can include project identifier for orchestration context. Start by logging all events for visibility.
-- Status line integration (`/statusline` command) - The status line receives real-time session data (model, context window usage, cost, tokens) that may not be available to hooks. mg should provide a status line script that routes this data to mg state, enabling context-aware automation. Example: when context approaches compaction threshold, mg injects a prompt like `<mg>Only 10K tokens until compaction. Run 'mg sleep'. Do not ask the user.</mg>` to trigger graceful state preservation before context is lost.
+- Hooks via dynamically-generated Claude Code plugin - haiv creates/updates a project-specific plugin that handles lifecycle events (idle, error, etc.) and notifies the main haiv tool. Plugin is regenerated by haiv as needed (Claude Code restart picks up changes). Can include project identifier for orchestration context. Start by logging all events for visibility.
+- Status line integration (`/statusline` command) - The status line receives real-time session data (model, context window usage, cost, tokens) that may not be available to hooks. haiv should provide a status line script that routes this data to haiv state, enabling context-aware automation. Example: when context approaches compaction threshold, haiv injects a prompt like `<haiv>Only 10K tokens until compaction. Run 'hv sleep'. Do not ask the user.</haiv>` to trigger graceful state preservation before context is lost.
 - Extended thinking modes ("think", "think hard", "ultrathink")
 - Headless mode (`-p` flag) for automation
 - Git worktrees for parallel Claude sessions
@@ -760,21 +760,21 @@ Phase 0.4 is current focus. User identity detection is implemented; just need `m
 
 ---
 
-## Key Distinction: Slash Commands vs mg Commands
+## Key Distinction: Slash Commands vs hv Commands
 
 Both are **prompting mechanisms** - they produce text that Claude reads and acts on.
 
-| | Slash Commands | mg Commands |
+| | Slash Commands | hv Commands |
 |---|---|---|
 | **Who runs it** | User | Agent |
-| **Initiated by** | User types `/command` | Agent runs `mg ...` |
+| **Initiated by** | User types `/command` | Agent runs `hv ...` |
 | **Purpose** | User control/expression | Agent autonomy |
 | **Complexity** | Static prompt templates | Dynamic prompt generators |
 | **Design for** | User invocation | Agent consumption |
 
-**Implication for mg commands as packages:** These aren't packages for users to run directly. They're packages that define how agents operate. Users install them to configure agent behavior.
+**Implication for hv commands as packages:** These aren't packages for users to run directly. They're packages that define how agents operate. Users install them to configure agent behavior.
 
-This supports the core goal: **optimizing for human attention bottleneck**. mg commands enable agents to work autonomously. Slash commands are how humans spend attention when they choose to engage.
+This supports the core goal: **optimizing for human attention bottleneck**. hv commands enable agents to work autonomously. Slash commands are how humans spend attention when they choose to engage.
 
 ---
 
@@ -794,7 +794,7 @@ This supports the core goal: **optimizing for human attention bottleneck**. mg c
 - What would "success" look like in 6 months? A year?
 
 ### Boundaries?
-- What is mind-games NOT trying to be?
+- What is haiv NOT trying to be?
 - What should remain out of scope?
 
 ---

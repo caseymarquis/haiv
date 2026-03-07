@@ -1,4 +1,4 @@
-# Plan: User Detection in mg-cli
+# Plan: User Detection in haiv-cli
 
 **Status:** Implemented (Phase D remaining)
 **Date:** 2025-01-02
@@ -7,9 +7,9 @@
 
 ## Goal
 
-Integrate user detection into mg-cli so that:
-- User identity is detected automatically when running any `mg` command
-- User-specific commands (`mg_user`) become available when a user is detected
+Integrate user detection into haiv-cli so that:
+- User identity is detected automatically when running any `hv` command
+- User-specific commands (`haiv_user`) become available when a user is detected
 - Session data is cached for the duration of the process
 
 ---
@@ -19,20 +19,20 @@ Integrate user detection into mg-cli so that:
 ### Package Responsibilities
 
 ```
-mg/                              # Implementation (reusable)
+haiv/                              # Implementation (reusable)
 ├── identity.py                  # ✓ User detection logic
 └── paths.py                     # ✓ Extended with user paths
 
-mg_cli/                          # Thin integration
-└── __init__.py                  # ✓ Calls into mg identity functions
+haiv_cli/                          # Thin integration
+└── __init__.py                  # ✓ Calls into haiv identity functions
 
-mg_core/                         # Commands
-└── commands/users/new.py        # TODO: mg users new --name <name>
+haiv_core/                         # Commands
+└── commands/users/new.py        # TODO: hv users new --name <name>
 ```
 
 ### Key Principle
 
-CLI stays thin. All real logic lives in `mg` package so it can be:
+CLI stays thin. All real logic lives in `haiv` package so it can be:
 - Unit tested independently
 - Reused by other commands
 - Extended by packages
@@ -76,7 +76,7 @@ class Identity:
     matched_by: str              # Which field matched (for debugging)
 ```
 
-### MG_SESSION Environment Variable (Deferred)
+### HV_SESSION Environment Variable (Deferred)
 
 TOML-encoded session state - design not yet finalized. Will cache user detection for child processes. Additional session data will be added here in the future.
 
@@ -84,20 +84,20 @@ TOML-encoded session state - design not yet finalized. Will cache user detection
 
 ## Detection Flow
 
-### 1. CLI Entry (mg_cli/__init__.py) ✓
+### 1. CLI Entry (haiv_cli/__init__.py) ✓
 
 ```
 main()
   ├── Parse command string
-  ├── Find mg_root (existing logic)
+  ├── Find haiv_root (existing logic)
   ├── Find command:
-  │     ├── Try mg_user (calls _detect_user_cached())
-  │     ├── Try mg_project
-  │     └── Try mg_core
+  │     ├── Try haiv_user (calls _detect_user_cached())
+  │     ├── Try haiv_project
+  │     └── Try haiv_core
   └── Execute command
 ```
 
-### 2. User Detection (mg/identity.py) ✓
+### 2. User Detection (haiv/identity.py) ✓
 
 ```python
 def detect_user(users_dir: Path) -> Identity | None:
@@ -123,8 +123,8 @@ Steps:
 
 **No match found:**
 - CLI treats as error (source not checked)
-- Error message: `No user identity found. Run 'mg users new --name <name>' to create one.`
-- Command continues via fallback sources (mg_project, mg_core)
+- Error message: `No user identity found. Run 'hv users new --name <name>' to create one.`
+- Command continues via fallback sources (haiv_project, haiv_core)
 
 **Multiple matches:**
 - Raise `AmbiguousIdentityError`
@@ -148,7 +148,7 @@ Steps:
 
 ## Paths Integration ✓
 
-Extended `mg/paths.py`:
+Extended `haiv/paths.py`:
 
 ```python
 @dataclass
@@ -165,7 +165,7 @@ class Paths:
         """User package paths. Raises if no user detected."""
         if self._user_name is None:
             raise RuntimeError("No user identity found...")
-        return PkgPaths(root=self.users / self._user_name / "src" / "mg_user")
+        return PkgPaths(root=self.users / self._user_name / "src" / "haiv_user")
 
     @property
     def state(self) -> Path:
@@ -177,11 +177,11 @@ class Paths:
 
 ---
 
-## New Command: mg users new (TODO)
+## New Command: hv users new (TODO)
 
-**Location:** `mg_core/commands/users/new.py`
+**Location:** `haiv_core/commands/users/new.py`
 
-**Usage:** `mg users new --name casey`
+**Usage:** `hv users new --name casey`
 
 **Behavior:**
 1. Validate name (alphanumeric, lowercase, no spaces)
@@ -191,7 +191,7 @@ class Paths:
    users/{name}/
    ├── identity.toml        # Pre-populated with current env
    ├── pyproject.toml       # User-level dependencies
-   ├── src/mg_user/
+   ├── src/haiv_user/
    │   ├── __init__.py
    │   └── commands/
    │       └── __init__.py
@@ -219,15 +219,15 @@ class Paths:
 - [x] `load_match_config(path)` - parse identity.toml [match] section
 - [x] `matches(match_config, env)` - case-insensitive matching
 - [x] `detect_user(users_dir)` - main entry point
-- [x] 32 tests in `mg/tests/test_identity.py`
+- [x] 32 tests in `haiv/tests/test_identity.py`
 
 ### Phase B: CLI Integration ✓
 
 - [x] `_detect_user_cached()` - cached user detection
-- [x] `_get_user_commands()` - load mg_user commands via Paths
-- [x] Updated `_find_command()` - mg_user → mg_project → mg_core precedence
+- [x] `_get_user_commands()` - load haiv_user commands via Paths
+- [x] Updated `_find_command()` - haiv_user → haiv_project → haiv_core precedence
 - [x] No user = error shown as unchecked source with helpful message
-- [x] 4 integration tests in `mg-cli/tests/test_command_sources.py`
+- [x] 4 integration tests in `haiv-cli/tests/test_command_sources.py`
 
 ### Phase C: Paths Extension ✓
 
@@ -238,27 +238,27 @@ class Paths:
 
 ### Phase C.5: Context Integration ✓
 
-- [x] `build_ctx()` accepts `mg_username` parameter
+- [x] `build_ctx()` accepts `haiv_username` parameter
 - [x] CLI passes detected username to `build_ctx`
-- [x] `mg/test.py` uses `TEST_USERNAME = "testinius"` as default
+- [x] `haiv/test.py` uses `TEST_USERNAME = "testinius"` as default
 - [x] Test utilities auto-create `users/testinius/state/` folder
 - [x] `Sandbox` respects `explicit` mode (no auto-creation when True)
 
-### Phase D: mg users new Command
+### Phase D: hv users new Command
 
-- [ ] Create `mg_core/commands/users/new.py`
-- [ ] Templates in `mg_core/__assets__/users/`
+- [ ] Create `haiv_core/commands/users/new.py`
+- [ ] Templates in `haiv_core/__assets__/users/`
 - [ ] Tests for user creation
 
 ---
 
 ## Success Criteria
 
-- [x] User commands (`mg_user`) are discoverable when user exists
-- [x] Precedence: mg_user → mg_project → mg_core
+- [x] User commands (`haiv_user`) are discoverable when user exists
+- [x] Precedence: haiv_user → haiv_project → haiv_core
 - [x] Multiple users on same machine can use different identities
 - [x] Matching is case-insensitive (using casefold())
 - [x] Ambiguous matches raise clear error with paths
-- [ ] `mg users new --name casey` creates valid user structure
-- [ ] Running `mg` in a project shows user detection info if no user
-- [ ] Session caching works (MG_SESSION - deferred)
+- [ ] `hv users new --name casey` creates valid user structure
+- [ ] Running `hv` in a project shows user detection info if no user
+- [ ] Session caching works (HV_SESSION - deferred)

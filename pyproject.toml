@@ -1,13 +1,13 @@
 
 [project]
-name = "mg-project"
+name = "haiv-project"
 version = "0.1.0"
-description = "Project-level mg commands and configuration"
+description = "Project-level haiv commands and configuration"
 requires-python = ">=3.12"
 dependencies = [
-    "mg",
-    "mg-cli",
-    "mg-tui",
+    "haiv",
+    "haiv-cli",
+    "haiv-tui",
 ]
 
 [build-system]
@@ -15,12 +15,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-mg = { path = "worktrees/main/mg", editable = true }
-mg-cli = { path = "worktrees/main/mg-cli", editable = true }
-mg-tui = { path = "worktrees/main/mg-tui", editable = true }
+haiv = { path = "worktrees/main/haiv", editable = true }
+haiv-cli = { path = "worktrees/main/haiv-cli", editable = true }
+haiv-tui = { path = "worktrees/main/haiv-tui", editable = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mg_project"]
+packages = ["src/haiv_project"]
 
 [dependency-groups]
 dev = [

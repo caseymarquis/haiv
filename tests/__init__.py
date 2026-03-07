@@ -1,2 +1,2 @@
 
-"""Tests for mg_project commands and automation."""
+"""Tests for haiv_project commands and automation."""
