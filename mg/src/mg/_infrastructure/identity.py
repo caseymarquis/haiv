@@ -1,6 +1,6 @@
 """User identity detection and matching.
 
-This module handles detecting which user is running mg commands by matching
+This module handles detecting which user is running haiv commands by matching
 the current environment (git config, system user) against identity.toml
 files in the users/ directory.
 """
@@ -10,7 +10,7 @@ import tomllib
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from mg.wrappers.git import Git
+from haiv.wrappers.git import Git
 
 
 # -----------------------------------------------------------------------------
@@ -167,7 +167,7 @@ def matches(match_config: MatchConfig, env: CurrentEnv) -> str | None:
 def detect_user(users_dir: Path) -> Identity | None:
     """Detect current user from environment.
 
-    Checks MG_SESSION cache first, then scans the users directory for
+    Checks HV_SESSION cache first, then scans the users directory for
     identity.toml files that match the current environment.
 
     Args:
@@ -179,7 +179,7 @@ def detect_user(users_dir: Path) -> Identity | None:
     Raises:
         AmbiguousIdentityError: If multiple users match
     """
-    # TODO: Check MG_SESSION cache first
+    # TODO: Check HV_SESSION cache first
 
     if not users_dir.exists():
         return None

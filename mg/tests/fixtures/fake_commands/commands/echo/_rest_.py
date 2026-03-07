@@ -1,6 +1,6 @@
 """Echo command - captures rest params."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:

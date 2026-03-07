@@ -1,16 +1,16 @@
-"""Initialize mg in current directory."""
+"""Initialize haiv in current directory."""
 
 from pathlib import Path
 
-from mg import cmd
-from mg.errors import CommandError
-from mg.wrappers.git import Git
+from haiv import cmd
+from haiv.errors import CommandError
+from haiv.wrappers.git import Git
 
 
 def define() -> cmd.Def:
     """Define the init command."""
     return cmd.Def(
-        description="Initialize mg in current directory",
+        description="Initialize haiv in current directory",
         flags=[
             cmd.Flag("force", type=bool),
             cmd.Flag("branch"),
@@ -56,8 +56,8 @@ def _is_empty_dir(path: Path) -> bool:
     return not any(path.iterdir())
 
 
-def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
-    """Write all mg-state files to root directory."""
+def _write_hv_state_files(root: Path, ctx: cmd.Ctx) -> None:
+    """Write all haiv files to root directory."""
     ctx.templates.write("init/CLAUDE.md.j2", root / "CLAUDE.md")
     ctx.templates.write("init/.gitignore.j2", root / ".gitignore")
     ctx.templates.write("init/pyproject.toml.j2", root / "pyproject.toml")
@@ -65,11 +65,11 @@ def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
     claude_dir = root / ".claude"
     ctx.templates.write("init/.claude/.gitkeep.j2", claude_dir / ".gitkeep")
 
-    mg_project = root / "src" / "mg_project"
-    ctx.templates.write("init/src/mg_project/__init__.py.j2", mg_project / "__init__.py")
+    hv_project = root / "src" / "hv_project"
+    ctx.templates.write("init/src/hv_project/__init__.py.j2", hv_project / "__init__.py")
 
-    commands = mg_project / "commands"
-    ctx.templates.write("init/src/mg_project/commands/__init__.py.j2", commands / "__init__.py")
+    commands = hv_project / "commands"
+    ctx.templates.write("init/src/hv_project/commands/__init__.py.j2", commands / "__init__.py")
 
     tests = root / "tests"
     ctx.templates.write("init/tests/__init__.py.j2", tests / "__init__.py")
@@ -82,15 +82,15 @@ def _write_mg_state_files(root: Path, ctx: cmd.Ctx) -> None:
     ctx.templates.write("init/worktrees/.gitignore.j2", worktrees / ".gitignore")
 
 
-def _init_mg_structure(git: Git, ctx: cmd.Ctx) -> None:
-    """Create base mg structure: git init, orphan branch, initial commit, worktrees dir."""
+def _init_hv_structure(git: Git, ctx: cmd.Ctx) -> None:
+    """Create base haiv structure: git init, orphan branch, initial commit, worktrees dir."""
     git.run("init", intent="create git repository")
-    git.run("checkout --orphan mg-state", intent="create mg-state orphan branch")
+    git.run("checkout --orphan haiv", intent="create haiv orphan branch")
 
-    _write_mg_state_files(git.path, ctx)
+    _write_hv_state_files(git.path, ctx)
 
-    git.run("add .", intent="stage mg-state files")
-    git.run('commit -m "Initialize mg"', intent="create initial commit")
+    git.run("add .", intent="stage haiv files")
+    git.run('commit -m "Initialize haiv"', intent="create initial commit")
 
 
 def _create_orphan_worktree(git: Git, branch: str) -> Path:
@@ -107,7 +107,7 @@ def _print_next_steps(ctx: cmd.Ctx, *, branch: str, quiet: bool) -> None:
         return
     ctx.print()
     ctx.print(f"'worktrees/{branch}/' is your initial worktree.")
-    ctx.print(f"Use 'mg worktree add <branch>' to add worktrees.")
+    ctx.print(f"Use 'haiv worktree add <branch>' to add worktrees.")
 
 
 # =============================================================================
@@ -123,7 +123,7 @@ def _init_fresh_mode(
     empty: bool,
     branch: str,
 ) -> None:
-    """Initialize mg in a directory that's not in a git repo."""
+    """Initialize haiv in a directory that's not in a git repo."""
     root = ctx.paths.called_from
 
     # Check if directory is non-empty
@@ -145,11 +145,11 @@ def _init_fresh_empty(
     empty: bool,
     branch: str,
 ) -> None:
-    """Initialize mg in an empty directory."""
+    """Initialize haiv in an empty directory."""
     root = ctx.paths.called_from
     git = Git(root, quiet=quiet)
 
-    _init_mg_structure(git, ctx)
+    _init_hv_structure(git, ctx)
 
     worktree_path = _create_orphan_worktree(git, branch)
     worktree_git = Git(worktree_path, quiet=quiet)
@@ -175,14 +175,14 @@ def _init_fresh_nonempty(
     quiet: bool,
     branch: str,
 ) -> None:
-    """Initialize mg in a non-empty directory (--force required)."""
+    """Initialize haiv in a non-empty directory (--force required)."""
     root = ctx.paths.called_from
     git = Git(root, quiet=quiet)
 
     # Collect existing files before creating structure
     existing_files = list(root.iterdir())
 
-    _init_mg_structure(git, ctx)
+    _init_hv_structure(git, ctx)
     worktree_path = _create_orphan_worktree(git, branch)
 
     # Move existing files into worktree
@@ -213,7 +213,7 @@ def _init_peer_mode(
     force: bool,
     branch: str | None,
 ) -> None:
-    """Initialize mg as a peer to an existing git repo."""
+    """Initialize haiv as a peer to an existing git repo."""
     source_git = Git(git_root, quiet=True)  # Quiet for prerequisite checks
 
     # Check prerequisites
@@ -237,7 +237,7 @@ def _init_peer_mode(
             )
 
     # Determine peer directory location
-    peer_dir = git_root.parent / f"{git_root.name}-mg"
+    peer_dir = git_root.parent / f"{git_root.name}-hv"
 
     if peer_dir.exists():
         raise CommandError(f"Peer directory already exists: {peer_dir}")
@@ -273,17 +273,17 @@ def _init_peer_mode(
         intent="clone repository",
     )
 
-    # Set up mg structure in peer directory
+    # Set up haiv structure in peer directory
     git = Git(peer_dir, quiet=quiet)
 
-    # Set up mg-state branch
-    if _has_remote_mg_state(git):
-        git.run("switch mg-state", intent="switch to existing mg-state branch")
+    # Set up haiv branch
+    if _has_remote_hv_state(git):
+        git.run("switch haiv", intent="switch to existing haiv branch")
     else:
-        git.run("switch --orphan mg-state", intent="create mg-state orphan branch")
-        _write_mg_state_files(peer_dir, ctx)
-        git.run("add .", intent="stage mg-state files")
-        git.run('commit -m "Initialize mg"', intent="create initial commit on mg-state")
+        git.run("switch --orphan haiv", intent="create haiv orphan branch")
+        _write_hv_state_files(peer_dir, ctx)
+        git.run("add .", intent="stage haiv files")
+        git.run('commit -m "Initialize haiv"', intent="create initial commit on haiv")
 
     # Create worktree for target branch
     git.run(
@@ -294,9 +294,9 @@ def _init_peer_mode(
     _print_next_steps(ctx, branch=target_branch, quiet=quiet)
 
 
-def _has_remote_mg_state(git: Git) -> bool:
-    """Check if mg-state exists as a remote tracking branch after clone."""
-    output = git.run("branch -r --list origin/mg-state", intent="check for existing mg-state")
+def _has_remote_hv_state(git: Git) -> bool:
+    """Check if haiv exists as a remote tracking branch after clone."""
+    output = git.run("branch -r --list origin/haiv", intent="check for existing haiv")
     return bool(output.strip())
 
 

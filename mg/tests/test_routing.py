@@ -1,4 +1,4 @@
-"""Tests for mg.routing module.
+"""Tests for haiv.routing module.
 
 Tests are split into two groups:
 1. Core routing logic (find_route_in_paths) - works with path lists
@@ -8,7 +8,7 @@ Tests are split into two groups:
 import pytest
 from pathlib import Path
 
-from mg._infrastructure.routing import (
+from haiv._infrastructure.routing import (
     find_route_in_paths,
     require_route,
     paths_from_module,

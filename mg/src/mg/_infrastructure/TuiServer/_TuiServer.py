@@ -1,7 +1,7 @@
 """TUI IPC server.
 
 Runs inside the TUI process. Owns the authoritative TuiModel and serves
-state to both remote clients (mg commands via IPC) and the local Textual
+state to both remote clients (haiv commands via IPC) and the local Textual
 UI (via TuiLocalClient).
 
 Thread safety:
@@ -63,8 +63,8 @@ from ._TuiIpc import (
     pipe_address,
 )
 from ._TuiIpcListener import TuiIpcListener
-from mg.helpers.tui.TuiModel import TuiModel
-from mg.util import Atom
+from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.util import Atom
 
 
 class TuiServer:

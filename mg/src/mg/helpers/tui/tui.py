@@ -1,4 +1,4 @@
-"""Tui — thin convenience wrapper for mg command authors.
+"""Tui — thin convenience wrapper for haiv command authors.
 
 This class exists purely for ergonomics. It holds pre-loaded dependencies
 (client, paths, settings) so command authors can write simple calls like
@@ -9,7 +9,7 @@ passthrough that forwards to a helpers.py function with the appropriate
 dependencies. If you're adding a new capability, put the logic in helpers.py
 first, then add a passthrough here.
 
-The TUI application (mg-tui) calls helpers.py functions directly — it does
+The TUI application (haiv-tui) calls helpers.py functions directly — it does
 not use this class. This keeps the app decoupled from the dependency bag.
 
 terminal.py (TerminalManager) encapsulates WezTerm specifics — tab naming
@@ -22,14 +22,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from mg.helpers.sessions import Session
-from mg.helpers.tui import helpers
-from mg.helpers.tui.TuiClient import TuiClient
-from mg.helpers.tui.TuiModel import TuiModel
-from mg.helpers.tui.terminal import TerminalManager
-from mg.settings import MgSettings
-from mg.wrappers.git import Git
-from mg.wrappers.wezterm import WezTerm
+from haiv.helpers.sessions import Session
+from haiv.helpers.tui import helpers
+from haiv.helpers.tui.TuiClient import TuiClient
+from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.terminal import TerminalManager
+from haiv.settings import HvSettings
+from haiv.wrappers.git import Git
+from haiv.wrappers.wezterm import WezTerm
 
 
 class Tui:
@@ -41,15 +41,15 @@ class Tui:
 
     def __init__(
         self,
-        mg_root: Path,
-        settings: MgSettings,
+        hv_root: Path,
+        settings: HvSettings,
         client: TuiClient | None,
         sessions_file: Path,
     ) -> None:
         wezterm = WezTerm(settings.wezterm_command)
-        self._terminal = TerminalManager(wezterm, mg_root, settings.tui_command)
-        self._mg_root = mg_root
-        self._git = Git(mg_root, quiet=True)
+        self._terminal = TerminalManager(wezterm, hv_root, settings.tui_command)
+        self._hv_root = hv_root
+        self._git = Git(hv_root, quiet=True)
         self._client = client
         self._sessions_file = sessions_file
 
@@ -59,7 +59,7 @@ class Tui:
         return self._client
 
     def start(self) -> None:
-        """Ensure the mg workspace exists."""
+        """Ensure the haiv workspace exists."""
         helpers.workspace_start(self._terminal)
 
     def read(self) -> TuiModel:
@@ -96,7 +96,7 @@ class Tui:
         """Put a mind in the hud — switching, launching, or restarting as needed."""
         return helpers.mind_launch(
             self._terminal, self._require_client(), self._sessions_file,
-            mind_name, self._mg_root, task=task, parent_id=parent_id,
+            mind_name, self._hv_root, task=task, parent_id=parent_id,
             git=self._git,
         )
 

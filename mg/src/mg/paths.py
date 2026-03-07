@@ -1,4 +1,4 @@
-"""Path utilities for mg projects.
+"""Path utilities for haiv projects.
 
 Naming conventions:
 - `root` - base anchor path (exception to suffix rule)
@@ -16,77 +16,77 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
-from mg._infrastructure import env
-from mg.util import module_to_folder
+from haiv._infrastructure import env
+from haiv.util import module_to_folder
 
 
-def _is_valid_mg_root(path: Path) -> bool:
-    """Check if a directory is a valid mg root.
+def _is_valid_hv_root(path: Path) -> bool:
+    """Check if a directory is a valid haiv root.
 
-    A valid mg root has both a .git folder and a worktrees folder.
+    A valid haiv root has both a .git folder and a worktrees folder.
     """
     return (path / ".git").is_dir() and (path / "worktrees").is_dir()
 
 
-def get_mg_root(cwd: Path) -> Path:
-    """Get mg root from environment variable or by searching upward from cwd.
+def get_hv_root(cwd: Path) -> Path:
+    """Get haiv root from environment variable or by searching upward from cwd.
 
     Resolution order:
-    1. If MG_ROOT env var is set, validate and return it
-    2. Otherwise, walk up from cwd looking for a valid mg root
+    1. If HV_ROOT env var is set, validate and return it
+    2. Otherwise, walk up from cwd looking for a valid haiv root
 
     Args:
         cwd: Current working directory to search from if env var not set
 
     Returns:
-        Path to the mg root directory
+        Path to the haiv root directory
 
     Raises:
-        ValueError: If MG_ROOT is set but invalid, or if no mg root can be found.
+        ValueError: If HV_ROOT is set but invalid, or if no haiv root can be found.
     """
-    value = os.environ.get(env.MG_ROOT, "")
+    value = os.environ.get(env.HV_ROOT, "")
 
     if value:
         path = Path(value)
         if not path.is_absolute():
             raise ValueError(
-                f"{env.MG_ROOT} must be an absolute path, got: {value}\n"
-                "Run 'mg start' in your mg-managed repository root to set this correctly."
+                f"{env.HV_ROOT} must be an absolute path, got: {value}\n"
+                "Run 'hv start' in your haiv-managed repository root to set this correctly."
             )
         if not path.exists():
             raise ValueError(
-                f"{env.MG_ROOT} path does not exist: {value}\n"
-                "Run 'mg start' in your mg-managed repository root to set this correctly."
+                f"{env.HV_ROOT} path does not exist: {value}\n"
+                "Run 'hv start' in your haiv-managed repository root to set this correctly."
             )
-        if not _is_valid_mg_root(path):
+        if not _is_valid_hv_root(path):
             raise ValueError(
-                f"{env.MG_ROOT} is not a valid mg root (missing .git or worktrees): {value}\n"
-                "Run 'mg start' in your mg-managed repository root to set this correctly."
+                f"{env.HV_ROOT} is not a valid haiv root (missing .git or worktrees): {value}\n"
+                "Run 'hv start' in your haiv-managed repository root to set this correctly."
             )
         return path
 
-    # Walk up from cwd looking for mg root
+    # Walk up from cwd looking for haiv root
     current = cwd.resolve()
     while current != current.parent:
-        if _is_valid_mg_root(current):
+        if _is_valid_hv_root(current):
             return current
         current = current.parent
 
     # Check root as well
-    if _is_valid_mg_root(current):
+    if _is_valid_hv_root(current):
         return current
 
     raise ValueError(
-        "Could not find mg root.\n"
-        "Run 'mg start' in your mg-managed repository root, or set MG_ROOT."
+        "Could not find haiv root.\n"
+        "Run 'hv start' in your haiv-managed repository root, or set HV_ROOT."
     )
 
 
 @dataclass
 class PkgPaths:
-    """Paths for a package module (mg_core, mg_project, mg_user, or installed).
+    """Paths for a package module (haiv_core, hv_project, hv_user, or installed).
 
-    Points to the module root (e.g., src/mg_core/), not the package root.
+    Points to the module root (e.g., src/haiv_core/), not the package root.
     This is what gets installed - tests and pyproject.toml are not included.
     """
 
@@ -97,7 +97,7 @@ class PkgPaths:
         """Create PkgPaths from a module.
 
         Args:
-            module: A Python module (e.g., mg_core).
+            module: A Python module (e.g., haiv_core).
 
         Returns:
             PkgPaths pointing to the module's root directory.
@@ -120,9 +120,9 @@ class PkgPaths:
         return self.root / "resolvers"
 
     @property
-    def mg_hook_handlers_dir(self) -> Path:
-        """The mg_hook_handlers directory for mg hook handler modules."""
-        return self.root / "mg_hook_handlers"
+    def hv_hook_handlers_dir(self) -> Path:
+        """The hv_hook_handlers directory for haiv hook handler modules."""
+        return self.root / "hv_hook_handlers"
 
 
 @dataclass
@@ -135,9 +135,9 @@ class UserPaths:
     root: Path  # users/{name}/
 
     @property
-    def mg_user(self) -> PkgPaths:
-        """Package paths for users/{name}/src/mg_user/"""
-        return PkgPaths(root=self.root / "src" / "mg_user")
+    def hv_user(self) -> PkgPaths:
+        """Package paths for users/{name}/src/hv_user/"""
+        return PkgPaths(root=self.root / "src" / "hv_user")
 
     @property
     def state_dir(self) -> Path:
@@ -156,8 +156,8 @@ class UserPaths:
 
     @property
     def settings_file(self) -> Path:
-        """users/{name}/mg.toml"""
-        return self.root / "mg.toml"
+        """users/{name}/haiv.toml"""
+        return self.root / "haiv.toml"
 
 
 @dataclass
@@ -240,11 +240,11 @@ class MindPaths:
 
     Args:
         root: The mind's root directory (e.g., minds/wren/).
-        mg_root: The mg project root (needed to resolve references.toml paths).
+        hv_root: The haiv project root (needed to resolve references.toml paths).
     """
 
     root: Path
-    mg_root: Path | None = None
+    hv_root: Path | None = None
 
     @property
     def work(self) -> WorkPaths:
@@ -266,12 +266,12 @@ class MindPaths:
 class Pkgs:
     """Package paths for command/resolver discovery.
 
-    All mg packages follow the same structure with commands/, resolvers/,
+    All haiv packages follow the same structure with commands/, resolvers/,
     and __assets__/ directories.
     """
 
     _current_root: Path | None
-    _mg_root: Path | None
+    _hv_root: Path | None
     _user_name: str | None
     _core_root: Path | None = None
 
@@ -279,39 +279,39 @@ class Pkgs:
     def current(self) -> PkgPaths:
         """The package containing the current command."""
         if self._current_root is None:
-            raise RuntimeError("Package root not set. This is a bug in mg.")
+            raise RuntimeError("Package root not set. This is a bug in haiv.")
         return PkgPaths(root=self._current_root)
 
     @property
     def core(self) -> PkgPaths:
-        """mg_core package (installed)."""
+        """haiv_core package (installed)."""
         if self._core_root is None:
-            raise RuntimeError("Core package root not set. This is a bug in mg.")
+            raise RuntimeError("Core package root not set. This is a bug in haiv.")
         return PkgPaths(root=self._core_root)
 
     @property
     def project(self) -> PkgPaths:
-        """mg_project package (src/mg_project/)."""
-        if self._mg_root is None:
-            raise RuntimeError("mg project root not set. Run 'mg start' first.")
-        return PkgPaths(root=self._mg_root / "src" / "mg_project")
+        """hv_project package (src/hv_project/)."""
+        if self._hv_root is None:
+            raise RuntimeError("haiv project root not set. Run 'hv start' first.")
+        return PkgPaths(root=self._hv_root / "src" / "hv_project")
 
     @property
     def user(self) -> PkgPaths:
-        """mg_user package (users/{name}/src/mg_user/)."""
-        if self._mg_root is None:
-            raise RuntimeError("mg project root not set. Run 'mg start' first.")
+        """hv_user package (users/{name}/src/hv_user/)."""
+        if self._hv_root is None:
+            raise RuntimeError("haiv project root not set. Run 'hv start' first.")
         if self._user_name is None:
             raise RuntimeError(
                 "No user identity found.\n"
-                "Run 'mg users new --name <name>' to create one."
+                "Run 'hv users new --name <name>' to create one."
             )
-        return PkgPaths(root=self._mg_root / "users" / self._user_name / "src" / "mg_user")
+        return PkgPaths(root=self._hv_root / "users" / self._user_name / "src" / "hv_user")
 
 
 @dataclass
 class Paths:
-    """Standard paths for an mg project.
+    """Standard paths for a haiv project.
 
     Constructed with base paths; properties throw clear errors if the
     required base path wasn't provided. All parameters are required but
@@ -319,15 +319,15 @@ class Paths:
 
     Args:
         _called_from: Directory where the command was invoked.
-        _pkg_root: Root of the package containing the command (e.g., mg_core/).
-        _mg_root: Root of the mg project (e.g., some-project-mg/).
+        _pkg_root: Root of the package containing the command (e.g., haiv_core/).
+        _hv_root: Root of the haiv project (e.g., some-project-hv/).
         _user_name: Name of the current user (folder name in users/).
-        _core_root: Root of the mg_core package (passed in by CLI).
+        _core_root: Root of the haiv_core package (passed in by CLI).
     """
 
     _called_from: Path | None
     _pkg_root: Path | None
-    _mg_root: Path | None
+    _hv_root: Path | None
     _user_name: str | None = None
     _core_root: Path | None = None
 
@@ -335,7 +335,7 @@ class Paths:
     def called_from(self) -> Path:
         """Directory where the command was invoked."""
         if self._called_from is None:
-            raise RuntimeError("called_from not set. This is a bug in mg.")
+            raise RuntimeError("called_from not set. This is a bug in haiv.")
         return self._called_from
 
     @property
@@ -343,22 +343,22 @@ class Paths:
         """Package paths for command/resolver discovery."""
         return Pkgs(
             _current_root=self._pkg_root,
-            _mg_root=self._mg_root,
+            _hv_root=self._hv_root,
             _user_name=self._user_name,
             _core_root=self._core_root,
         )
 
     @property
     def root(self) -> Path:
-        """The mg project root directory."""
-        if self._mg_root is None:
-            raise RuntimeError("mg project root not set. Run 'mg start' first.")
-        return self._mg_root
+        """The haiv project root directory."""
+        if self._hv_root is None:
+            raise RuntimeError("haiv project root not set. Run 'hv start' first.")
+        return self._hv_root
 
     @property
     def root_or_none(self) -> Path | None:
-        """The mg project root directory, or None if not set."""
-        return self._mg_root
+        """The haiv project root directory, or None if not set."""
+        return self._hv_root
 
     @property
     def git_dir(self) -> Path:
@@ -381,11 +381,11 @@ class Paths:
         if self._user_name is None:
             raise RuntimeError(
                 "No user identity found.\n"
-                "Run 'mg users new --name <name>' to create one."
+                "Run 'hv users new --name <name>' to create one."
             )
         return UserPaths(root=self.users_dir / self._user_name)
 
     @property
     def project_settings_file(self) -> Path:
-        """The project-level mg.toml settings file."""
-        return self.root / "mg.toml"
+        """The project-level haiv.toml settings file."""
+        return self.root / "haiv.toml"

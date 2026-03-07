@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from mg.helpers.utils.trees import TreeNode, build_tree
+from haiv.helpers.utils.trees import TreeNode, build_tree
 
 
 MAX_SESSIONS = 20
@@ -28,13 +28,13 @@ MAX_SESSIONS = 20
 class Session:
     """A tracked session for a mind."""
 
-    id: str  # mg session UUID
+    id: str  # haiv session UUID
     task: str  # Short summary (commit title convention)
     started: datetime
     mind: str = ""
     short_id: int = 0  # Rolling integer for easy user reference
     status: str = "started"  # staged / started
-    parent_id: str = ""  # Parent mg session id (empty = human root)
+    parent_id: str = ""  # Parent haiv session id (empty = human root)
     description: str = ""  # Long-form body (commit body convention)
     branch: str = ""  # Branch this mind's worktree is on
     base_branch: str = ""  # Branch this worktree was created from
@@ -222,20 +222,20 @@ def find_session(sessions_file: Path, session_id: str) -> Session | None:
 
 
 def get_current_session(sessions_file: Path) -> Session:
-    """Get the current session from the MG_SESSION environment variable.
+    """Get the current session from the HV_SESSION environment variable.
 
     Raises:
-        CommandError: If MG_SESSION is not set or session not found.
+        CommandError: If HV_SESSION is not set or session not found.
     """
     import os
-    from mg._infrastructure.env import MG_SESSION
-    from mg.errors import CommandError
+    from haiv._infrastructure.env import HV_SESSION
+    from haiv.errors import CommandError
 
-    session_id = os.environ.get(MG_SESSION, "")
+    session_id = os.environ.get(HV_SESSION, "")
     if not session_id:
         raise CommandError(
-            "MG_SESSION is not set — cannot detect current session.\n\n"
-            "  Set it to your session ID:  export MG_SESSION=<your-session-id>"
+            "HV_SESSION is not set — cannot detect current session.\n\n"
+            "  Set it to your session ID:  export HV_SESSION=<your-session-id>"
         )
 
     session = find_session(sessions_file, session_id)

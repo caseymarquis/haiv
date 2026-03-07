@@ -15,7 +15,7 @@ def pytest_configure(config):
             "Run tests for all packages:\n"
             "  ./test-all.sh\n\n"
             "Or run individually:\n"
-            "  cd mg && uv run pytest\n"
-            "  cd mg-core && uv run pytest\n"
-            "  cd mg-cli && uv run pytest"
+            "  cd haiv && uv run pytest\n"
+            "  cd haiv-core && uv run pytest\n"
+            "  cd haiv-cli && uv run pytest"
         )

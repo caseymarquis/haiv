@@ -1,10 +1,10 @@
-"""Tests for mg.templates module."""
+"""Tests for haiv.templates module."""
 
 from pathlib import Path
 
 import pytest
 
-from mg.templates import TemplateRenderer, TemplateNotFoundError
+from haiv.templates import TemplateRenderer, TemplateNotFoundError
 
 
 class TestTemplateRenderer:

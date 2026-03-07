@@ -5,9 +5,9 @@ External callers import from this package — internal modules are prefixed
 with underscore.
 """
 
-from mg._infrastructure.TuiServer._freeze import freeze_model
-from mg.helpers.tui._base import TuiModelSection
-from mg._infrastructure.TuiServer._TuiIpc import (
+from haiv._infrastructure.TuiServer._freeze import freeze_model
+from haiv.helpers.tui._base import TuiModelSection
+from haiv._infrastructure.TuiServer._TuiIpc import (
     RESTART_EXIT_CODE,
     ConcurrencyError,
     ErrorResponse,
@@ -18,8 +18,8 @@ from mg._infrastructure.TuiServer._TuiIpc import (
     WriteRequest,
     pipe_address,
 )
-from mg._infrastructure.TuiServer._TuiLocalClient import TuiLocalClient
-from mg._infrastructure.TuiServer._TuiServer import TuiServer
+from haiv._infrastructure.TuiServer._TuiLocalClient import TuiLocalClient
+from haiv._infrastructure.TuiServer._TuiServer import TuiServer
 
 __all__ = [
     "RESTART_EXIT_CODE",

@@ -1,4 +1,4 @@
-"""Settings for mg projects."""
+"""Settings for haiv projects."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 
 @dataclass
-class MgSettings:
-    """Settings for an mg project.
+class HvSettings:
+    """Settings for a haiv project.
 
     Private fields hold loaded values (None = not set).
     Public properties provide effective values with fallbacks.
@@ -30,8 +30,8 @@ class MgSettings:
 
     @property
     def tui_command(self) -> list[str]:
-        """The command to launch the TUI application. Falls back to ['mg-tui']."""
-        return self._tui_command if self._tui_command is not None else ["mg-tui"]
+        """The command to launch the TUI application. Falls back to ['haiv-tui']."""
+        return self._tui_command if self._tui_command is not None else ["haiv-tui"]
 
     @property
     def keybindings(self) -> dict[str, str]:

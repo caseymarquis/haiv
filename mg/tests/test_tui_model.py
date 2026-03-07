@@ -5,8 +5,8 @@ import typing
 
 import pytest
 
-from mg._infrastructure.TuiServer import TuiModelSection, freeze_model, pipe_address
-from mg.helpers.tui.TuiModel import HudSection, TuiModel
+from haiv._infrastructure.TuiServer import TuiModelSection, freeze_model, pipe_address
+from haiv.helpers.tui.TuiModel import HudSection, TuiModel
 
 
 class TestTuiModelStructure:
@@ -76,10 +76,10 @@ class TestPipeAddress:
 
     def test_unix_address(self, monkeypatch):
         """Unix returns a socket path in /tmp."""
-        monkeypatch.setattr("mg._infrastructure.TuiServer._TuiIpc.platform.system", lambda: "Linux")
-        assert pipe_address("myproject") == "/tmp/mg-myproject.sock"
+        monkeypatch.setattr("haiv._infrastructure.TuiServer._TuiIpc.platform.system", lambda: "Linux")
+        assert pipe_address("myproject") == "/tmp/haiv-myproject.sock"
 
     def test_windows_address(self, monkeypatch):
         """Windows returns a named pipe path."""
-        monkeypatch.setattr("mg._infrastructure.TuiServer._TuiIpc.platform.system", lambda: "Windows")
-        assert pipe_address("myproject") == r"\\.\pipe\mg-myproject"
+        monkeypatch.setattr("haiv._infrastructure.TuiServer._TuiIpc.platform.system", lambda: "Windows")
+        assert pipe_address("myproject") == r"\\.\pipe\haiv-myproject"

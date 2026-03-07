@@ -1,10 +1,10 @@
-"""Tests for mg hook system.
+"""Tests for haiv hook system.
 
-Tests the mg hook infrastructure (discovery, loading, collection, registration)
-and the public API (MgHookPoint, @mg_hook decorator). Mirrors the structure
+Tests the haiv hook infrastructure (discovery, loading, collection, registration)
+and the public API (HvHookPoint, @hv_hook decorator). Mirrors the structure
 of test_resolvers.py.
 
-This tests the mg hook system specifically -- distinct from Claude hooks.
+This tests the haiv hook system specifically -- distinct from Claude hooks.
 """
 
 import pytest
@@ -13,14 +13,14 @@ from typing import cast
 from types import ModuleType
 from unittest.mock import Mock
 
-from mg._infrastructure.mg_hooks import (
-    MgHookRegistry,
-    collect_mg_handlers,
-    configure_mg_hooks,
-    discover_mg_hooks,
-    load_mg_hook_module,
+from haiv._infrastructure.hv_hooks import (
+    HvHookRegistry,
+    collect_hv_handlers,
+    configure_hv_hooks,
+    discover_hv_hooks,
+    load_hv_hook_module,
 )
-from mg.mg_hooks import MgHookHandler, MgHookPoint, mg_hook
+from haiv.hv_hooks import HvHookHandler, HvHookPoint, hv_hook
 
 
 # ---------------------------------------------------------------------------
@@ -28,11 +28,11 @@ from mg.mg_hooks import MgHookHandler, MgHookPoint, mg_hook
 # ---------------------------------------------------------------------------
 
 
-def _stamp_handler(fn, *, source="/tmp/mg_hook_handlers/test.py", description="test handler") -> MgHookHandler:
-    """Stamp required mg hook attributes on a plain function for registry tests."""
-    fn._mg_hook_description = description
-    fn._mg_hook_source = source
-    return cast(MgHookHandler, fn)
+def _stamp_handler(fn, *, source="/tmp/hv_hook_handlers/test.py", description="test handler") -> HvHookHandler:
+    """Stamp required haiv hook attributes on a plain function for registry tests."""
+    fn._hv_hook_description = description
+    fn._hv_hook_source = source
+    return cast(HvHookHandler, fn)
 
 
 def _mock_ctx(root=Path("/tmp")):
@@ -43,21 +43,21 @@ def _mock_ctx(root=Path("/tmp")):
 
 
 # ---------------------------------------------------------------------------
-# discover_mg_hooks
+# discover_hv_hooks
 # ---------------------------------------------------------------------------
 
 
-class TestDiscoverMgHooks:
-    """Tests for discover_mg_hooks()."""
+class TestDiscoverHvHooks:
+    """Tests for discover_hv_hooks()."""
 
     def test_finds_hook_files(self, tmp_path):
-        """Discovers .py files in mg_hook_handlers/ directory."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        """Discovers .py files in hv_hook_handlers/ directory."""
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "sync_packages.py").write_text("pass")
         (handlers_dir / "notify.py").write_text("pass")
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         assert len(result) == 2
         assert handlers_dir / "notify.py" in result
@@ -65,87 +65,87 @@ class TestDiscoverMgHooks:
 
     def test_returns_sorted_by_name(self, tmp_path):
         """Results are sorted by filename for deterministic order."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "zebra.py").write_text("pass")
         (handlers_dir / "alpha.py").write_text("pass")
         (handlers_dir / "middle.py").write_text("pass")
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         names = [p.name for p in result]
         assert names == ["alpha.py", "middle.py", "zebra.py"]
 
     def test_ignores_underscore_files(self, tmp_path):
         """Files starting with underscore are ignored."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "sync_packages.py").write_text("pass")
         (handlers_dir / "_helpers.py").write_text("pass")
         (handlers_dir / "__init__.py").write_text("")
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         names = [p.name for p in result]
         assert names == ["sync_packages.py"]
 
     def test_empty_when_no_handlers_dir(self, tmp_path):
-        """Returns empty list when mg_hook_handlers/ doesn't exist."""
-        result = discover_mg_hooks(tmp_path)
+        """Returns empty list when hv_hook_handlers/ doesn't exist."""
+        result = discover_hv_hooks(tmp_path)
 
         assert result == []
 
     def test_empty_when_handlers_dir_empty(self, tmp_path):
-        """Returns empty list when mg_hook_handlers/ is empty."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        """Returns empty list when hv_hook_handlers/ is empty."""
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         assert result == []
 
     def test_ignores_non_py_files(self, tmp_path):
         """Only .py files are discovered."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "sync_packages.py").write_text("pass")
         (handlers_dir / "README.md").write_text("# Handlers")
         (handlers_dir / "config.json").write_text("{}")
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         assert len(result) == 1
         assert result[0].name == "sync_packages.py"
 
     def test_ignores_subdirectories(self, tmp_path):
-        """Subdirectories are not discovered as mg hook modules."""
-        handlers_dir = tmp_path / "mg_hook_handlers"
+        """Subdirectories are not discovered as haiv hook modules."""
+        handlers_dir = tmp_path / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "sync_packages.py").write_text("pass")
         subdir = handlers_dir / "helpers"
         subdir.mkdir()
         (subdir / "utils.py").write_text("pass")
 
-        result = discover_mg_hooks(tmp_path)
+        result = discover_hv_hooks(tmp_path)
 
         assert len(result) == 1
         assert result[0].name == "sync_packages.py"
 
 
 # ---------------------------------------------------------------------------
-# load_mg_hook_module
+# load_hv_hook_module
 # ---------------------------------------------------------------------------
 
 
-class TestLoadMgHookModule:
-    """Tests for load_mg_hook_module()."""
+class TestLoadHvHookModule:
+    """Tests for load_hv_hook_module()."""
 
     def test_loads_valid_module(self, tmp_path):
         """Returns a loaded module for valid Python."""
         hook_file = tmp_path / "sync_packages.py"
         hook_file.write_text("def handle(req, ctx): return 'ok'\n")
 
-        module = load_mg_hook_module(hook_file)
+        module = load_hv_hook_module(hook_file)
 
         assert module is not None
         assert isinstance(module, ModuleType)
@@ -156,7 +156,7 @@ class TestLoadMgHookModule:
         hook_file = tmp_path / "sync_packages.py"
         hook_file.write_text("def handle(req, ctx): return f'got_{req}'\n")
 
-        module = load_mg_hook_module(hook_file)
+        module = load_hv_hook_module(hook_file)
         assert module is not None
         result = module.handle("event", None)
 
@@ -167,7 +167,7 @@ class TestLoadMgHookModule:
         hook_file = tmp_path / "bad.py"
         hook_file.write_text("this is not valid python {{{{")
 
-        result = load_mg_hook_module(hook_file)
+        result = load_hv_hook_module(hook_file)
 
         assert result is None
         captured = capsys.readouterr()
@@ -178,7 +178,7 @@ class TestLoadMgHookModule:
         hook_file = tmp_path / "bad_import.py"
         hook_file.write_text("import nonexistent_module_xyz_123\n")
 
-        result = load_mg_hook_module(hook_file)
+        result = load_hv_hook_module(hook_file)
 
         assert result is None
         captured = capsys.readouterr()
@@ -189,7 +189,7 @@ class TestLoadMgHookModule:
         hook_file = tmp_path / "bad.py"
         hook_file.write_text("this is not valid python {{{{")
 
-        result = load_mg_hook_module(hook_file, quiet=True)
+        result = load_hv_hook_module(hook_file, quiet=True)
 
         assert result is None
         captured = capsys.readouterr()
@@ -200,35 +200,35 @@ class TestLoadMgHookModule:
         hook_file = tmp_path / "counter.py"
         hook_file.write_text("count = 0\n")
 
-        mod1 = load_mg_hook_module(hook_file)
+        mod1 = load_hv_hook_module(hook_file)
         assert mod1 is not None
         mod1.count = 42  # type: ignore[attr-defined]
 
-        mod2 = load_mg_hook_module(hook_file)
+        mod2 = load_hv_hook_module(hook_file)
         assert mod2 is not None
         assert mod2.count == 0  # Fresh load, not cached
 
 
 # ---------------------------------------------------------------------------
-# collect_mg_handlers
+# collect_hv_handlers
 # ---------------------------------------------------------------------------
 
 
-class TestCollectMgHandlers:
-    """Tests for collect_mg_handlers()."""
+class TestCollectHvHandlers:
+    """Tests for collect_hv_handlers()."""
 
     def test_finds_marked_functions(self):
-        """Finds functions with _mg_hook_guid attribute."""
+        """Finds functions with _hv_hook_guid attribute."""
         module = ModuleType("test_module")
-        point = MgHookPoint[str, str](guid="test:my-hook")
+        point = HvHookPoint[str, str](guid="test:my-hook")
 
-        @mg_hook(point, description="test handler")
+        @hv_hook(point, description="test handler")
         def handler(req, ctx):
             return "handled"
 
         module.handler = handler  # type: ignore[attr-defined]
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         assert len(result) == 1
         guid, fn = result[0]
@@ -238,31 +238,31 @@ class TestCollectMgHandlers:
     def test_finds_multiple_handlers(self):
         """Finds all marked functions in a module."""
         module = ModuleType("test_module")
-        point_a = MgHookPoint[str, str](guid="test:hook-a")
-        point_b = MgHookPoint[str, str](guid="test:hook-b")
+        point_a = HvHookPoint[str, str](guid="test:hook-a")
+        point_b = HvHookPoint[str, str](guid="test:hook-b")
 
-        @mg_hook(point_a, description="handler a")
+        @hv_hook(point_a, description="handler a")
         def handler_a(req, ctx):
             return "a"
 
-        @mg_hook(point_b, description="handler b")
+        @hv_hook(point_b, description="handler b")
         def handler_b(req, ctx):
             return "b"
 
         module.handler_a = handler_a  # type: ignore[attr-defined]
         module.handler_b = handler_b  # type: ignore[attr-defined]
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         guids = {guid for guid, _ in result}
         assert guids == {"test:hook-a", "test:hook-b"}
 
     def test_ignores_unmarked_functions(self):
-        """Functions without _mg_hook_guid are ignored."""
+        """Functions without _hv_hook_guid are ignored."""
         module = ModuleType("test_module")
-        point = MgHookPoint[str, str](guid="test:hook")
+        point = HvHookPoint[str, str](guid="test:hook")
 
-        @mg_hook(point, description="marked handler")
+        @hv_hook(point, description="marked handler")
         def marked(req, ctx):
             return "yes"
 
@@ -272,7 +272,7 @@ class TestCollectMgHandlers:
         module.marked = marked  # type: ignore[attr-defined]
         module.unmarked = unmarked  # type: ignore[attr-defined]
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         assert len(result) == 1
         assert result[0][1] is marked
@@ -283,7 +283,7 @@ class TestCollectMgHandlers:
         module.SOME_CONSTANT = "hello"  # type: ignore[attr-defined]
         module.A_NUMBER = 42  # type: ignore[attr-defined]
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         assert result == []
 
@@ -291,37 +291,37 @@ class TestCollectMgHandlers:
         """Returns empty list for module with no handlers."""
         module = ModuleType("empty_module")
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         assert result == []
 
     def test_ignores_private_attributes(self):
         """Attributes starting with underscore are skipped."""
         module = ModuleType("test_module")
-        point = MgHookPoint[str, str](guid="test:hook")
+        point = HvHookPoint[str, str](guid="test:hook")
 
-        @mg_hook(point, description="private handler")
+        @hv_hook(point, description="private handler")
         def _private(req, ctx):
             return "private"
 
         module._private = _private  # type: ignore[attr-defined]
 
-        result = collect_mg_handlers(module)
+        result = collect_hv_handlers(module)
 
         assert result == []
 
 
 # ---------------------------------------------------------------------------
-# MgHookRegistry
+# HvHookRegistry
 # ---------------------------------------------------------------------------
 
 
-class TestMgHookRegistry:
-    """Tests for MgHookRegistry."""
+class TestHvHookRegistry:
+    """Tests for HvHookRegistry."""
 
     def test_register_and_emit(self, tmp_path):
         """Registered handler is called on emit."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
         calls = []
 
         def handler(req, ctx):
@@ -338,7 +338,7 @@ class TestMgHookRegistry:
 
     def test_emit_passes_ctx_to_handler(self, tmp_path):
         """Handler receives both request and ctx."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
         received = {}
 
         def handler(req, ctx):
@@ -355,7 +355,7 @@ class TestMgHookRegistry:
 
     def test_emit_preserves_registration_order(self, tmp_path):
         """Handlers are called in the order they were registered."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
         order = []
 
         h1 = _stamp_handler(lambda req, ctx: order.append("first"), source=str(tmp_path / "h1.py"))
@@ -371,7 +371,7 @@ class TestMgHookRegistry:
 
     def test_emit_returns_all_results(self, tmp_path):
         """Results from all handlers are collected in order."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
 
         registry.register("test:hook", _stamp_handler(lambda req, ctx: "a", source=str(tmp_path / "a.py")))
         registry.register("test:hook", _stamp_handler(lambda req, ctx: "b", source=str(tmp_path / "b.py")))
@@ -383,7 +383,7 @@ class TestMgHookRegistry:
 
     def test_emit_no_handlers_returns_empty(self):
         """Emitting a guid with no handlers returns empty list."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
 
         results = registry.emit("test:unknown", None, _mock_ctx())
 
@@ -391,7 +391,7 @@ class TestMgHookRegistry:
 
     def test_emit_propagates_handler_exceptions(self, tmp_path):
         """Handler exceptions propagate to the caller."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
 
         def exploding_handler(req, ctx):
             raise ValueError("boom")
@@ -404,7 +404,7 @@ class TestMgHookRegistry:
 
     def test_handlers_for_different_guids_are_independent(self, tmp_path):
         """Handlers registered under different guids don't interfere."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
 
         registry.register("test:hook-a", _stamp_handler(lambda req, ctx: "a", source=str(tmp_path / "a.py")))
         registry.register("test:hook-b", _stamp_handler(lambda req, ctx: "b", source=str(tmp_path / "b.py")))
@@ -418,7 +418,7 @@ class TestMgHookRegistry:
 
     def test_reset_clears_all_handlers(self, tmp_path):
         """Reset removes all registered handlers."""
-        registry = MgHookRegistry()
+        registry = HvHookRegistry()
         registry.register("test:hook", _stamp_handler(lambda req, ctx: "value", source=str(tmp_path / "h.py")))
 
         registry.reset()
@@ -428,8 +428,8 @@ class TestMgHookRegistry:
 
     def test_emit_prints_description_and_source(self, tmp_path, capsys):
         """emit() prints handler description and relative source path."""
-        registry = MgHookRegistry()
-        source = tmp_path / "mg_hook_handlers" / "sync.py"
+        registry = HvHookRegistry()
+        source = tmp_path / "hv_hook_handlers" / "sync.py"
 
         def handler(req, ctx):
             return "ok"
@@ -440,37 +440,37 @@ class TestMgHookRegistry:
         ctx = _mock_ctx(root=tmp_path)
         registry.emit("test:hook", None, ctx)
 
-        ctx.print.assert_called_once_with("Syncing packages (mg_hook_handlers/sync.py)")
+        ctx.print.assert_called_once_with("Syncing packages (hv_hook_handlers/sync.py)")
 
     def test_emit_rejects_handler_missing_description(self, tmp_path):
-        """emit() raises RuntimeError for handler without _mg_hook_description."""
-        registry = MgHookRegistry()
+        """emit() raises RuntimeError for handler without _hv_hook_description."""
+        registry = HvHookRegistry()
 
         def handler(req, ctx):
             return "ok"
 
-        handler._mg_hook_source = str(tmp_path / "h.py")  # type: ignore[attr-defined]
+        handler._hv_hook_source = str(tmp_path / "h.py")  # type: ignore[attr-defined]
         registry.register("test:hook", handler)  # type: ignore[arg-type]
 
         with pytest.raises(RuntimeError, match="missing required attributes"):
             registry.emit("test:hook", None, _mock_ctx(root=tmp_path))
 
     def test_emit_rejects_handler_missing_source(self, tmp_path):
-        """emit() raises RuntimeError for handler without _mg_hook_source."""
-        registry = MgHookRegistry()
+        """emit() raises RuntimeError for handler without _hv_hook_source."""
+        registry = HvHookRegistry()
 
         def handler(req, ctx):
             return "ok"
 
-        handler._mg_hook_description = "test"  # type: ignore[attr-defined]
+        handler._hv_hook_description = "test"  # type: ignore[attr-defined]
         registry.register("test:hook", handler)  # type: ignore[arg-type]
 
         with pytest.raises(RuntimeError, match="missing required attributes"):
             registry.emit("test:hook", None, _mock_ctx(root=tmp_path))
 
     def test_emit_rejects_plain_function(self):
-        """emit() raises RuntimeError for a plain function with no mg hook attributes."""
-        registry = MgHookRegistry()
+        """emit() raises RuntimeError for a plain function with no haiv hook attributes."""
+        registry = HvHookRegistry()
 
         def handler(req, ctx):
             return "ok"
@@ -482,17 +482,17 @@ class TestMgHookRegistry:
 
 
 # ---------------------------------------------------------------------------
-# MgHookPoint
+# HvHookPoint
 # ---------------------------------------------------------------------------
 
 
-class TestMgHookPoint:
-    """Tests for MgHookPoint."""
+class TestHvHookPoint:
+    """Tests for HvHookPoint."""
 
     def test_emit_delegates_to_registry(self, tmp_path):
         """emit() calls registry.emit() with correct args."""
-        point = MgHookPoint[str, str](guid="test:my-hook")
-        registry = MgHookRegistry()
+        point = HvHookPoint[str, str](guid="test:my-hook")
+        registry = HvHookRegistry()
         received = {}
 
         def handler(req, ctx):
@@ -504,7 +504,7 @@ class TestMgHookPoint:
         registry.register("test:my-hook", stamped)
 
         ctx = _mock_ctx(root=tmp_path)
-        ctx._mg_hook_registry = registry
+        ctx._hv_hook_registry = registry
         results = point.emit("hello", ctx)
 
         assert results == ["result"]
@@ -512,75 +512,75 @@ class TestMgHookPoint:
         assert received["ctx"] is ctx
 
     def test_emit_raises_when_hooks_not_enabled(self):
-        """emit() raises when ctx._mg_hook_registry is None."""
-        point = MgHookPoint[str, None](guid="test:hook")
+        """emit() raises when ctx._hv_hook_registry is None."""
+        point = HvHookPoint[str, None](guid="test:hook")
 
         ctx = Mock()
-        ctx._mg_hook_registry = None
+        ctx._hv_hook_registry = None
 
         with pytest.raises(Exception):
             point.emit("data", ctx)
 
     def test_emit_returns_handler_results(self, tmp_path):
         """emit() passes through the list of results from handlers."""
-        point = MgHookPoint[str, str](guid="test:hook")
-        registry = MgHookRegistry()
+        point = HvHookPoint[str, str](guid="test:hook")
+        registry = HvHookRegistry()
         registry.register("test:hook", _stamp_handler(lambda req, ctx: "one", source=str(tmp_path / "a.py")))
         registry.register("test:hook", _stamp_handler(lambda req, ctx: "two", source=str(tmp_path / "b.py")))
 
         ctx = _mock_ctx(root=tmp_path)
-        ctx._mg_hook_registry = registry
+        ctx._hv_hook_registry = registry
         results = point.emit("data", ctx)
 
         assert results == ["one", "two"]
 
 
 # ---------------------------------------------------------------------------
-# @mg_hook decorator
+# @hv_hook decorator
 # ---------------------------------------------------------------------------
 
 
-class TestMgHookDecorator:
-    """Tests for the @mg_hook decorator."""
+class TestHvHookDecorator:
+    """Tests for the @hv_hook decorator."""
 
-    def test_sets_mg_hook_guid(self):
-        """Decorator sets _mg_hook_guid attribute on the function."""
-        point = MgHookPoint[str, None](guid="test:my-hook")
+    def test_sets_hv_hook_guid(self):
+        """Decorator sets _hv_hook_guid attribute on the function."""
+        point = HvHookPoint[str, None](guid="test:my-hook")
 
-        @mg_hook(point, description="test handler")
+        @hv_hook(point, description="test handler")
         def handler(req, ctx):
             pass
 
-        assert hasattr(handler, "_mg_hook_guid")
-        assert handler._mg_hook_guid == "test:my-hook"
+        assert hasattr(handler, "_hv_hook_guid")
+        assert handler._hv_hook_guid == "test:my-hook"
 
-    def test_sets_mg_hook_description(self):
-        """Decorator sets _mg_hook_description attribute on the function."""
-        point = MgHookPoint[str, None](guid="test:hook")
+    def test_sets_hv_hook_description(self):
+        """Decorator sets _hv_hook_description attribute on the function."""
+        point = HvHookPoint[str, None](guid="test:hook")
 
-        @mg_hook(point, description="Syncing packages")
+        @hv_hook(point, description="Syncing packages")
         def handler(req, ctx):
             pass
 
-        assert hasattr(handler, "_mg_hook_description")
-        assert handler._mg_hook_description == "Syncing packages"
+        assert hasattr(handler, "_hv_hook_description")
+        assert handler._hv_hook_description == "Syncing packages"
 
     def test_returns_function_unchanged(self):
         """Decorated function is the same object (not wrapped)."""
-        point = MgHookPoint[str, None](guid="test:hook")
+        point = HvHookPoint[str, None](guid="test:hook")
 
         def handler(req, ctx):
             return "value"
 
-        decorated = mg_hook(point, description="test")(handler)
+        decorated = hv_hook(point, description="test")(handler)
 
         assert decorated is handler
 
     def test_decorated_function_still_callable(self):
         """Decorated function can still be called normally."""
-        point = MgHookPoint[str, str](guid="test:hook")
+        point = HvHookPoint[str, str](guid="test:hook")
 
-        @mg_hook(point, description="test handler")
+        @hv_hook(point, description="test handler")
         def handler(req, ctx):
             return f"handled_{req}"
 
@@ -589,62 +589,62 @@ class TestMgHookDecorator:
 
 
 # ---------------------------------------------------------------------------
-# configure_mg_hooks
+# configure_hv_hooks
 # ---------------------------------------------------------------------------
 
 
-def _trusted_root(tmp_path, name="mg_project"):
+def _trusted_root(tmp_path, name="hv_project"):
     """Create a trusted package root directory for testing."""
     root = tmp_path / name
     root.mkdir(exist_ok=True)
     return root
 
 
-class TestConfigureMgHooks:
-    """Tests for configure_mg_hooks()."""
+class TestConfigureHvHooks:
+    """Tests for configure_hv_hooks()."""
 
     def test_returns_registry_with_handlers(self, tmp_path):
         """Discovers, loads, and registers handlers from pkg_roots."""
         pkg = _trusted_root(tmp_path)
-        handlers_dir = pkg / "mg_hook_handlers"
+        handlers_dir = pkg / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "my_handler.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
             "\n"
-            'HOOK = MgHookPoint(guid="test:configure-hook")\n'
+            'HOOK = HvHookPoint(guid="test:configure-hook")\n'
             "\n"
-            '@mg_hook(HOOK, description="Configuring")\n'
+            '@hv_hook(HOOK, description="Configuring")\n'
             "def handle(req, ctx):\n"
             "    return 'configured'\n"
         )
 
-        registry = configure_mg_hooks([pkg])
+        registry = configure_hv_hooks([pkg])
 
-        assert isinstance(registry, MgHookRegistry)
+        assert isinstance(registry, HvHookRegistry)
         results = registry.emit("test:configure-hook", None, _mock_ctx(root=tmp_path))
         assert results == ["configured"]
 
     def test_multiple_pkg_roots(self, tmp_path):
         """Handlers from all pkg_roots are registered."""
-        pkg1 = _trusted_root(tmp_path, "mg_core")
-        (pkg1 / "mg_hook_handlers").mkdir()
-        (pkg1 / "mg_hook_handlers" / "h1.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'HOOK = MgHookPoint(guid="test:shared")\n'
-            '@mg_hook(HOOK, description="From core")\n'
+        pkg1 = _trusted_root(tmp_path, "haiv_core")
+        (pkg1 / "hv_hook_handlers").mkdir()
+        (pkg1 / "hv_hook_handlers" / "h1.py").write_text(
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'HOOK = HvHookPoint(guid="test:shared")\n'
+            '@hv_hook(HOOK, description="From core")\n'
             "def handle(req, ctx): return 'from_core'\n"
         )
 
-        pkg2 = _trusted_root(tmp_path, "mg_project")
-        (pkg2 / "mg_hook_handlers").mkdir()
-        (pkg2 / "mg_hook_handlers" / "h2.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'HOOK = MgHookPoint(guid="test:shared")\n'
-            '@mg_hook(HOOK, description="From project")\n'
+        pkg2 = _trusted_root(tmp_path, "hv_project")
+        (pkg2 / "hv_hook_handlers").mkdir()
+        (pkg2 / "hv_hook_handlers" / "h2.py").write_text(
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'HOOK = HvHookPoint(guid="test:shared")\n'
+            '@hv_hook(HOOK, description="From project")\n'
             "def handle(req, ctx): return 'from_project'\n"
         )
 
-        registry = configure_mg_hooks([pkg1, pkg2])
+        registry = configure_hv_hooks([pkg1, pkg2])
         ctx = _mock_ctx(root=tmp_path)
         results = registry.emit("test:shared", None, ctx)
 
@@ -652,26 +652,26 @@ class TestConfigureMgHooks:
 
     def test_empty_pkg_roots(self):
         """Empty pkg_roots returns an empty registry."""
-        registry = configure_mg_hooks([])
+        registry = configure_hv_hooks([])
 
-        assert isinstance(registry, MgHookRegistry)
+        assert isinstance(registry, HvHookRegistry)
         results = registry.emit("test:anything", None, _mock_ctx())
         assert results == []
 
     def test_skips_broken_modules(self, tmp_path, capsys):
         """Broken modules are skipped, valid ones still load."""
         pkg = _trusted_root(tmp_path)
-        handlers_dir = pkg / "mg_hook_handlers"
+        handlers_dir = pkg / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "aaa_broken.py").write_text("this is not valid python {{{{")
         (handlers_dir / "zzz_good.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'HOOK = MgHookPoint(guid="test:good")\n'
-            '@mg_hook(HOOK, description="Good handler")\n'
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'HOOK = HvHookPoint(guid="test:good")\n'
+            '@hv_hook(HOOK, description="Good handler")\n'
             "def handle(req, ctx): return 'good'\n"
         )
 
-        registry = configure_mg_hooks([pkg])
+        registry = configure_hv_hooks([pkg])
         results = registry.emit("test:good", None, _mock_ctx(root=tmp_path))
 
         assert results == ["good"]
@@ -679,55 +679,55 @@ class TestConfigureMgHooks:
         assert "Warning" in captured.out
 
     def test_pkg_root_without_handlers_dir(self, tmp_path):
-        """pkg_root with no mg_hook_handlers/ is silently skipped."""
+        """pkg_root with no hv_hook_handlers/ is silently skipped."""
         pkg = _trusted_root(tmp_path)
-        registry = configure_mg_hooks([pkg])
+        registry = configure_hv_hooks([pkg])
 
-        assert isinstance(registry, MgHookRegistry)
+        assert isinstance(registry, HvHookRegistry)
 
     def test_stamps_source_on_handlers(self, tmp_path):
-        """configure_mg_hooks stamps _mg_hook_source with the handler file path."""
+        """configure_hv_hooks stamps _hv_hook_source with the handler file path."""
         pkg = _trusted_root(tmp_path)
-        handlers_dir = pkg / "mg_hook_handlers"
+        handlers_dir = pkg / "hv_hook_handlers"
         handlers_dir.mkdir()
         handler_file = handlers_dir / "my_handler.py"
         handler_file.write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'HOOK = MgHookPoint(guid="test:source")\n'
-            '@mg_hook(HOOK, description="Source test")\n'
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'HOOK = HvHookPoint(guid="test:source")\n'
+            '@hv_hook(HOOK, description="Source test")\n'
             "def handle(req, ctx): return 'ok'\n"
         )
 
-        registry = configure_mg_hooks([pkg])
+        registry = configure_hv_hooks([pkg])
 
         # Get the handler out of the registry to check the stamp
         handlers = registry._handlers["test:source"]
         assert len(handlers) == 1
-        assert handlers[0]._mg_hook_source == str(handler_file)
+        assert handlers[0]._hv_hook_source == str(handler_file)
 
     def test_rejects_untrusted_package(self, tmp_path):
         """Untrusted package roots are rejected with RuntimeError."""
         untrusted = tmp_path / "evil_package"
         untrusted.mkdir()
-        (untrusted / "mg_hook_handlers").mkdir()
-        (untrusted / "mg_hook_handlers" / "backdoor.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'HOOK = MgHookPoint(guid="test:evil")\n'
-            '@mg_hook(HOOK, description="Totally safe")\n'
+        (untrusted / "hv_hook_handlers").mkdir()
+        (untrusted / "hv_hook_handlers" / "backdoor.py").write_text(
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'HOOK = HvHookPoint(guid="test:evil")\n'
+            '@hv_hook(HOOK, description="Totally safe")\n'
             "def handle(req, ctx): return 'pwned'\n"
         )
 
         with pytest.raises(RuntimeError, match="Untrusted package"):
-            configure_mg_hooks([untrusted])
+            configure_hv_hooks([untrusted])
 
     def test_rejects_untrusted_even_with_trusted(self, tmp_path):
         """One untrusted root in the list rejects the whole configuration."""
-        trusted = _trusted_root(tmp_path, "mg_core")
+        trusted = _trusted_root(tmp_path, "haiv_core")
         untrusted = tmp_path / "sneaky_pkg"
         untrusted.mkdir()
 
         with pytest.raises(RuntimeError, match="Untrusted package"):
-            configure_mg_hooks([trusted, untrusted])
+            configure_hv_hooks([trusted, untrusted])
 
 
 # ---------------------------------------------------------------------------
@@ -735,62 +735,62 @@ class TestConfigureMgHooks:
 # ---------------------------------------------------------------------------
 
 
-class TestMgHookIntegration:
+class TestHvHookIntegration:
     """End-to-end test: define hook point, register handler, emit."""
 
     def test_full_flow(self, tmp_path):
         """Define a point, write a handler file, load, collect, register, emit."""
-        # 1. Define an mg hook point
-        point = MgHookPoint[str, str](guid="test:integration")
+        # 1. Define a haiv hook point
+        point = HvHookPoint[str, str](guid="test:integration")
 
-        # 2. Write a handler module that uses @mg_hook
+        # 2. Write a handler module that uses @hv_hook
         pkg = _trusted_root(tmp_path)
-        handlers_dir = pkg / "mg_hook_handlers"
+        handlers_dir = pkg / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "responder.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
             "\n"
-            'MY_POINT = MgHookPoint(guid="test:integration")\n'
+            'MY_POINT = HvHookPoint(guid="test:integration")\n'
             "\n"
-            '@mg_hook(MY_POINT, description="Responding")\n'
+            '@hv_hook(MY_POINT, description="Responding")\n'
             "def respond(req, ctx):\n"
             "    return f'received_{req}'\n"
         )
 
-        # 3. Use configure_mg_hooks to wire everything up
-        registry = configure_mg_hooks([pkg])
+        # 3. Use configure_hv_hooks to wire everything up
+        registry = configure_hv_hooks([pkg])
 
-        # 4. Emit through the MgHookPoint (as a command would)
+        # 4. Emit through the HvHookPoint (as a command would)
         ctx = _mock_ctx(root=tmp_path)
-        ctx._mg_hook_registry = registry
+        ctx._hv_hook_registry = registry
         results = point.emit("hello", ctx)
 
         assert results == ["received_hello"]
 
     def test_multiple_handlers_same_point(self, tmp_path):
-        """Multiple handlers for the same mg hook point all fire."""
-        point = MgHookPoint[str, str](guid="test:multi")
+        """Multiple handlers for the same haiv hook point all fire."""
+        point = HvHookPoint[str, str](guid="test:multi")
 
         pkg = _trusted_root(tmp_path)
-        handlers_dir = pkg / "mg_hook_handlers"
+        handlers_dir = pkg / "hv_hook_handlers"
         handlers_dir.mkdir()
         (handlers_dir / "aaa_first.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'P = MgHookPoint(guid="test:multi")\n'
-            '@mg_hook(P, description="First handler")\n'
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'P = HvHookPoint(guid="test:multi")\n'
+            '@hv_hook(P, description="First handler")\n'
             "def handle(req, ctx): return 'first'\n"
         )
         (handlers_dir / "zzz_second.py").write_text(
-            "from mg.mg_hooks import mg_hook, MgHookPoint\n"
-            'P = MgHookPoint(guid="test:multi")\n'
-            '@mg_hook(P, description="Second handler")\n'
+            "from haiv.hv_hooks import hv_hook, HvHookPoint\n"
+            'P = HvHookPoint(guid="test:multi")\n'
+            '@hv_hook(P, description="Second handler")\n'
             "def handle(req, ctx): return 'second'\n"
         )
 
-        registry = configure_mg_hooks([pkg])
+        registry = configure_hv_hooks([pkg])
 
         ctx = _mock_ctx(root=tmp_path)
-        ctx._mg_hook_registry = registry
+        ctx._hv_hook_registry = registry
         results = point.emit("data", ctx)
 
         # Sorted discovery order: aaa_first.py before zzz_second.py

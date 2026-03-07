@@ -1,4 +1,4 @@
-"""Tests for mg.helpers.sessions module."""
+"""Tests for haiv.helpers.sessions module."""
 
 import re
 import pytest
@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 
 from unittest.mock import patch
 
-from mg.errors import CommandError
-from mg.helpers.sessions import (
+from haiv.errors import CommandError
+from haiv.helpers.sessions import (
     Session,
     build_session_tree,
     create_session,
@@ -565,28 +565,28 @@ class TestGetCurrentSession:
     """Tests for get_current_session()."""
 
     def test_returns_session_from_env(self, tmp_path):
-        """Finds session using MG_SESSION env var."""
+        """Finds session using HV_SESSION env var."""
         sessions_file = tmp_path / "sessions.toml"
         session = create_session(sessions_file, "Test task", "wren")
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             result = get_current_session(sessions_file)
 
         assert result.id == session.id
 
     def test_raises_when_env_not_set(self, tmp_path):
-        """Raises CommandError when MG_SESSION is not set."""
+        """Raises CommandError when HV_SESSION is not set."""
         sessions_file = tmp_path / "sessions.toml"
 
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(CommandError, match="MG_SESSION is not set"):
+            with pytest.raises(CommandError, match="HV_SESSION is not set"):
                 get_current_session(sessions_file)
 
     def test_raises_when_session_not_found(self, tmp_path):
         """Raises CommandError when session ID doesn't match."""
         sessions_file = tmp_path / "sessions.toml"
 
-        with patch.dict("os.environ", {"MG_SESSION": "nonexistent-id"}):
+        with patch.dict("os.environ", {"HV_SESSION": "nonexistent-id"}):
             with pytest.raises(CommandError, match="Session not found"):
                 get_current_session(sessions_file)
 

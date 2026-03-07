@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from mg._infrastructure.settings import (
+from haiv._infrastructure.settings import (
     PROJECT_SETTINGS_TEMPLATE,
     SettingsCache,
     get_settings,
@@ -12,22 +12,22 @@ from mg._infrastructure.settings import (
     load_user_settings,
     merge_settings,
 )
-from mg.cmd import Args, Ctx
-from mg.paths import Paths
-from mg.settings import MgSettings
+from haiv.cmd import Args, Ctx
+from haiv.paths import Paths
+from haiv.settings import HvSettings
 
 
-class TestMgSettings:
-    """Tests for MgSettings dataclass."""
+class TestHvSettings:
+    """Tests for HvSettings dataclass."""
 
     def test_default_branch_fallback(self):
         """default_branch falls back to 'main' when not set."""
-        settings = MgSettings()
+        settings = HvSettings()
         assert settings.default_branch == "main"
 
     def test_default_branch_returns_value_when_set(self):
         """default_branch returns value when set."""
-        settings = MgSettings(_default_branch="develop")
+        settings = HvSettings(_default_branch="develop")
         assert settings.default_branch == "develop"
 
 
@@ -36,7 +36,7 @@ class TestLoadProjectSettings:
 
     def test_loads_valid_toml(self, tmp_path):
         """Loads settings from valid TOML file."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
         settings_file.write_text('default_branch = "develop"\n')
 
         result = load_project_settings(settings_file)
@@ -44,7 +44,7 @@ class TestLoadProjectSettings:
 
     def test_creates_file_when_missing(self, tmp_path):
         """Creates file with commented defaults when missing."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
 
         result = load_project_settings(settings_file)
 
@@ -54,7 +54,7 @@ class TestLoadProjectSettings:
 
     def test_returns_empty_settings_for_empty_file(self, tmp_path):
         """Returns empty settings for empty file."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
         settings_file.write_text("")
 
         result = load_project_settings(settings_file)
@@ -66,7 +66,7 @@ class TestLoadUserSettings:
 
     def test_loads_valid_toml(self, tmp_path):
         """Loads settings from valid TOML file."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
         settings_file.write_text('default_branch = "feature"\n')
 
         result = load_user_settings(settings_file)
@@ -74,7 +74,7 @@ class TestLoadUserSettings:
 
     def test_creates_empty_file_when_missing(self, tmp_path):
         """Creates empty file when missing."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
 
         result = load_user_settings(settings_file)
 
@@ -84,7 +84,7 @@ class TestLoadUserSettings:
 
     def test_returns_empty_settings_for_empty_file(self, tmp_path):
         """Returns empty settings for empty file."""
-        settings_file = tmp_path / "mg.toml"
+        settings_file = tmp_path / "haiv.toml"
         settings_file.write_text("")
 
         result = load_user_settings(settings_file)
@@ -96,7 +96,7 @@ class TestMergeSettings:
 
     def test_returns_project_when_user_is_none(self):
         """Returns project settings when user is None."""
-        project = MgSettings(_default_branch="develop")
+        project = HvSettings(_default_branch="develop")
 
         result = merge_settings(project, None)
 
@@ -104,8 +104,8 @@ class TestMergeSettings:
 
     def test_user_overrides_project(self):
         """User value overrides project value."""
-        project = MgSettings(_default_branch="develop")
-        user = MgSettings(_default_branch="feature")
+        project = HvSettings(_default_branch="develop")
+        user = HvSettings(_default_branch="feature")
 
         result = merge_settings(project, user)
 
@@ -113,8 +113,8 @@ class TestMergeSettings:
 
     def test_project_used_when_user_is_none_value(self):
         """Project value used when user value is None."""
-        project = MgSettings(_default_branch="develop")
-        user = MgSettings(_default_branch=None)
+        project = HvSettings(_default_branch="develop")
+        user = HvSettings(_default_branch=None)
 
         result = merge_settings(project, user)
 
@@ -122,8 +122,8 @@ class TestMergeSettings:
 
     def test_both_none_stays_none(self):
         """Result is None when both are None."""
-        project = MgSettings(_default_branch=None)
-        user = MgSettings(_default_branch=None)
+        project = HvSettings(_default_branch=None)
+        user = HvSettings(_default_branch=None)
 
         result = merge_settings(project, user)
 
@@ -142,8 +142,8 @@ class TestSettingsCache:
     def test_can_store_settings(self):
         """Cache can store settings."""
         cache = SettingsCache()
-        cache.project = MgSettings(_default_branch="main")
-        cache.user = MgSettings(_default_branch="feature")
+        cache.project = HvSettings(_default_branch="main")
+        cache.user = HvSettings(_default_branch="feature")
 
         assert cache.project._default_branch == "main"
         assert cache.user._default_branch == "feature"
@@ -153,8 +153,8 @@ class TestGetSettings:
     """Tests for get_settings()."""
 
     @pytest.fixture
-    def mg_root(self, tmp_path):
-        """Create a minimal mg root structure."""
+    def hv_root(self, tmp_path):
+        """Create a minimal haiv root structure."""
         root = tmp_path / "project"
         root.mkdir()
         (root / ".git").mkdir()
@@ -162,22 +162,22 @@ class TestGetSettings:
         return root
 
     @pytest.fixture
-    def user_dir(self, mg_root):
+    def user_dir(self, hv_root):
         """Create a user directory."""
-        users = mg_root / "users"
+        users = hv_root / "users"
         users.mkdir()
         user = users / "testuser"
         user.mkdir()
         return user
 
-    def test_loads_project_settings(self, mg_root):
+    def test_loads_project_settings(self, hv_root):
         """Loads and caches project settings."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
             _user_name=None,
         )
         cache = SettingsCache()
@@ -188,15 +188,15 @@ class TestGetSettings:
         assert cache.project is not None
         assert cache.project._default_branch == "develop"
 
-    def test_loads_user_settings_when_available(self, mg_root, user_dir):
+    def test_loads_user_settings_when_available(self, hv_root, user_dir):
         """Loads user settings when user is available."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
-        (user_dir / "mg.toml").write_text('default_branch = "feature"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
+        (user_dir / "haiv.toml").write_text('default_branch = "feature"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
             _user_name="testuser",
         )
         cache = SettingsCache()
@@ -207,14 +207,14 @@ class TestGetSettings:
         assert cache.user is not None
         assert cache.user._default_branch == "feature"
 
-    def test_caches_project_settings(self, mg_root):
+    def test_caches_project_settings(self, hv_root):
         """Project settings are cached."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
             _user_name=None,
         )
         cache = SettingsCache()
@@ -223,19 +223,19 @@ class TestGetSettings:
         get_settings(paths, cache)
 
         # Modify file - should not affect cached result
-        (mg_root / "mg.toml").write_text('default_branch = "changed"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "changed"\n')
 
         result = get_settings(paths, cache)
         assert result.default_branch == "develop"
 
-    def test_skips_user_settings_when_no_user(self, mg_root):
+    def test_skips_user_settings_when_no_user(self, hv_root):
         """Does not load user settings when no user."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
             _user_name=None,
         )
         cache = SettingsCache()
@@ -250,47 +250,47 @@ class TestCtxSettings:
     """Tests for Ctx.settings property."""
 
     @pytest.fixture
-    def mg_root(self, tmp_path):
-        """Create a minimal mg root structure."""
+    def hv_root(self, tmp_path):
+        """Create a minimal haiv root structure."""
         root = tmp_path / "project"
         root.mkdir()
         (root / ".git").mkdir()
         (root / "worktrees").mkdir()
         return root
 
-    def test_settings_throws_without_mg_root(self):
-        """Accessing settings throws when mg_root is None."""
+    def test_settings_throws_without_hv_root(self):
+        """Accessing settings throws when hv_root is None."""
         paths = Paths(
             _called_from=Path("/test"),
             _pkg_root=None,
-            _mg_root=None,
+            _hv_root=None,
         )
         ctx = Ctx(args=Args(), paths=paths)
 
-        with pytest.raises(RuntimeError, match="mg project root not set"):
+        with pytest.raises(RuntimeError, match="haiv project root not set"):
             _ = ctx.settings
 
-    def test_settings_returns_merged_settings(self, mg_root):
+    def test_settings_returns_merged_settings(self, hv_root):
         """settings property returns merged settings."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
         )
         ctx = Ctx(args=Args(), paths=paths)
 
         assert ctx.settings.default_branch == "develop"
 
-    def test_settings_caches_between_accesses(self, mg_root):
+    def test_settings_caches_between_accesses(self, hv_root):
         """settings property caches between accesses."""
-        (mg_root / "mg.toml").write_text('default_branch = "develop"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "develop"\n')
 
         paths = Paths(
-            _called_from=mg_root,
+            _called_from=hv_root,
             _pkg_root=None,
-            _mg_root=mg_root,
+            _hv_root=hv_root,
         )
         ctx = Ctx(args=Args(), paths=paths)
 
@@ -298,7 +298,7 @@ class TestCtxSettings:
         _ = ctx.settings
 
         # Modify file
-        (mg_root / "mg.toml").write_text('default_branch = "changed"\n')
+        (hv_root / "haiv.toml").write_text('default_branch = "changed"\n')
 
         # Should still return cached value
         assert ctx.settings.default_branch == "develop"

@@ -1,4 +1,4 @@
-"""mg error types.
+"""haiv error types.
 
 These are user-facing, expected failures - not internal bugs.
 """

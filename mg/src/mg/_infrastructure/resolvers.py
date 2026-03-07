@@ -1,4 +1,4 @@
-"""Resolver discovery and execution for mg.
+"""Resolver discovery and execution for haiv.
 
 Resolvers transform raw string parameters into domain objects.
 For example, a "mind" resolver converts "forge" to a Mind object.
@@ -18,8 +18,8 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable
 
-from mg._infrastructure.args import ResolveRequest
-from mg.paths import PkgPaths
+from haiv._infrastructure.args import ResolveRequest
+from haiv.paths import PkgPaths
 
 
 class ResolverError(Exception):
@@ -48,7 +48,7 @@ class UserRequiredError(ResolverError):
         self.resolver_name = resolver_name
         super().__init__(
             f"Resolver '{resolver_name}' requires user context.\n"
-            f"Run 'mg users new --name <name>' to create a user identity."
+            f"Run 'hv users new --name <name>' to create a user identity."
         )
 
 
@@ -59,7 +59,7 @@ class ResolverContext:
     Provides access to paths and other resources resolvers need.
     """
 
-    paths: Any  # mg.paths.Paths - use Any to avoid circular import
+    paths: Any  # haiv.paths.Paths - use Any to avoid circular import
     container: Any | None = None  # punq.Container
 
 
@@ -67,7 +67,7 @@ def discover_resolvers(pkg_root: Path) -> dict[str, Path]:
     """Discover resolver files from a package's resolvers/ directory.
 
     Args:
-        pkg_root: Root of a package (e.g., mg_core, mg_project, mg_user)
+        pkg_root: Root of a package (e.g., haiv_core, hv_project, hv_user)
                   Should contain a resolvers/ directory.
 
     Returns:
@@ -110,7 +110,7 @@ def load_resolver(resolver_path: Path, *, quiet: bool = False) -> ModuleType | N
         Loaded module with a resolve() function, or None if invalid/broken
     """
     try:
-        module_name = f"mg_resolver_{resolver_path.stem}_{id(resolver_path)}"
+        module_name = f"hv_resolver_{resolver_path.stem}_{id(resolver_path)}"
         spec = importlib.util.spec_from_file_location(module_name, resolver_path)
 
         if spec is None or spec.loader is None:
@@ -138,7 +138,7 @@ def load_resolver(resolver_path: Path, *, quiet: bool = False) -> ModuleType | N
 
 def make_resolver(
     pkg_roots: list[Path],
-    paths: Any,  # mg.paths.Paths
+    paths: Any,  # haiv.paths.Paths
     container: Any | None = None,  # punq.Container
     *,
     has_user: bool = False,
@@ -147,7 +147,7 @@ def make_resolver(
     """Create a resolve callback from discovered resolvers.
 
     Discovers resolvers from all pkg_roots. Later packages override earlier ones,
-    so mg_user resolvers take precedence over mg_project over mg_core.
+    so hv_user resolvers take precedence over hv_project over haiv_core.
 
     Resolution behavior depends on whether the resolver was explicit or implicit:
     - Explicit (param != resolver, from _target_as_mind_/): Resolver must exist

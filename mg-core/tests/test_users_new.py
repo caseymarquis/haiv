@@ -1,4 +1,4 @@
-"""Integration tests for mg users new command.
+"""Integration tests for hv users new command.
 
 Tests the full execute() behavior including:
 - Directory structure creation
@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from mg import test
-from mg.errors import CommandError
-from mg.test import Sandbox, SandboxConfig
+from haiv import test
+from haiv.errors import CommandError
+from haiv.test import Sandbox, SandboxConfig
 
 
 # =============================================================================
@@ -94,12 +94,12 @@ class TestDirectoryStructure:
         sandbox.run("users new --name casey")
         assert (sandbox.ctx.paths.users_dir / "casey" / "pyproject.toml").is_file()
 
-    def test_creates_mg_user_package(self, sandbox: Sandbox):
-        """Creates src/mg_user/ package structure."""
+    def test_creates_hv_user_package(self, sandbox: Sandbox):
+        """Creates src/hv_user/ package structure."""
         sandbox.run("users new --name casey")
         user_dir = sandbox.ctx.paths.users_dir / "casey"
-        assert (user_dir / "src" / "mg_user" / "__init__.py").is_file()
-        assert (user_dir / "src" / "mg_user" / "commands" / "__init__.py").is_file()
+        assert (user_dir / "src" / "hv_user" / "__init__.py").is_file()
+        assert (user_dir / "src" / "hv_user" / "commands" / "__init__.py").is_file()
 
     def test_creates_state_directory(self, sandbox: Sandbox):
         """Creates state/ directory with .gitkeep."""

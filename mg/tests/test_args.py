@@ -1,13 +1,13 @@
-"""Tests for mg.args module."""
+"""Tests for haiv.args module."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
-from mg import cmd
-from mg._infrastructure.args import build_ctx
-from mg._infrastructure.routing import RouteMatch, ParamCapture
-from mg._infrastructure.loader import Command
+from haiv import cmd
+from haiv._infrastructure.args import build_ctx
+from haiv._infrastructure.routing import RouteMatch, ParamCapture
+from haiv._infrastructure.loader import Command
 
 # Mock pkg_root for tests
 MOCK_PKG_ROOT = Path("/fake/pkg")

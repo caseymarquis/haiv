@@ -1,11 +1,11 @@
-"""mg start - Start the mg TUI for this project."""
+"""hv start - Start the haiv TUI for this project."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:
     return cmd.Def(
-        description="Start the mg TUI for this project",
+        description="Start the haiv TUI for this project",
     )
 
 

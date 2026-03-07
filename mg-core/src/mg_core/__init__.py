@@ -1,3 +1,3 @@
-"""mg-core: Core commands for mg."""
+"""haiv-core: Core commands for haiv."""
 
 __version__ = "0.1.0"

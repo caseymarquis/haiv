@@ -1,6 +1,6 @@
 """TUI IPC listener.
 
-Accepts connections from remote clients (mg commands) and submits their
+Accepts connections from remote clients (haiv commands) and submits their
 requests to the server's message queue. Isolated from the model — only
 holds a reference to the submit callable.
 

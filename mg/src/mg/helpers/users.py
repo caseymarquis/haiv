@@ -1,7 +1,7 @@
 """User enumeration and path resolution.
 
 Users are directories in users/ containing identity configuration
-and optional mg_user packages.
+and optional hv_user packages.
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from mg._infrastructure.identity import Identity
-from mg.paths import UserPaths
+from haiv._infrastructure.identity import Identity
+from haiv.paths import UserPaths
 
 
 class UserNotFoundError(Exception):

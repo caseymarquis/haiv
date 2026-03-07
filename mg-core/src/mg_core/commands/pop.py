@@ -1,4 +1,4 @@
-"""mg pop - Wind down a mind's assignment.
+"""hv pop - Wind down a mind's assignment.
 
 Guides a mind through the steps to cleanly finish work:
 review, commit, merge, and remove session.
@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import shutil
 
-from mg import cmd
-from mg.errors import CommandError
-from mg.helpers.sessions import find_session, get_current_session, remove_session
-from mg.paths import MindPaths
+from haiv import cmd
+from haiv.errors import CommandError
+from haiv.helpers.sessions import find_session, get_current_session, remove_session
+from haiv.paths import MindPaths
 
 
 def define() -> cmd.Def:
@@ -29,7 +29,7 @@ def define() -> cmd.Def:
             cmd.Flag(
                 "session",
                 type=bool,
-                description="Remove current session (auto-detected from MG_SESSION)",
+                description="Remove current session (auto-detected from HV_SESSION)",
             ),
         ],
     )
@@ -51,7 +51,7 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
 
     aar_item = None
     if parent:
-        parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, mg_root=ctx.paths.root)
+        parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, hv_root=ctx.paths.root)
         aar_path = parent_paths.work.aars_dir / f"{session.as_filename()}.md"
         parent_paths.work.aars_dir.mkdir(parents=True, exist_ok=True)
         ctx.templates.write("pop/aar.md.j2", aar_path, skip_existing=True, task=session.task)
@@ -60,9 +60,9 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
 
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
-        merge_step = f'Run `cd "{cd_to}" && mg pop --merge`'
+        merge_step = f'Run `cd "{cd_to}" && hv pop --merge`'
     else:
-        merge_step = "Run `mg pop --merge`"
+        merge_step = "Run `hv pop --merge`"
 
     items = [
         "Review your original assignment for gaps in completion.",
@@ -74,7 +74,7 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
     if aar_item:
         items.append(aar_item)
     items.append(merge_step)
-    items.append("Run `mg pop --session`")
+    items.append("Run `hv pop --session`")
 
     ctx.mind.checklist(
         postamble=(
@@ -137,25 +137,25 @@ def _do_session(ctx: cmd.Ctx) -> None:
     if not session.parent_id:
         raise CommandError(
             f"Session [{session.short_id}] has no parent session.\n"
-            f"  To remove manually: mg sessions {session.short_id} remove"
+            f"  To remove manually: hv sessions {session.short_id} remove"
         )
 
     parent = find_session(ctx.paths.user.sessions_file, session.parent_id)
     if not parent:
         raise CommandError(
             f"Parent session not found: {session.parent_id}\n"
-            f"  To remove manually: mg sessions {session.short_id} remove"
+            f"  To remove manually: hv sessions {session.short_id} remove"
         )
 
     mind_name = session.mind
 
     # Notify parent mind about the AAR (best-effort, pane may not exist)
-    parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, mg_root=ctx.paths.root)
+    parent_paths = MindPaths(root=ctx.paths.user.minds_dir / parent.mind, hv_root=ctx.paths.root)
     aar_path = parent_paths.work.aars_dir / f"{session.as_filename()}.md"
     aar_rel = aar_path.relative_to(ctx.paths.root)
     ctx.tui.mind_try_send_text(
         parent.mind,
-        f"<mg>{mind_name} finished. Please read '{aar_rel}'</mg>",
+        f"<haiv>{mind_name} finished. Please read '{aar_rel}'</haiv>",
     )
 
     remove_session(ctx.paths.user.sessions_file, session.id)

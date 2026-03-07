@@ -2,9 +2,9 @@
 
 import pytest
 
-from mg import cmd, test
-from mg._infrastructure.routing import ParamCapture
-from mg.test import CommandsNotFoundError
+from haiv import cmd, test
+from haiv._infrastructure.routing import ParamCapture
+from haiv.test import CommandsNotFoundError
 from tests.fixtures.fake_commands import commands as fake_commands
 
 
@@ -13,7 +13,7 @@ class TestCommandsAutoDiscovery:
 
     def test_raises_when_no_commands_module(self):
         """Raises CommandsNotFoundError when package has no commands/."""
-        # mg package doesn't have src/mg/commands/, so discovery should fail
+        # haiv package doesn't have src/haiv/commands/, so discovery should fail
         with pytest.raises(CommandsNotFoundError):
             test.require_routes_to("anything")
 
@@ -53,7 +53,7 @@ class TestRequireRoutesTo:
 
     def test_nonexistent_raises(self):
         """Nonexistent route raises RouteNotFoundError."""
-        from mg._infrastructure.routing import RouteNotFoundError
+        from haiv._infrastructure.routing import RouteNotFoundError
 
         with pytest.raises(RouteNotFoundError):
             test.require_routes_to("nonexistent", fake_commands)

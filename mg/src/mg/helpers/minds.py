@@ -34,10 +34,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mg.paths import MindPaths
+from haiv.paths import MindPaths
 
 if TYPE_CHECKING:
-    from mg.templates import TemplateRenderer
+    from haiv.templates import TemplateRenderer
 
 
 # Valid name pattern: starts with letter, then alphanumeric/hyphen/underscore
@@ -161,7 +161,7 @@ class Mind:
     def get_references(self) -> list[str]:
         """Get paths from references.toml.
 
-        Returns list of path strings (relative to mg root).
+        Returns list of path strings (relative to haiv root).
         """
         if not self.paths.references_file.exists():
             return []
@@ -186,17 +186,17 @@ class Mind:
         - Top-level files in home/
 
         Raises:
-            RuntimeError: If mg_root not set and references.toml has entries.
+            RuntimeError: If hv_root not set and references.toml has entries.
         """
         files: list[Path] = []
 
         # Add resolved reference paths first
         for ref_path in self.get_references():
-            if self.paths.mg_root is None:
+            if self.paths.hv_root is None:
                 raise RuntimeError(
-                    f"Cannot resolve reference path '{ref_path}': mg_root not set on MindPaths"
+                    f"Cannot resolve reference path '{ref_path}': hv_root not set on MindPaths"
                 )
-            files.append(self.paths.mg_root / ref_path)
+            files.append(self.paths.hv_root / ref_path)
 
         # Add top-level files from work/
         if self.paths.work.root.exists():
@@ -262,13 +262,13 @@ def list_mind_paths(minds_dir: Path) -> list[tuple[str, Path]]:
     return sorted(results, key=lambda x: x[0])
 
 
-def resolve_mind(name: str, minds_dir: Path, mg_root: Path) -> Mind:
+def resolve_mind(name: str, minds_dir: Path, hv_root: Path) -> Mind:
     """Resolve a mind name to a Mind object.
 
     Args:
         name: The mind name to resolve.
         minds_dir: Path to the minds/ directory.
-        mg_root: The mg project root (needed to resolve references.toml paths).
+        hv_root: The haiv project root (needed to resolve references.toml paths).
 
     Returns:
         Mind object with resolved paths.
@@ -282,17 +282,17 @@ def resolve_mind(name: str, minds_dir: Path, mg_root: Path) -> Mind:
 
     for mind_name, mind_path in all_minds:
         if mind_name == name:
-            return Mind(paths=MindPaths(root=mind_path, mg_root=mg_root))
+            return Mind(paths=MindPaths(root=mind_path, hv_root=hv_root))
 
     raise MindNotFoundError(name, available)
 
 
-def list_minds(minds_dir: Path, mg_root: Path) -> list[Mind]:
+def list_minds(minds_dir: Path, hv_root: Path) -> list[Mind]:
     """List all minds in the minds directory.
 
     Args:
         minds_dir: Path to the minds/ directory.
-        mg_root: The mg project root (needed to resolve references.toml paths).
+        hv_root: The haiv project root (needed to resolve references.toml paths).
 
     Returns:
         List of Mind objects sorted by name.
@@ -300,7 +300,7 @@ def list_minds(minds_dir: Path, mg_root: Path) -> list[Mind]:
     Raises:
         DuplicateMindError: If duplicate names exist.
     """
-    return [Mind(paths=MindPaths(root=path, mg_root=mg_root)) for _, path in list_mind_paths(minds_dir)]
+    return [Mind(paths=MindPaths(root=path, hv_root=hv_root)) for _, path in list_mind_paths(minds_dir)]
 
 
 # --- Mind Creation ---

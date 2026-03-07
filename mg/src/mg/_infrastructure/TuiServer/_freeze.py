@@ -10,10 +10,10 @@ import copy
 import dataclasses
 from typing import TYPE_CHECKING, TypeVar
 
-from mg.helpers.tui._base import TuiModelSection
+from haiv.helpers.tui._base import TuiModelSection
 
 if TYPE_CHECKING:
-    from mg.helpers.tui.TuiModel import TuiModel
+    from haiv.helpers.tui.TuiModel import TuiModel
 
 
 # ---------------------------------------------------------------------------

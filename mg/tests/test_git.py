@@ -1,8 +1,8 @@
-"""Tests for mg.wrappers.git module."""
+"""Tests for haiv.wrappers.git module."""
 
 import pytest
 
-from mg.wrappers.git import BranchStats, Git, GitError
+from haiv.wrappers.git import BranchStats, Git, GitError
 
 
 @pytest.fixture

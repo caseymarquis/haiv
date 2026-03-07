@@ -1,28 +1,28 @@
-"""Tests for mg.helpers.users module."""
+"""Tests for haiv.helpers.users module."""
 
 import pytest
 from pathlib import Path
 
-from mg.helpers.users import (
+from haiv.helpers.users import (
     UserPaths,
     UserInfo,
     UserNotFoundError,
     list_users,
     resolve_user,
 )
-from mg.paths import PkgPaths
+from haiv.paths import PkgPaths
 
 
 class TestUserPaths:
     """Tests for UserPaths dataclass."""
 
-    def test_mg_user_returns_pkg_paths(self, tmp_path):
-        """mg_user property returns PkgPaths for src/mg_user/."""
+    def test_hv_user_returns_pkg_paths(self, tmp_path):
+        """hv_user property returns PkgPaths for src/hv_user/."""
         paths = UserPaths(root=tmp_path / "casey")
-        result = paths.mg_user
+        result = paths.hv_user
 
         assert isinstance(result, PkgPaths)
-        assert result.root == tmp_path / "casey" / "src" / "mg_user"
+        assert result.root == tmp_path / "casey" / "src" / "hv_user"
 
     def test_state_path(self, tmp_path):
         """state property returns root/state/."""
@@ -42,7 +42,7 @@ class TestUserInfo:
         """name property returns folder name."""
         paths = UserPaths(root=tmp_path / "casey")
         # Create a minimal Identity
-        from mg._infrastructure.identity import Identity
+        from haiv._infrastructure.identity import Identity
         identity = Identity(name="casey", path=tmp_path / "casey", matched_by="manual")
 
         user = UserInfo(paths=paths, identity=identity)

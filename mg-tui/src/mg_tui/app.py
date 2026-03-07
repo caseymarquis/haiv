@@ -1,15 +1,15 @@
-"""mg-tui: Terminal UI for mind-games.
+"""haiv-tui: Terminal UI for haiv.
 
 Architecture
 ------------
-The TUI and mg commands share the same helper functions but access them
-differently. mg commands use the Tui class (tui.py) as a thin facade that
+The TUI and haiv commands share the same helper functions but access them
+differently. haiv commands use the Tui class (tui.py) as a thin facade that
 holds pre-loaded dependencies. This app does NOT use tui.py. Instead, it
 calls helpers.py functions directly, passing only the dependencies each
 function needs. This keeps the app decoupled from the command-side
 dependency bag.
 
-    mg commands:  ctx.tui.mind_switch(mind)       # facade assembles deps
+    haiv commands:  ctx.tui.mind_switch(mind)       # facade assembles deps
     TUI app:      helpers.mind_switch(term, mind)  # app passes deps directly
 
 All domain logic for TUI operations lives in helpers.py as standalone
@@ -42,23 +42,23 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
-from mg._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
-from mg.helpers.tui import helpers
-from mg.helpers.utils.file_watcher import FileWatcher
-from mg.wrappers.git import Git
-from mg_tui.init import init as init_mg_deps
-from mg_tui.store import TuiStore
-from mg_tui.widgets.errors import ErrorsWidget
-from mg_tui.widgets.hud import HudWidget
-from mg_tui.widgets.markdown_file import MarkdownFileWidget
-from mg_tui.widgets.sessions import SessionsWidget
+from haiv._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
+from haiv.helpers.tui import helpers
+from haiv.helpers.utils.file_watcher import FileWatcher
+from haiv.wrappers.git import Git
+from haiv_tui.init import init as init_hv_deps
+from haiv_tui.store import TuiStore
+from haiv_tui.widgets.errors import ErrorsWidget
+from haiv_tui.widgets.hud import HudWidget
+from haiv_tui.widgets.markdown_file import MarkdownFileWidget
+from haiv_tui.widgets.sessions import SessionsWidget
 
 MAX_INTERNAL_ERRORS = 5
 POLL_INTERVAL = 0.1
 
 
-class MindGamesApp(App):
-    """Mind-games terminal UI."""
+class HaivApp(App):
+    """haiv terminal UI."""
 
     CSS = """
     TabbedContent {
@@ -74,7 +74,7 @@ class MindGamesApp(App):
     #   nav.*        - navigation between tabs/views
     #   sessions.*   - session tree actions
     #
-    # Users can remap any binding via [keybindings] in mg.toml:
+    # Users can remap any binding via [keybindings] in haiv.toml:
     #   [keybindings]
     #   "nav.next_tab" = "l,tab"
     #
@@ -90,7 +90,7 @@ class MindGamesApp(App):
         super().__init__()
         self.project = project
         self.internal_errors: deque[str] = deque(maxlen=MAX_INTERNAL_ERRORS)
-        deps = init_mg_deps(on_error=self.internal_errors.append)
+        deps = init_hv_deps(on_error=self.internal_errors.append)
         self.paths = deps.paths
         self.settings = deps.settings
         self.terminal = deps.terminal

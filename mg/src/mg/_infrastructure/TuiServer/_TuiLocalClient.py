@@ -25,7 +25,7 @@ from typing import Callable
 
 from ._freeze import freeze_model
 from ._TuiIpc import ReadRequest, Request, WriteRequest
-from mg.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import TuiModel
 
 
 class TuiLocalClient:

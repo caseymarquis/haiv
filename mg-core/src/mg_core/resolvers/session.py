@@ -3,9 +3,9 @@
 Converts a session identifier (short_id or UUID) to a Session object.
 """
 
-from mg._infrastructure.resolvers import ResolverContext
-from mg.errors import CommandError
-from mg.helpers.sessions import Session, get_session
+from haiv._infrastructure.resolvers import ResolverContext
+from haiv.errors import CommandError
+from haiv.helpers.sessions import Session, get_session
 
 
 class SessionNotFoundError(CommandError):

@@ -1,8 +1,8 @@
-# mg
+# haiv
 
-API for building mg commands and workflows.
+API for building haiv commands and workflows.
 
-This package is included as a dependency of `mg-core` and is available by default in mg projects.
+This package is included as a dependency of `haiv-core` and is available by default in haiv projects.
 
 ## Development
 

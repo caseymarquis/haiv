@@ -1,6 +1,6 @@
-"""Testing utilities for mg commands.
+"""Testing utilities for haiv commands.
 
-These helpers support TDD for mg commands at three levels:
+These helpers support TDD for haiv commands at three levels:
 
 1. routes_to() - Test file structure only (file can be empty)
 2. parse() - Test command definition and arg parsing (needs define())
@@ -11,11 +11,11 @@ Example command structure:
     └── _mind_/                    # param="mind", resolver="mind" (implicit)
         └── message/
             └── _target_as_mind_/  # param="target", resolver="mind" (explicit)
-                └── send.py        # mg forge message specs send
+                └── send.py        # hv forge message specs send
 
 Example test:
-    from mg import test
-    from mg_core import commands
+    from haiv import test
+    from haiv_core import commands
 
     def test_send_message():
         # Mock resolver for both params - both use "mind" resolver
@@ -25,7 +25,7 @@ Example test:
             # req.value is the raw string ("forge" or "specs")
             return MockMind(name=req.value)
 
-        # Command: mg forge message specs send
+        # Command: hv forge message specs send
         # Captures: mind="forge", target="specs"
         result = test.execute("forge message specs send", commands, resolve=mock_resolve)
         assert "sent" in result.output
@@ -45,13 +45,13 @@ from unittest.mock import MagicMock
 
 from punq import Container
 
-from mg import cmd
-from mg._infrastructure.args import ResolveRequest, build_ctx
-from mg._infrastructure.mg_hooks import MgHookRegistry
-from mg.paths import Paths, PkgPaths
-from mg._infrastructure.loader import Command, load_command
-from mg.util import module_to_folder
-from mg._infrastructure.routing import RouteMatch, Route, find_route, require_route
+from haiv import cmd
+from haiv._infrastructure.args import ResolveRequest, build_ctx
+from haiv._infrastructure.hv_hooks import HvHookRegistry
+from haiv.paths import Paths, PkgPaths
+from haiv._infrastructure.loader import Command, load_command
+from haiv.util import module_to_folder
+from haiv._infrastructure.routing import RouteMatch, Route, find_route, require_route
 
 # Default username for test contexts
 TEST_USERNAME = "testinius"
@@ -147,19 +147,19 @@ _test_root_guards: list[object] = []
 
 
 def _create_test_root() -> Path:
-    """Create a temp directory structure for test mg_root.
+    """Create a temp directory structure for test hv_root.
 
-    Creates the mg_root with a default test user folder structure
+    Creates the hv_root with a default test user folder structure
     including the user's state directory.
 
-    Returns the nested mg_root path. Cleanup happens at module exit.
+    Returns the nested hv_root path. Cleanup happens at module exit.
     """
-    temp_dir = Path(tempfile.mkdtemp(prefix="mg-test-"))
+    temp_dir = Path(tempfile.mkdtemp(prefix="haiv-test-"))
     root = temp_dir / "grandparent" / "parent" / "root"
     root.mkdir(parents=True)
 
     # Create test user folder structure using Paths
-    paths = Paths(_called_from=None, _pkg_root=None, _mg_root=root, _user_name=TEST_USERNAME)
+    paths = Paths(_called_from=None, _pkg_root=None, _hv_root=root, _user_name=TEST_USERNAME)
     paths.user.state_dir.mkdir(parents=True)
 
     # Guard prevents cleanup until module unloads
@@ -197,11 +197,11 @@ def parse(
         )
 
     command = load_command(route.file)
-    mg_root = _create_test_root()
+    hv_root = _create_test_root()
     ctx = build_ctx(
         route, command,
-        mg_root=mg_root, mg_username=TEST_USERNAME,
-        resolve=resolve, mg_hook_registry=MgHookRegistry(),
+        hv_root=hv_root, hv_username=TEST_USERNAME,
+        resolve=resolve, hv_hook_registry=HvHookRegistry(),
     )
 
     # Register command for run_command to retrieve
@@ -312,7 +312,7 @@ class Sandbox:
         if config is None:
             config = SandboxConfig()
 
-        self._temp_dir = Path(tempfile.mkdtemp(prefix="mg-test-"))
+        self._temp_dir = Path(tempfile.mkdtemp(prefix="haiv-test-"))
         self._root = self._temp_dir / "grandparent" / "parent" / "root"
         self._root.mkdir(parents=True)
         self._config = config
@@ -328,7 +328,7 @@ class Sandbox:
         paths = Paths(
             _called_from=self._cwd,
             _pkg_root=pkg_root,
-            _mg_root=self._root,
+            _hv_root=self._root,
             _user_name=TEST_USERNAME,
         )
 
@@ -341,7 +341,7 @@ class Sandbox:
             args=cmd.Args(),
             paths=paths,
             container=container,
-            _mg_hook_registry=MgHookRegistry(),
+            _hv_hook_registry=HvHookRegistry(),
         )
 
         # Automatic cleanup when Sandbox is garbage collected
@@ -382,7 +382,7 @@ class Sandbox:
         loaded_command = ctx.container.resolve(Command)
         ctx.container = self._ctx.container
         # Update paths with sandbox values
-        ctx.paths._mg_root = self._ctx.paths._mg_root
+        ctx.paths._hv_root = self._ctx.paths._hv_root
         ctx.paths._called_from = self._cwd
 
         if setup:

@@ -1,12 +1,12 @@
-"""mg sessions {id} remove - Remove a session.
+"""hv sessions {id} remove - Remove a session.
 
 Removes a session from the sessions file by short_id or UUID.
 """
 
 from __future__ import annotations
 
-from mg import cmd
-from mg.helpers.sessions import Session, remove_session
+from haiv import cmd
+from haiv.helpers.sessions import Session, remove_session
 
 
 def define() -> cmd.Def:

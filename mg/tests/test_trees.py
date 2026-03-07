@@ -1,8 +1,8 @@
-"""Tests for mg.helpers.utils.trees module."""
+"""Tests for haiv.helpers.utils.trees module."""
 
 import pytest
 
-from mg.helpers.utils.trees import TreeNode, build_tree, render_tree
+from haiv.helpers.utils.trees import TreeNode, build_tree, render_tree
 
 
 class TestBuildTree:

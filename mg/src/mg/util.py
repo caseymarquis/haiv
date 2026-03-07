@@ -1,4 +1,4 @@
-"""General utilities for mg."""
+"""General utilities for haiv."""
 
 import threading
 from pathlib import Path

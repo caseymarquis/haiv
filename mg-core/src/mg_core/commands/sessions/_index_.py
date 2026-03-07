@@ -1,4 +1,4 @@
-"""mg sessions - List active sessions.
+"""hv sessions - List active sessions.
 
 Shows all tracked sessions across minds with their short_id, mind, task, and start time.
 Displays parent-child delegation chains as a tree.
@@ -6,10 +6,10 @@ Displays parent-child delegation chains as a tree.
 
 from __future__ import annotations
 
-from mg import cmd
-from mg.helpers.sessions import Session, build_session_tree, load_sessions
-from mg.helpers.utils.trees import render_tree
-from mg.wrappers.git import BranchStats, Git
+from haiv import cmd
+from haiv.helpers.sessions import Session, build_session_tree, load_sessions
+from haiv.helpers.utils.trees import render_tree
+from haiv.wrappers.git import BranchStats, Git
 
 
 def define() -> cmd.Def:

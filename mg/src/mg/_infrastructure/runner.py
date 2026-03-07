@@ -1,10 +1,10 @@
-"""Command execution for mg.
+"""Command execution for haiv.
 
 Handles the command lifecycle: setup → execute → teardown.
 """
 
-from mg import cmd
-from mg._infrastructure.loader import Command
+from haiv import cmd
+from haiv._infrastructure.loader import Command
 
 
 def run_command(command: Command, ctx: cmd.Ctx) -> None:

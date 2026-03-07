@@ -1,4 +1,4 @@
-"""mg minds stage - Prep a mind for a new task.
+"""hv minds stage - Prep a mind for a new task.
 
 If minds exist without active sessions, one is selected at random for reuse.
 Otherwise creates a new mind with proper structure (work/, home/, references.toml)
@@ -13,11 +13,11 @@ from __future__ import annotations
 import os
 import random
 
-from mg import cmd
-from mg._infrastructure.env import MG_SESSION
-from mg.errors import CommandError
+from haiv import cmd
+from haiv._infrastructure.env import HV_SESSION
+from haiv.errors import CommandError
 
-from mg.helpers.minds import (
+from haiv.helpers.minds import (
     InvalidMindNameError,
     MindExistsError,
     generate_mind_name,
@@ -26,14 +26,14 @@ from mg.helpers.minds import (
     scaffold_mind,
     validate_mind_name,
 )
-from mg.helpers.sessions import create_session, find_session, load_sessions
-from mg_core.mg_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
+from haiv.helpers.sessions import create_session, find_session, load_sessions
+from haiv_core.hv_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
 
 
 def define() -> cmd.Def:
     return cmd.Def(
         description="Prep a mind for a new task (see details for usage conventions)",
-        enable_mg_hooks=True,
+        enable_hv_hooks=True,
         flags=[
             cmd.Flag(
                 "task",
@@ -79,7 +79,7 @@ def execute(ctx: cmd.Ctx) -> None:
 
     # --task is required
     if not ctx.args.has("task"):
-        raise CommandError("--task is required\n\n  mg minds stage --task \"description\"")
+        raise CommandError("--task is required\n\n  hv minds stage --task \"description\"")
 
     task = ctx.args.get_one("task")
     if len(task) > 72:
@@ -165,7 +165,7 @@ def execute(ctx: cmd.Ctx) -> None:
         raise CommandError(str(e)) from e
 
     # Create session with status "staged"
-    parent_id = os.environ.get(MG_SESSION, "")
+    parent_id = os.environ.get(HV_SESSION, "")
     session = create_session(
         ctx.paths.user.sessions_file,
         task,
@@ -195,22 +195,22 @@ def execute(ctx: cmd.Ctx) -> None:
     ctx.print()
     ctx.print("Next steps:")
     ctx.print("1. Edit work/welcome.md with task details")
-    ctx.print("2. Assign a role in references.toml (see src/mg_project/__assets__/roles/)")
-    ctx.print(f"3. Start: mg start {name}")
+    ctx.print("2. Assign a role in references.toml (see src/hv_project/__assets__/roles/)")
+    ctx.print(f"3. Start: hv start {name}")
 
 
 def _detect_base_branch(ctx: cmd.Ctx) -> str:
     """Detect base branch from the parent session.
 
-    Looks up the parent session via MG_SESSION env var. If the parent
+    Looks up the parent session via HV_SESSION env var. If the parent
     has a branch recorded, uses that. If the parent has no branch (top-level),
-    falls back to default_branch. Raises CommandError if MG_SESSION is not set.
+    falls back to default_branch. Raises CommandError if HV_SESSION is not set.
     """
-    parent_id = os.environ.get(MG_SESSION, "")
+    parent_id = os.environ.get(HV_SESSION, "")
     if not parent_id:
         raise CommandError(
-            "MG_SESSION is not set — cannot detect base branch.\n\n"
-            "  Set it to your session ID:  export MG_SESSION=<your-session-id>\n"
+            "HV_SESSION is not set — cannot detect base branch.\n\n"
+            "  Set it to your session ID:  export HV_SESSION=<your-session-id>\n"
             "  Or specify explicitly:      --from-branch <branch>"
         )
 

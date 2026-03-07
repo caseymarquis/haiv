@@ -1,15 +1,15 @@
-"""Command discovery for mg.
+"""Command discovery for haiv.
 
-Discovers commands from mg packages. Discovery is lightweight (filesystem only);
+Discovers commands from haiv packages. Discovery is lightweight (filesystem only);
 loading definitions happens lazily via load_definition().
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from mg import cmd
-from mg.helpers.packages import PackageInfo, discover_packages
-from mg._infrastructure.loader import load_command
+from haiv import cmd
+from haiv.helpers.packages import PackageInfo, discover_packages
+from haiv._infrastructure.loader import load_command
 
 
 @dataclass
@@ -132,7 +132,7 @@ def commands_for_package(package: PackageInfo) -> list[CommandInfo]:
     return sorted(commands, key=lambda c: c.name)
 
 
-def discover_commands(mg_root: Path | None) -> list[PackageCommands]:
+def discover_commands(hv_root: Path | None) -> list[PackageCommands]:
     """Discover all commands across all packages.
 
     Returns commands grouped by package in discovery order (core first,
@@ -140,12 +140,12 @@ def discover_commands(mg_root: Path | None) -> list[PackageCommands]:
     at call time.
 
     Args:
-        mg_root: Root of the mg-managed repository.
+        hv_root: Root of the haiv-managed repository.
 
     Returns:
         List of PackageCommands in discovery order.
     """
-    packages = discover_packages(mg_root)
+    packages = discover_packages(hv_root)
     return [
         PackageCommands(package=pkg, commands=commands_for_package(pkg))
         for pkg in packages

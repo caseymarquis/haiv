@@ -4,11 +4,11 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "mg",
-    "mg-cli",
-    "mg-core",
-    "mg-tui",
-    "mind-games",
+    "haiv",
+    "haiv-cli",
+    "haiv-core",
+    "haiv-tui",
+    "haiv",
 ]
 
 [[package]]
@@ -173,9 +173,9 @@ wheels = [
 ]
 
 [[package]]
-name = "mg"
+name = "haiv"
 version = "0.1.0"
-source = { editable = "mg" }
+source = { editable = "haiv" }
 dependencies = [
     { name = "jinja2" },
     { name = "punq" },
@@ -204,11 +204,11 @@ dev = [
 ]
 
 [[package]]
-name = "mg-cli"
+name = "haiv-cli"
 version = "0.1.0"
-source = { editable = "mg-cli" }
+source = { editable = "haiv-cli" }
 dependencies = [
-    { name = "mg-core" },
+    { name = "haiv-core" },
 ]
 
 [package.dev-dependencies]
@@ -217,17 +217,17 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mg-core", editable = "mg-core" }]
+requires-dist = [{ name = "haiv-core", editable = "haiv-core" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ty" }]
 
 [[package]]
-name = "mg-core"
+name = "haiv-core"
 version = "0.1.0"
-source = { editable = "mg-core" }
+source = { editable = "haiv-core" }
 dependencies = [
-    { name = "mg" },
+    { name = "haiv" },
 ]
 
 [package.dev-dependencies]
@@ -236,18 +236,18 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mg", editable = "mg" }]
+requires-dist = [{ name = "haiv", editable = "haiv" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ty" }]
 
 [[package]]
-name = "mg-tui"
+name = "haiv-tui"
 version = "0.1.0"
-source = { editable = "mg-tui" }
+source = { editable = "haiv-tui" }
 dependencies = [
     { name = "blinker" },
-    { name = "mg" },
+    { name = "haiv" },
     { name = "textual" },
     { name = "watchdog" },
 ]
@@ -260,7 +260,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "blinker" },
-    { name = "mg", editable = "mg" },
+    { name = "haiv", editable = "haiv" },
     { name = "textual" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]
@@ -269,7 +269,7 @@ requires-dist = [
 dev = [{ name = "ty" }]
 
 [[package]]
-name = "mind-games"
+name = "haiv"
 version = "0.1.0"
 source = { virtual = "." }
 

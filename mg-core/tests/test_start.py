@@ -1,9 +1,9 @@
-"""Tests for mg start command (no args)."""
+"""Tests for hv start command (no args)."""
 
 from typing import cast
 from unittest.mock import MagicMock
 
-from mg import test
+from haiv import test
 
 
 class TestStartRouting:
@@ -33,7 +33,7 @@ class TestStartExecution:
         """Execution calls ctx.tui.start()."""
 
         def setup(ctx):
-            ctx.paths._mg_root = tmp_path
+            ctx.paths._hv_root = tmp_path
 
         result = test.execute("start", setup=setup)
         mock_tui = cast(MagicMock, result.ctx.tui)

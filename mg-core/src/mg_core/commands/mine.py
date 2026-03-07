@@ -1,17 +1,17 @@
-"""mg mine - Display information about the current mind.
+"""hv mine - Display information about the current mind.
 
 Shows the mind name, location, work directory, and role (if configured).
-Requires MG_MIND environment variable to be set.
+Requires HV_MIND environment variable to be set.
 """
 
 from __future__ import annotations
 
 import os
 
-from mg import cmd
-from mg.errors import CommandError
+from haiv import cmd
+from haiv.errors import CommandError
 
-from mg.helpers.minds import resolve_mind
+from haiv.helpers.minds import resolve_mind
 
 
 def define() -> cmd.Def:
@@ -19,12 +19,12 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    mind_name = os.environ.get("MG_MIND")
+    mind_name = os.environ.get("HV_MIND")
 
     if not mind_name:
         raise CommandError(
-            "MG_MIND environment variable not set. "
-            "Run 'mg start {mind}' to launch a mind first."
+            "HV_MIND environment variable not set. "
+            "Run 'hv start {mind}' to launch a mind first."
         )
 
     # Resolve the mind

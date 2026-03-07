@@ -1,18 +1,18 @@
-"""Tests for mg.helpers.commands module."""
+"""Tests for haiv.helpers.commands module."""
 
 import pytest
 from pathlib import Path
 
-from mg import cmd
-from mg.helpers.commands import (
+from haiv import cmd
+from haiv.helpers.commands import (
     CommandInfo,
     PackageCommands,
     path_to_command_name,
     commands_for_package,
     discover_commands,
 )
-from mg.helpers.packages import PackageInfo, PackageSource
-from mg.paths import PkgPaths
+from haiv.helpers.packages import PackageInfo, PackageSource
+from haiv.paths import PkgPaths
 
 
 class TestPathToCommandName:
@@ -76,7 +76,7 @@ class TestCommandInfo:
         """load_definition() caches the result."""
         cmd_file = tmp_path / "test.py"
         cmd_file.write_text('''
-from mg import cmd
+from haiv import cmd
 
 def define() -> cmd.Def:
     return cmd.Def(description="Test command")
@@ -101,7 +101,7 @@ def make_command_file(path: Path, description: str) -> None:
     """Create a command file with a define() function."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f'''"""Test command."""
-from mg import cmd
+from haiv import cmd
 
 def define() -> cmd.Def:
     return cmd.Def(description="{description}")
@@ -215,7 +215,7 @@ class TestDiscoverCommands:
 
     def test_returns_package_commands_list(self, tmp_path):
         """Returns list of PackageCommands."""
-        make_valid_package(tmp_path / "src" / "mg_project", PackageSource.PROJECT_LOCAL)
+        make_valid_package(tmp_path / "src" / "hv_project", PackageSource.PROJECT_LOCAL)
 
         result = discover_commands(tmp_path)
 
@@ -231,9 +231,9 @@ class TestDiscoverCommands:
 
     def test_includes_project_package(self, tmp_path):
         """Project package included when it exists."""
-        make_valid_package(tmp_path / "src" / "mg_project", PackageSource.PROJECT_LOCAL)
+        make_valid_package(tmp_path / "src" / "hv_project", PackageSource.PROJECT_LOCAL)
         make_command_file(
-            tmp_path / "src" / "mg_project" / "commands" / "custom.py",
+            tmp_path / "src" / "hv_project" / "commands" / "custom.py",
             "Custom command"
         )
 
@@ -248,7 +248,7 @@ class TestDiscoverCommands:
 
     def test_discovery_order(self, tmp_path):
         """Packages returned in discovery order (core first)."""
-        make_valid_package(tmp_path / "src" / "mg_project", PackageSource.PROJECT_LOCAL)
+        make_valid_package(tmp_path / "src" / "hv_project", PackageSource.PROJECT_LOCAL)
 
         result = discover_commands(tmp_path)
 
@@ -260,10 +260,10 @@ class TestDiscoverCommands:
 
     def test_no_deduplication(self, tmp_path):
         """Same command name in multiple packages is not deduplicated."""
-        make_valid_package(tmp_path / "src" / "mg_project", PackageSource.PROJECT_LOCAL)
+        make_valid_package(tmp_path / "src" / "hv_project", PackageSource.PROJECT_LOCAL)
         # Create 'init' command in project (core also has 'init')
         make_command_file(
-            tmp_path / "src" / "mg_project" / "commands" / "init.py",
+            tmp_path / "src" / "hv_project" / "commands" / "init.py",
             "Project init"
         )
 
@@ -281,7 +281,7 @@ class TestDiscoverCommands:
 
     def test_empty_package_included(self, tmp_path):
         """Package with no commands still appears in results."""
-        make_valid_package(tmp_path / "src" / "mg_project", PackageSource.PROJECT_LOCAL)
+        make_valid_package(tmp_path / "src" / "hv_project", PackageSource.PROJECT_LOCAL)
         # Don't add any commands to project
 
         result = discover_commands(tmp_path)

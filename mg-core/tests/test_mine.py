@@ -1,19 +1,19 @@
-"""Tests for mg mine command."""
+"""Tests for hv mine command."""
 
 import os
 import pytest
 from unittest.mock import patch
 
-from mg import test
-from mg.errors import CommandError
+from haiv import test
+from haiv.errors import CommandError
 
-from mg.helpers.minds import Mind, MindPaths
+from haiv.helpers.minds import Mind, MindPaths
 
 
 def create_mind(ctx, name: str, role: str | None = None) -> Mind:
     """Helper to create a mind using ctx.paths."""
     ctx.paths.user.minds_dir.mkdir(parents=True, exist_ok=True)
-    mind = Mind(paths=MindPaths(root=ctx.paths.user.minds_dir / name, mg_root=ctx.paths.root))
+    mind = Mind(paths=MindPaths(root=ctx.paths.user.minds_dir / name, hv_root=ctx.paths.root))
     mind.ensure_structure()
     if role:
         mind.paths.references_file.write_text(f'role = "{role}"\n')
@@ -32,22 +32,22 @@ class TestMineRouting:
 class TestMineExecution:
     """Test mine command execution."""
 
-    def test_requires_mg_mind_env_var(self):
-        """mine fails without MG_MIND environment variable."""
+    def test_requires_hv_mind_env_var(self):
+        """mine fails without HV_MIND environment variable."""
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("MG_MIND", None)
+            os.environ.pop("HV_MIND", None)
 
             with pytest.raises(CommandError) as exc_info:
                 test.execute("mine")
 
-            assert "MG_MIND" in str(exc_info.value)
+            assert "HV_MIND" in str(exc_info.value)
 
     def test_outputs_mind_name_and_location(self, capsys):
         """mine outputs mind name and location."""
         def setup(ctx):
             create_mind(ctx, "wren")
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("mine", setup=setup)
 
         captured = capsys.readouterr()
@@ -59,7 +59,7 @@ class TestMineExecution:
         def setup(ctx):
             create_mind(ctx, "wren")
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("mine", setup=setup)
 
         captured = capsys.readouterr()
@@ -70,7 +70,7 @@ class TestMineExecution:
         def setup(ctx):
             create_mind(ctx, "wren", role="Software Engineer")
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("mine", setup=setup)
 
         captured = capsys.readouterr()
@@ -81,6 +81,6 @@ class TestMineExecution:
         def setup(ctx):
             ctx.paths.user.minds_dir.mkdir(parents=True, exist_ok=True)
 
-        with patch.dict(os.environ, {"MG_MIND": "nonexistent"}):
+        with patch.dict(os.environ, {"HV_MIND": "nonexistent"}):
             with pytest.raises(Exception):  # MindNotFoundError
                 test.execute("mine", setup=setup)

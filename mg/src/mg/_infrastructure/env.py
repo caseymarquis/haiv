@@ -1,21 +1,21 @@
-"""Environment variables used by mg.
+"""Environment variables used by haiv.
 
-This module centralizes all environment variable names used by mg.
+This module centralizes all environment variable names used by haiv.
 Import from here rather than hardcoding strings.
 """
 
-# Root of the mg-managed repo where the mg-state control plane branch lives.
-# When set, mg uses this path instead of searching for the root.
-MG_ROOT = "MG_ROOT"
+# Root of the haiv-managed repo where the haiv control plane branch lives.
+# When set, haiv uses this path instead of searching for the root.
+HV_ROOT = "HV_ROOT"
 
 # Program name override for CLI display.
-# Used by wrapper scripts that invoke mg.
-MG_PROG = "MG_PROG"
+# Used by wrapper scripts that invoke haiv.
+HV_PROG = "HV_PROG"
 
-# Current mind name, set by `mg start {mind}`.
+# Current mind name, set by `hv start {mind}`.
 # Used by commands that need to know which mind is running.
-MG_MIND = "MG_MIND"
+HV_MIND = "HV_MIND"
 
-# Current mg session ID, set by `mg start {mind}`.
+# Current haiv session ID, set by `hv start {mind}`.
 # Used to track delegation chains (parent session).
-MG_SESSION = "MG_SESSION"
+HV_SESSION = "HV_SESSION"

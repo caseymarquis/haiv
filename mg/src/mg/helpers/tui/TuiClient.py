@@ -1,6 +1,6 @@
 """TUI IPC client.
 
-Used by mg commands to read and write TUI state. Communicates with the
+Used by haiv commands to read and write TUI state. Communicates with the
 running TUI server over a Unix domain socket (or Windows named pipe)
 via multiprocessing.connection.
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 from multiprocessing.connection import Client
 from typing import Callable
 
-from mg._infrastructure.TuiServer import (
+from haiv._infrastructure.TuiServer import (
     ConcurrencyError,
     ErrorResponse,
     OkResponse,
@@ -30,7 +30,7 @@ from mg._infrastructure.TuiServer import (
     freeze_model,
     pipe_address,
 )
-from mg.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import TuiModel
 
 # Re-export so callers can import ConcurrencyError from TuiClient
 # without reaching into infrastructure.
@@ -40,7 +40,7 @@ __all__ = ["TuiClient", "ConcurrencyError"]
 class TuiClient:
     """Remote IPC client for reading and writing TUI state.
 
-    Used by mg commands running in separate processes. Each call opens a
+    Used by haiv commands running in separate processes. Each call opens a
     connection to the TUI server, sends a request, and reads the response.
     """
 

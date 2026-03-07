@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mg.errors import CommandError
-from mg.helpers.tui.terminal import TerminalManager
-from mg.wrappers.wezterm import Pane, PaneSize
+from haiv.errors import CommandError
+from haiv.helpers.tui.terminal import TerminalManager
+from haiv.wrappers.wezterm import Pane, PaneSize
 
 
 def make_pane(
@@ -51,18 +51,18 @@ def wezterm():
 @pytest.fixture
 def manager(wezterm):
     """Create a TerminalManager with mocked WezTerm."""
-    return TerminalManager(wezterm, Path("/home/user/my-project"), ["mg-tui"])
+    return TerminalManager(wezterm, Path("/home/user/my-project"), ["haiv-tui"])
 
 
 class TestTabTitleNaming:
     def test_hud_tab_prefix(self, manager):
-        assert manager.hud_tab_prefix == "mg(my-project)"
+        assert manager.hud_tab_prefix == "hv(my-project)"
 
     def test_hud_tab_title_with_mind(self, manager):
-        assert manager._hud_tab_title("wren") == "mg(my-project):wren"
+        assert manager._hud_tab_title("wren") == "hv(my-project):wren"
 
     def test_hud_tab_title_without_mind(self, manager):
-        assert manager._hud_tab_title() == "mg(my-project)"
+        assert manager._hud_tab_title() == "hv(my-project)"
 
     def test_parked_tab_title(self, manager):
         assert manager._parked_tab_title("wren") == "~wren"
@@ -71,8 +71,8 @@ class TestTabTitleNaming:
 class TestFindHudPane:
     def test_finds_left_pane_in_hud_tab(self, manager, wezterm):
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
-            make_pane(pane_id=2, tab_title="mg(my-project)", left_col=40),
+            make_pane(pane_id=1, tab_title="hv(my-project)", left_col=0),
+            make_pane(pane_id=2, tab_title="hv(my-project)", left_col=40),
         ]
 
         pane = manager._find_hud_pane()
@@ -88,14 +88,14 @@ class TestFindHudPane:
 
     def test_ignores_right_pane_in_hud_tab(self, manager, wezterm):
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=40),
+            make_pane(pane_id=1, tab_title="hv(my-project)", left_col=40),
         ]
 
         assert manager._find_hud_pane() is None
 
     def test_ignores_other_projects_hud(self, manager, wezterm):
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(other-project)", left_col=0),
+            make_pane(pane_id=1, tab_title="hv(other-project)", left_col=0),
         ]
 
         assert manager._find_hud_pane() is None
@@ -106,7 +106,7 @@ class TestEnsureWorkspace:
 
     | In WezTerm? | Window exists? | Action                          |
     |-------------|----------------|---------------------------------|
-    | No          | N/A            | Launch WezTerm with 'mg start'  |
+    | No          | N/A            | Launch WezTerm with 'hv start'  |
     | Yes         | No             | Create new window, set up layout|
     | Yes         | Yes            | Activate hud pane               |
     """
@@ -119,11 +119,11 @@ class TestEnsureWorkspace:
         wezterm.run_external.assert_called_once()
         args = wezterm.run_external.call_args[0][0]
         assert args[0] == "start"
-        assert "mg" in args
+        assert "hv" in args
         assert "start" in args
 
     def test_in_wezterm_no_window_creates_one(self, manager, wezterm):
-        """Inside WezTerm, no mg window — create new window with layout."""
+        """Inside WezTerm, no haiv window — create new window with layout."""
         wezterm.list_panes.return_value = [
             # _find_hud_pane — not found
             make_pane(pane_id=0, tab_title=""),
@@ -136,10 +136,10 @@ class TestEnsureWorkspace:
 
         # Created new window with TUI command + project name
         wezterm.spawn.assert_called_once_with(
-            new_window=True, cwd="/home/user/my-project", command=["mg-tui", "my-project"],
+            new_window=True, cwd="/home/user/my-project", command=["haiv-tui", "my-project"],
         )
         # Named hud tab
-        wezterm.set_tab_title.assert_called_once_with("mg(my-project)", pane_id=10)
+        wezterm.set_tab_title.assert_called_once_with("hv(my-project)", pane_id=10)
         # Split right for mind pane
         wezterm.split_pane.assert_called_once_with(
             10, direction="right", percent=50, cwd="/home/user/my-project",
@@ -148,11 +148,11 @@ class TestEnsureWorkspace:
         wezterm.activate_pane.assert_called_with(10)
 
     def test_in_wezterm_window_exists_activates_it(self, manager, wezterm):
-        """Inside WezTerm, mg window exists — activate hud pane."""
+        """Inside WezTerm, haiv window exists — activate hud pane."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=42, tab_title="mg(my-project)", left_col=0),
-            make_pane(pane_id=43, tab_title="mg(my-project)", left_col=40),
-            make_pane(pane_id=44, tab_title="mg(my-project):buffer"),
+            make_pane(pane_id=42, tab_title="hv(my-project)", left_col=0),
+            make_pane(pane_id=43, tab_title="hv(my-project)", left_col=40),
+            make_pane(pane_id=44, tab_title="hv(my-project):buffer"),
         ]
 
         with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
@@ -167,9 +167,9 @@ class TestGetActiveMindName:
     """Tests for TerminalManager.get_active_mind_name()."""
 
     def test_returns_mind_name_from_hud_tab(self, manager, wezterm):
-        """Extracts mind name from 'mg(project):mind' tab title."""
+        """Extracts mind name from 'hv(project):mind' tab title."""
         wezterm.list_panes.return_value = [
-            make_pane(tab_title="mg(my-project):wren"),
+            make_pane(tab_title="hv(my-project):wren"),
         ]
 
         assert manager.get_active_mind_name() == "wren"
@@ -177,7 +177,7 @@ class TestGetActiveMindName:
     def test_returns_none_when_no_mind_active(self, manager, wezterm):
         """Returns None when hud tab has no mind suffix."""
         wezterm.list_panes.return_value = [
-            make_pane(tab_title="mg(my-project)"),
+            make_pane(tab_title="hv(my-project)"),
         ]
 
         assert manager.get_active_mind_name() is None
@@ -197,8 +197,8 @@ class TestTrySendTextToMind:
     def test_sends_to_active_mind(self, manager, wezterm):
         """Finds the active mind's pane (right side of hud) and sends text."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project):wren", left_col=0),
-            make_pane(pane_id=2, tab_title="mg(my-project):wren", left_col=40),
+            make_pane(pane_id=1, tab_title="hv(my-project):wren", left_col=0),
+            make_pane(pane_id=2, tab_title="hv(my-project):wren", left_col=40),
         ]
 
         result = manager.try_send_text_to_mind("wren", "hello")
@@ -209,7 +209,7 @@ class TestTrySendTextToMind:
     def test_sends_to_parked_mind(self, manager, wezterm):
         """Finds a parked mind's pane by tab title ~{mind}."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+            make_pane(pane_id=1, tab_title="hv(my-project)", left_col=0),
             make_pane(pane_id=5, tab_title="~wren"),
         ]
 
@@ -221,7 +221,7 @@ class TestTrySendTextToMind:
     def test_returns_false_when_mind_not_found(self, manager, wezterm):
         """Returns False when no pane exists for the mind."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+            make_pane(pane_id=1, tab_title="hv(my-project)", left_col=0),
         ]
 
         result = manager.try_send_text_to_mind("wren", "hello")
@@ -232,8 +232,8 @@ class TestTrySendTextToMind:
     def test_prefers_active_over_parked(self, manager, wezterm):
         """When mind is both active and parked (shouldn't happen), uses active."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project):wren", left_col=0),
-            make_pane(pane_id=2, tab_title="mg(my-project):wren", left_col=40),
+            make_pane(pane_id=1, tab_title="hv(my-project):wren", left_col=0),
+            make_pane(pane_id=2, tab_title="hv(my-project):wren", left_col=40),
             make_pane(pane_id=5, tab_title="~wren"),
         ]
 
@@ -268,8 +268,8 @@ class TestTrySendTextToMind:
     def test_does_not_match_wrong_mind(self, manager, wezterm):
         """Active mind 'spark' doesn't match when looking for 'wren'."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project):spark", left_col=0),
-            make_pane(pane_id=2, tab_title="mg(my-project):spark", left_col=40),
+            make_pane(pane_id=1, tab_title="hv(my-project):spark", left_col=0),
+            make_pane(pane_id=2, tab_title="hv(my-project):spark", left_col=40),
         ]
 
         result = manager.try_send_text_to_mind("wren", "hello")
@@ -294,7 +294,7 @@ class TestSendTextToMind:
     def test_raises_when_mind_not_found(self, manager, wezterm):
         """Raises CommandError when no pane exists for the mind."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=1, tab_title="mg(my-project)", left_col=0),
+            make_pane(pane_id=1, tab_title="hv(my-project)", left_col=0),
         ]
 
         with pytest.raises(CommandError, match="wren"):

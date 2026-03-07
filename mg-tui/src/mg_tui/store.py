@@ -21,7 +21,7 @@ from typing import Callable
 
 import blinker
 
-from mg.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import TuiModel
 
 
 def _section_signals() -> dict[str, blinker.Signal]:

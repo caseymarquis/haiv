@@ -1,6 +1,6 @@
 """TUI state model.
 
-TuiModel is the shared state contract between mg commands (clients) and the
+TuiModel is the shared state contract between haiv commands (clients) and the
 running TUI (server). It is a frozen container of section instances, each
 representing a distinct area of TUI state.
 
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from mg.helpers.tui._base import TuiModelSection
+from haiv.helpers.tui._base import TuiModelSection
 
 
 # ---------------------------------------------------------------------------

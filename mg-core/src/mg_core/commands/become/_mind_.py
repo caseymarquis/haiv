@@ -1,16 +1,16 @@
-"""mg become {mind} - Load a mind's context.
+"""hv become {mind} - Load a mind's context.
 
-Outputs files for Claude to read. Requires MG_MIND to match or be unset.
-If MG_MIND is unset, prints bootstrap instructions.
+Outputs files for Claude to read. Requires HV_MIND to match or be unset.
+If HV_MIND is unset, prints bootstrap instructions.
 """
 
 import os
 
-from mg import cmd
-from mg._infrastructure import env
-from mg.errors import CommandError
+from haiv import cmd
+from haiv._infrastructure import env
+from haiv.errors import CommandError
 
-from mg.helpers.minds import Mind
+from haiv.helpers.minds import Mind
 
 
 def define() -> cmd.Def:
@@ -21,7 +21,7 @@ def define() -> cmd.Def:
 
 def execute(ctx: cmd.Ctx) -> None:
     mind = ctx.args.get_one("mind", type=Mind)
-    current_mind = os.environ.get(env.MG_MIND)
+    current_mind = os.environ.get(env.HV_MIND)
 
     # If already a different mind, error - can't switch identities
     if current_mind and current_mind != mind.name:
@@ -30,16 +30,16 @@ def execute(ctx: cmd.Ctx) -> None:
             f"Cannot become '{mind.name}' - start a new session instead."
         )
 
-    # If MG_MIND not set, print bootstrap instructions
+    # If HV_MIND not set, print bootstrap instructions
     if not current_mind:
-        ctx.print("MG_MIND is not set.")
+        ctx.print("HV_MIND is not set.")
         ctx.print("")
         ctx.print("To become this mind, set the environment variable and run again:")
-        ctx.print(f"  export MG_MIND={mind.name}")
-        ctx.print(f"  mg become {mind.name}")
+        ctx.print(f"  export HV_MIND={mind.name}")
+        ctx.print(f"  hv become {mind.name}")
         return
 
-    # MG_MIND matches - output files to read (works for initial load or post-compaction)
+    # HV_MIND matches - output files to read (works for initial load or post-compaction)
     _output_startup_files(ctx, mind)
 
 

@@ -14,10 +14,10 @@ from textual.containers import Vertical
 from textual.events import Click
 from textual.widgets import Static, Tree
 
-from mg.helpers.tui import helpers
-from mg.helpers.tui.TuiModel import SessionEntry
-from mg.helpers.utils.trees import TreeNode, build_tree
-from mg.wrappers.git import BranchStats
+from haiv.helpers.tui import helpers
+from haiv.helpers.tui.TuiModel import SessionEntry
+from haiv.helpers.utils.trees import TreeNode, build_tree
+from haiv.wrappers.git import BranchStats
 
 
 class SessionPreview(Static):

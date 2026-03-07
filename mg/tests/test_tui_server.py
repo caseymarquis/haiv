@@ -6,14 +6,14 @@ from typing import cast
 
 import pytest
 
-from mg._infrastructure.TuiServer import (
+from haiv._infrastructure.TuiServer import (
     ConcurrencyError,
     ReadRequest,
     TuiServer,
     WriteRequest,
     pipe_address,
 )
-from mg.helpers.tui.TuiModel import HudSection, TuiModel
+from haiv.helpers.tui.TuiModel import HudSection, TuiModel
 
 
 @pytest.fixture

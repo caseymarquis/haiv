@@ -1,4 +1,4 @@
-"""Unit tests for mg users new command.
+"""Unit tests for hv users new command.
 
 These test routing and flag parsing without executing the command.
 Integration tests are in test_users_new.py.
@@ -6,7 +6,7 @@ Integration tests are in test_users_new.py.
 
 import pytest
 
-from mg import test
+from haiv import test
 
 
 class TestUsersNewRouting:

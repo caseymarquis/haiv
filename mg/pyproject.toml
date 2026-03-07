@@ -1,7 +1,7 @@
 [project]
-name = "mg"
+name = "haiv"
 version = "0.1.0"
-description = "API for building mg commands and workflows"
+description = "API for building haiv commands and workflows"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
@@ -25,15 +25,15 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/caseymarquis/mind-games"
-Repository = "https://github.com/caseymarquis/mind-games"
+Homepage = "https://github.com/caseymarquis/haiv"
+Repository = "https://github.com/caseymarquis/haiv"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mg"]
+packages = ["src/haiv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

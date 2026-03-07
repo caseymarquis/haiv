@@ -30,7 +30,7 @@ from typing import Callable
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from mg.helpers.utils.message_handler import MessageHandler
+from haiv.helpers.utils.message_handler import MessageHandler
 
 
 class FileWatcher:

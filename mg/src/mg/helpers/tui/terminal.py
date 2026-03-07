@@ -1,4 +1,4 @@
-"""Terminal management for mg windows."""
+"""Terminal management for haiv windows."""
 
 from __future__ import annotations
 
@@ -8,40 +8,40 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mg.errors import CommandError
+from haiv.errors import CommandError
 
 if TYPE_CHECKING:
-    from mg.wrappers.wezterm import Pane, WezTerm
+    from haiv.wrappers.wezterm import Pane, WezTerm
 
 
 class TerminalManager:
-    """Manages WezTerm window and tab layout for an mg project.
+    """Manages WezTerm window and tab layout for a haiv project.
 
     Tab naming convention:
-        mg({project})        — hud tab, no active mind (TUI only)
-        mg({project}):mind   — hud tab with active mind
+        hv({project})        — hud tab, no active mind (TUI only)
+        hv({project}):mind   — hud tab with active mind
         ~mind                — parked mind tab
 
     Parked tabs don't need the project prefix because they're found
     by window_id from the hud tab. No ambiguity across projects.
     """
 
-    def __init__(self, wezterm: WezTerm, mg_root: Path, tui_command: list[str]) -> None:
+    def __init__(self, wezterm: WezTerm, hv_root: Path, tui_command: list[str]) -> None:
         self.wezterm = wezterm
-        self.mg_root = mg_root
+        self.hv_root = hv_root
         self.tui_command = tui_command
-        self.project = mg_root.name
+        self.project = hv_root.name
 
     # -- Tab title helpers --
 
     @property
     def hud_tab_prefix(self) -> str:
-        return f"mg({self.project})"
+        return f"hv({self.project})"
 
     def _hud_tab_title(self, mind: str | None = None) -> str:
         if mind:
-            return f"mg({self.project}):{mind}"
-        return f"mg({self.project})"
+            return f"hv({self.project}):{mind}"
+        return f"hv({self.project})"
 
     @staticmethod
     def _parked_tab_title(mind: str) -> str:
@@ -73,10 +73,10 @@ class TerminalManager:
         hud_pane = self._find_hud_pane()
         if hud_pane is None:
             raise CommandError(
-                "Workspace not running. Start it first with: mg start"
+                "Workspace not running. Start it first with: hv start"
             )
 
-        cwd = str(self.mg_root)
+        cwd = str(self.hv_root)
         old_mind_pane = self._find_mind_pane()
 
         if old_mind_pane is not None:
@@ -132,7 +132,7 @@ class TerminalManager:
         hud_pane = self._find_hud_pane()
         if hud_pane is None:
             raise CommandError(
-                "Workspace not running. Start it first with: mg start"
+                "Workspace not running. Start it first with: hv start"
             )
 
         target_pane = self._find_parked_mind(mind)
@@ -164,11 +164,11 @@ class TerminalManager:
         )
 
     def ensure_workspace(self) -> None:
-        """Ensure the mg window exists with the standard tab layout.
+        """Ensure the haiv window exists with the standard tab layout.
 
         | In WezTerm? | Window exists? | Action                                  |
         |-------------|----------------|-----------------------------------------|
-        | No          | N/A            | Launch WezTerm with 'mg start'          |
+        | No          | N/A            | Launch WezTerm with 'hv start'          |
         | Yes         | No             | Create new window, set up layout        |
         | Yes         | Yes            | Activate it, print message if needed    |
         """
@@ -183,7 +183,7 @@ class TerminalManager:
 
         # Window exists — focus it
         self.wezterm.activate_pane(hud_pane.pane_id)
-        print(f"mg window for '{self.project}' is ready.")
+        print(f"haiv window for '{self.project}' is ready.")
 
     def try_send_text_to_mind(self, mind: str, text: str, *, submit: bool = False) -> bool:
         """Send text to a mind's pane, whether active or parked.
@@ -295,15 +295,15 @@ class TerminalManager:
     # -- Actions --
 
     def _launch_wezterm(self) -> None:
-        """Launch a new WezTerm instance that runs 'mg start'."""
+        """Launch a new WezTerm instance that runs 'hv start'."""
         self.wezterm.run_external(
-            ["start", "--cwd", str(self.mg_root), "--", "mg", "start"],
+            ["start", "--cwd", str(self.hv_root), "--", "hv", "start"],
             intent=f"launch WezTerm for '{self.project}'",
         )
 
     def _create_window(self) -> None:
         """Create a new window with hud tab."""
-        cwd = str(self.mg_root)
+        cwd = str(self.hv_root)
 
         # New window with TUI running in the hud pane
         hud_pane_id = self.wezterm.spawn(
@@ -311,7 +311,7 @@ class TerminalManager:
         )
         self.wezterm.set_tab_title(self._hud_tab_title(), pane_id=hud_pane_id)
 
-        # Split right for mind pane (empty shell, ready for mg start <mind>)
+        # Split right for mind pane (empty shell, ready for hv start <mind>)
         self.wezterm.split_pane(hud_pane_id, direction="right", percent=50, cwd=cwd)
 
         # Focus the hud pane

@@ -1,9 +1,9 @@
-"""Tests for mg.helpers.packages module."""
+"""Tests for haiv.helpers.packages module."""
 
 import pytest
 from pathlib import Path
 
-from mg.helpers.packages import (
+from haiv.helpers.packages import (
     PackageSource,
     PackageInfo,
     PkgSearchResult,
@@ -11,8 +11,8 @@ from mg.helpers.packages import (
     discover_packages,
     discover_packages_detailed,
 )
-from mg.helpers.users import UserInfo, UserPaths
-from mg._infrastructure.identity import Identity
+from haiv.helpers.users import UserInfo, UserPaths
+from haiv._infrastructure.identity import Identity
 
 
 def make_user(tmp_path: Path, name: str = "testuser") -> UserInfo:
@@ -35,38 +35,38 @@ def make_valid_package(pkg_root: Path) -> None:
 class TestDiscoverPackages:
     """Tests for discover_packages function."""
 
-    def test_core_only_when_no_mg_root(self):
-        """Only core package returned when mg_root is None."""
-        result = discover_packages(mg_root=None)
+    def test_core_only_when_no_hv_root(self):
+        """Only core package returned when hv_root is None."""
+        result = discover_packages(hv_root=None)
 
         assert len(result) == 1
-        assert result[0].name == "mg_core"
+        assert result[0].name == "haiv_core"
         assert result[0].source == PackageSource.CORE
 
     def test_core_always_included(self, tmp_path):
-        """Core package is always included even with empty mg_root."""
+        """Core package is always included even with empty hv_root."""
         result = discover_packages(tmp_path)
 
         assert len(result) >= 1
         core = result[0]
-        assert core.name == "mg_core"
+        assert core.name == "haiv_core"
         assert core.source == PackageSource.CORE
 
     def test_project_local_included_when_valid(self, tmp_path):
-        """Project package included when src/mg_project/commands/__init__.py exists."""
-        make_valid_package(tmp_path / "src" / "mg_project")
+        """Project package included when src/hv_project/commands/__init__.py exists."""
+        make_valid_package(tmp_path / "src" / "hv_project")
 
         result = discover_packages(tmp_path)
 
         sources = [p.source for p in result]
         assert PackageSource.PROJECT_LOCAL in sources
         project = next(p for p in result if p.source == PackageSource.PROJECT_LOCAL)
-        assert project.name == "mg_project"
-        assert project.paths.root == tmp_path / "src" / "mg_project"
+        assert project.name == "hv_project"
+        assert project.paths.root == tmp_path / "src" / "hv_project"
 
     def test_project_local_omitted_when_no_init(self, tmp_path):
         """Project package omitted when commands/__init__.py missing."""
-        (tmp_path / "src" / "mg_project" / "commands").mkdir(parents=True)
+        (tmp_path / "src" / "hv_project" / "commands").mkdir(parents=True)
         # No __init__.py
 
         result = discover_packages(tmp_path)
@@ -76,7 +76,7 @@ class TestDiscoverPackages:
 
     def test_project_local_omitted_when_no_commands(self, tmp_path):
         """Project package omitted when commands/ directory missing."""
-        (tmp_path / "src" / "mg_project").mkdir(parents=True)
+        (tmp_path / "src" / "hv_project").mkdir(parents=True)
         # No commands/ directory
 
         result = discover_packages(tmp_path)
@@ -84,8 +84,8 @@ class TestDiscoverPackages:
         sources = [p.source for p in result]
         assert PackageSource.PROJECT_LOCAL not in sources
 
-    def test_project_local_omitted_when_no_mg_project(self, tmp_path):
-        """Project package omitted when src/mg_project/ doesn't exist."""
+    def test_project_local_omitted_when_no_hv_project(self, tmp_path):
+        """Project package omitted when src/hv_project/ doesn't exist."""
         result = discover_packages(tmp_path)
 
         sources = [p.source for p in result]
@@ -94,15 +94,15 @@ class TestDiscoverPackages:
     def test_user_local_included_when_valid(self, tmp_path):
         """User package included when user provided and package is valid."""
         user = make_user(tmp_path)
-        make_valid_package(user.paths.mg_user.root)
+        make_valid_package(user.paths.hv_user.root)
 
         result = discover_packages(tmp_path, user=user)
 
         sources = [p.source for p in result]
         assert PackageSource.USER_LOCAL in sources
         user_pkg = next(p for p in result if p.source == PackageSource.USER_LOCAL)
-        assert user_pkg.name == "mg_user"
-        assert user_pkg.paths.root == user.paths.mg_user.root
+        assert user_pkg.name == "hv_user"
+        assert user_pkg.paths.root == user.paths.hv_user.root
 
     def test_user_local_omitted_when_no_user(self, tmp_path):
         """User package omitted when no user provided."""
@@ -114,7 +114,7 @@ class TestDiscoverPackages:
     def test_user_local_omitted_when_no_init(self, tmp_path):
         """User package omitted when commands/__init__.py missing."""
         user = make_user(tmp_path)
-        (user.paths.mg_user.commands_dir).mkdir(parents=True)
+        (user.paths.hv_user.commands_dir).mkdir(parents=True)
         # No __init__.py
 
         result = discover_packages(tmp_path, user=user)
@@ -125,7 +125,7 @@ class TestDiscoverPackages:
     def test_user_local_omitted_when_no_commands(self, tmp_path):
         """User package omitted when user's commands/ doesn't exist."""
         user = make_user(tmp_path)
-        (user.paths.mg_user.root).mkdir(parents=True)
+        (user.paths.hv_user.root).mkdir(parents=True)
         # No commands/ directory
 
         result = discover_packages(tmp_path, user=user)
@@ -135,9 +135,9 @@ class TestDiscoverPackages:
 
     def test_discovery_order(self, tmp_path):
         """Packages returned in discovery order: CORE, PROJECT_LOCAL, USER_LOCAL."""
-        make_valid_package(tmp_path / "src" / "mg_project")
+        make_valid_package(tmp_path / "src" / "hv_project")
         user = make_user(tmp_path)
-        make_valid_package(user.paths.mg_user.root)
+        make_valid_package(user.paths.hv_user.root)
 
         result = discover_packages(tmp_path, user=user)
 
@@ -149,14 +149,14 @@ class TestDiscoverPackages:
         ]
 
     def test_core_paths_from_installed_module(self, tmp_path):
-        """Core package paths come from the installed mg_core module."""
-        import mg_core
-        from mg.paths import PkgPaths
+        """Core package paths come from the installed haiv_core module."""
+        import haiv_core
+        from haiv.paths import PkgPaths
 
         result = discover_packages(tmp_path)
 
         core = result[0]
-        expected_paths = PkgPaths.from_module(mg_core)
+        expected_paths = PkgPaths.from_module(haiv_core)
         assert core.paths.root == expected_paths.root
 
 
@@ -174,7 +174,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_included_matches_packages(self, tmp_path):
         """Included list has same packages as packages list."""
-        make_valid_package(tmp_path / "src" / "mg_project")
+        make_valid_package(tmp_path / "src" / "hv_project")
 
         result = discover_packages_detailed(tmp_path)
 
@@ -185,7 +185,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_skipped_has_reasons(self, tmp_path):
         """Skipped packages have skip reasons."""
-        # Don't create mg_project - it will be skipped
+        # Don't create hv_project - it will be skipped
 
         result = discover_packages_detailed(tmp_path)
 
@@ -195,7 +195,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_skip_reason_no_commands_dir(self, tmp_path):
         """Skip reason when commands/ directory missing."""
-        (tmp_path / "src" / "mg_project").mkdir(parents=True)
+        (tmp_path / "src" / "hv_project").mkdir(parents=True)
 
         result = discover_packages_detailed(tmp_path)
 
@@ -205,7 +205,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_skip_reason_no_init(self, tmp_path):
         """Skip reason when commands/__init__.py missing."""
-        (tmp_path / "src" / "mg_project" / "commands").mkdir(parents=True)
+        (tmp_path / "src" / "hv_project" / "commands").mkdir(parents=True)
 
         result = discover_packages_detailed(tmp_path)
 
@@ -215,7 +215,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_included_has_no_reason(self, tmp_path):
         """Included packages have None for reason."""
-        make_valid_package(tmp_path / "src" / "mg_project")
+        make_valid_package(tmp_path / "src" / "hv_project")
 
         result = discover_packages_detailed(tmp_path)
 
@@ -261,14 +261,14 @@ class TestDiscoverPackagesDetailed:
         assert len(user_installed) == 1
         assert user_installed[0].reason == "not implemented"
 
-    def test_mg_root_none_skips_project_and_user(self):
-        """When mg_root is None, project and user are skipped."""
-        result = discover_packages_detailed(mg_root=None)
+    def test_hv_root_none_skips_project_and_user(self):
+        """When hv_root is None, project and user are skipped."""
+        result = discover_packages_detailed(hv_root=None)
 
         project = [s for s in result.skipped if s.source == PackageSource.PROJECT_LOCAL]
         user = [s for s in result.skipped if s.source == PackageSource.USER_LOCAL]
 
         assert len(project) == 1
-        assert project[0].reason == "mg_root not provided"
+        assert project[0].reason == "hv_root not provided"
         assert len(user) == 1
-        assert user[0].reason == "mg_root not provided"
+        assert user[0].reason == "hv_root not provided"

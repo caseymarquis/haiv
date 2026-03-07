@@ -10,7 +10,7 @@ from __future__ import annotations
 import platform
 from dataclasses import dataclass
 
-from mg.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import TuiModel
 
 
 # ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ from mg.helpers.tui.TuiModel import TuiModel
 # ---------------------------------------------------------------------------
 
 RESTART_EXIT_CODE = 75
-"""Exit code used by mg-tui to signal the restart loop."""
+"""Exit code used by haiv-tui to signal the restart loop."""
 
 
 # ---------------------------------------------------------------------------
@@ -29,12 +29,12 @@ RESTART_EXIT_CODE = 75
 def pipe_address(project: str) -> str:
     """Derive the IPC address from the project name.
 
-    Unix:    /tmp/mg-{project}.sock
-    Windows: \\\\.\\pipe\\mg-{project}
+    Unix:    /tmp/haiv-{project}.sock
+    Windows: \\\\.\\pipe\\haiv-{project}
     """
     if platform.system() == "Windows":
-        return rf"\\.\pipe\mg-{project}"
-    return f"/tmp/mg-{project}.sock"
+        return rf"\\.\pipe\haiv-{project}"
+    return f"/tmp/haiv-{project}.sock"
 
 
 # ---------------------------------------------------------------------------

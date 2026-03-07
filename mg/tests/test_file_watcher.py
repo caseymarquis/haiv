@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from mg.helpers.utils.file_watcher import FileWatcher
+from haiv.helpers.utils.file_watcher import FileWatcher
 
 # Fast timing for tests.
 _DEBOUNCE = 0.05

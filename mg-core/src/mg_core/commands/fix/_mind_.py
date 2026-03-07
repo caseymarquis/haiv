@@ -1,12 +1,12 @@
-"""mg fix {mind} - Recover a frozen Claude session.
+"""hv fix {mind} - Recover a frozen Claude session.
 
 Step-based recovery workflow:
-- mg fix <mind>: Launch recovery Claude
-- mg fix <mind> --stage discover: Show diagnostics
-- mg fix <mind> --stage capture: Capture pane content
-- mg fix <mind> --stage kill: Kill the frozen window
-- mg fix <mind> --stage resume: Resume the session
-- mg fix <mind> --stage restore: Instructions for restoring captured input
+- hv fix <mind>: Launch recovery Claude
+- hv fix <mind> --stage discover: Show diagnostics
+- hv fix <mind> --stage capture: Capture pane content
+- hv fix <mind> --stage kill: Kill the frozen window
+- hv fix <mind> --stage resume: Resume the session
+- hv fix <mind> --stage restore: Instructions for restoring captured input
 """
 
 from __future__ import annotations
@@ -14,11 +14,11 @@ from __future__ import annotations
 import os
 import subprocess
 
-from mg import cmd
-from mg.errors import CommandError
-from mg.helpers.minds import Mind
-from mg.helpers.sessions import get_most_recent_session_for_mind
-from mg.wrappers.tmux import Tmux
+from haiv import cmd
+from haiv.errors import CommandError
+from haiv.helpers.minds import Mind
+from haiv.helpers.sessions import get_most_recent_session_for_mind
+from haiv.wrappers.tmux import Tmux
 
 
 def define() -> cmd.Def:
@@ -91,11 +91,11 @@ def _step_discover(ctx: cmd.Ctx, mind: Mind) -> None:
     elif not has_window:
         ctx.print("Window already closed.")
         if session:
-            ctx.print(f"Run: mg fix {mind.name} --stage resume")
+            ctx.print(f"Run: hv fix {mind.name} --stage resume")
         else:
-            ctx.print(f"Start fresh: mg start {mind.name} --tmux --task \"<task>\"")
+            ctx.print(f"Start fresh: hv start {mind.name} --tmux --task \"<task>\"")
     else:
-        ctx.print(f"Run: mg fix {mind.name} --stage capture")
+        ctx.print(f"Run: hv fix {mind.name} --stage capture")
 
 
 def _step_capture(ctx: cmd.Ctx, mind: Mind) -> None:
@@ -127,7 +127,7 @@ def _step_capture(ctx: cmd.Ctx, mind: Mind) -> None:
     ctx.print("If you find pending input, save it - you'll restore it later.")
     ctx.print()
     ctx.print("## Next Step")
-    ctx.print(f"Run: mg fix {mind.name} --stage kill")
+    ctx.print(f"Run: hv fix {mind.name} --stage kill")
 
 
 def _step_kill(ctx: cmd.Ctx, mind: Mind) -> None:
@@ -143,7 +143,7 @@ def _step_kill(ctx: cmd.Ctx, mind: Mind) -> None:
     ctx.print()
 
     ctx.print("## Next Step")
-    ctx.print(f"Run: mg fix {mind.name} --stage resume")
+    ctx.print(f"Run: hv fix {mind.name} --stage resume")
 
 
 def _step_resume(ctx: cmd.Ctx, mind: Mind) -> None:
@@ -154,14 +154,14 @@ def _step_resume(ctx: cmd.Ctx, mind: Mind) -> None:
 
     if not session:
         ctx.print("No tracked session found.")
-        ctx.print(f"Start fresh: mg start {mind.name} --tmux --task \"<task>\"")
+        ctx.print(f"Start fresh: hv start {mind.name} --tmux --task \"<task>\"")
         return
 
     ctx.print(f"# Resuming session [{session.short_id}]: {session.task}\n")
 
-    # Run mg start with resume
+    # Run hv start with resume
     subprocess.run([
-        "mg", "start", mind.name, "--tmux", "--resume", str(session.short_id)
+        "hv", "start", mind.name, "--tmux", "--resume", str(session.short_id)
     ])
 
     ctx.print()
@@ -173,7 +173,7 @@ def _step_resume(ctx: cmd.Ctx, mind: Mind) -> None:
     ctx.print("The user will approve this command when the session has fully loaded.")
     ctx.print()
     ctx.print("## Then (if you captured pending input)")
-    ctx.print(f"Run: mg fix {mind.name} --stage restore")
+    ctx.print(f"Run: hv fix {mind.name} --stage restore")
     ctx.print()
     ctx.print("If no pending input was captured, recovery is complete after clearing the buffer.")
 
@@ -207,7 +207,7 @@ def _launch_recovery_claude(ctx: cmd.Ctx, mind: Mind) -> None:
     """Launch a recovery Claude instance."""
     if os.environ.get("TMUX"):
         raise CommandError(
-            "Run 'mg fix' from outside tmux.\n"
+            "Run 'hv fix' from outside tmux.\n"
             "The recovery Claude needs to operate on tmux externally."
         )
 
@@ -216,14 +216,14 @@ def _launch_recovery_claude(ctx: cmd.Ctx, mind: Mind) -> None:
 
     # Build the allowlist - stage commands plus tmux send-keys for restore
     allowed_tools = [
-        f"Bash(mg fix {mind.name} --stage *)",
+        f"Bash(hv fix {mind.name} --stage *)",
         f"Bash(tmux send-keys -t {target} *)",
     ]
 
     # Initial prompt
     prompt = (
         f"You are recovering a frozen Claude session for mind '{mind.name}'. "
-        f"Run `mg fix {mind.name} --stage discover` to begin. "
+        f"Run `hv fix {mind.name} --stage discover` to begin. "
         "Follow the 'Next Step' instructions after each command. "
         "Proceed autonomously. Only stop if you encounter a problem."
     )

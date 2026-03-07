@@ -1,6 +1,6 @@
 """Greet command - has a name param."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:

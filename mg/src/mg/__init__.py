@@ -1,8 +1,8 @@
-"""mg: API for building mg commands."""
+"""haiv: API for building haiv commands."""
 
-from mg import cmd, errors, paths, test
-from mg.wrappers import git
-from mg._infrastructure import resolvers
+from haiv import cmd, errors, paths, test
+from haiv.wrappers import git
+from haiv._infrastructure import resolvers
 from punq import Container
 
 __version__ = "0.1.0"

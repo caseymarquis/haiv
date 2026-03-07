@@ -1,15 +1,15 @@
-"""Tests for mg pop command."""
+"""Tests for hv pop command."""
 
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mg import test
-from mg.errors import CommandError
-from mg.helpers.sessions import create_session, load_sessions
-from mg.test import Sandbox
-from mg.wrappers.git import Git
+from haiv import test
+from haiv.errors import CommandError
+from haiv.helpers.sessions import create_session, load_sessions
+from haiv.test import Sandbox
+from haiv.wrappers.git import Git
 
 
 # =============================================================================
@@ -19,7 +19,7 @@ from mg.wrappers.git import Git
 
 @pytest.fixture
 def sandbox():
-    """Sandbox with git repo on mg-state, main in a worktree (mirrors real setup)."""
+    """Sandbox with git repo on haiv, main in a worktree (mirrors real setup)."""
     sb = test.create_sandbox()
     root = sb.ctx.paths.root
     git = Git(root, quiet=True)
@@ -32,8 +32,8 @@ def sandbox():
     git.run("add .")
     git.run("commit -m 'Initial commit'")
 
-    # Switch root to mg-state so main can live in a worktree
-    git.run("checkout -b mg-state")
+    # Switch root to haiv so main can live in a worktree
+    git.run("checkout -b haiv")
     main_worktree = root / "worktrees" / "main"
     git.run(f"worktree add {main_worktree} main")
 
@@ -75,7 +75,7 @@ class TestRouting:
     """Test command routes correctly."""
 
     def test_routes_to_pop(self):
-        """mg pop routes to correct file."""
+        """hv pop routes to correct file."""
         match = test.require_routes_to("pop")
         assert match.file.name == "pop.py"
 
@@ -92,7 +92,7 @@ class TestChecklist:
         """Prints the wind-down checklist when no flags given."""
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop")
         output = capsys.readouterr().out
 
@@ -102,15 +102,15 @@ class TestChecklist:
         assert "Discuss" in output
         assert "test coverage" in output
         assert "Commit" in output
-        assert "mg pop --merge" in output
-        assert "mg pop --session" in output
+        assert "hv pop --merge" in output
+        assert "hv pop --session" in output
         assert "spirit of the original task" in output
 
     def test_scaffolds_aar_in_parent_mind(self, sandbox: Sandbox):
         """Creates AAR template in parent mind's work/aars/ directory."""
         parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             sandbox.run("pop")
 
         aar_path = (
@@ -127,7 +127,7 @@ class TestChecklist:
         aar_path = aar_dir / "test-task.md"
         aar_path.write_text("existing content\n")
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             sandbox.run("pop")
 
         assert aar_path.read_text() == "existing content\n"
@@ -136,7 +136,7 @@ class TestChecklist:
         """Checklist includes an item referencing the AAR path."""
         parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             sandbox.run("pop")
         output = capsys.readouterr().out
 
@@ -147,7 +147,7 @@ class TestChecklist:
         """Checklist omits AAR item when session has no parent."""
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop")
         output = capsys.readouterr().out
 
@@ -177,7 +177,7 @@ class TestMerge:
 
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop --merge")
 
         # Branch should be merged — feature.txt should exist in main
@@ -194,15 +194,15 @@ class TestMerge:
 
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop --merge")
 
         assert not echo_worktree.exists()
 
-    def test_errors_without_mg_session(self, sandbox: Sandbox):
-        """Raises error when MG_SESSION is not set."""
+    def test_errors_without_hv_session(self, sandbox: Sandbox):
+        """Raises error when HV_SESSION is not set."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(CommandError, match="MG_SESSION"):
+            with pytest.raises(CommandError, match="HV_SESSION"):
                 sandbox.run("pop --merge")
 
     def test_skips_merge_when_branch_has_no_new_commits(self, sandbox: Sandbox, capsys):
@@ -216,7 +216,7 @@ class TestMerge:
 
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop --merge")
 
         # Worktree and branch should still be cleaned up
@@ -230,7 +230,7 @@ class TestMerge:
         """Reports cleanly when the branch no longer exists."""
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             sandbox.run("pop --merge")
 
         output = capsys.readouterr().out
@@ -245,7 +245,7 @@ class TestMerge:
             "echo",
         )
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             with pytest.raises(CommandError, match="missing branch"):
                 sandbox.run("pop --merge")
 
@@ -262,7 +262,7 @@ class TestSession:
         """Removes session, launches parent mind, and closes pane."""
         parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             ctx = sandbox.run("pop --session")
 
         # Session should be removed
@@ -280,7 +280,7 @@ class TestSession:
         """Sends AAR notification to parent mind's pane."""
         parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             ctx = sandbox.run("pop --session")
 
         mock_tui = cast(MagicMock, ctx.tui)
@@ -294,7 +294,7 @@ class TestSession:
         """Completes successfully even when parent pane is not found."""
         parent, child = _create_parent_and_child(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": child.id}):
+        with patch.dict("os.environ", {"HV_SESSION": child.id}):
             ctx = sandbox.run("pop --session")
 
         # mind_try_send_text returns MagicMock (truthy) by default,
@@ -306,26 +306,26 @@ class TestSession:
         """Raises error when session has no parent."""
         session = _create_session_with_branch(sandbox)
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             with pytest.raises(CommandError, match="no parent"):
                 sandbox.run("pop --session")
 
     def test_errors_when_parent_not_found(self, sandbox: Sandbox):
         """Raises error when parent session doesn't exist."""
         session = _create_session_with_branch(sandbox)
-        from mg.helpers.sessions import update_session
+        from haiv.helpers.sessions import update_session
         update_session(
             sandbox.ctx.paths.user.sessions_file,
             session.id,
             lambda s: setattr(s, "parent_id", "nonexistent-id"),
         )
 
-        with patch.dict("os.environ", {"MG_SESSION": session.id}):
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
             with pytest.raises(CommandError, match="Parent session not found"):
                 sandbox.run("pop --session")
 
-    def test_errors_without_mg_session(self, sandbox: Sandbox):
-        """Raises error when MG_SESSION is not set."""
+    def test_errors_without_hv_session(self, sandbox: Sandbox):
+        """Raises error when HV_SESSION is not set."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(CommandError, match="MG_SESSION"):
+            with pytest.raises(CommandError, match="HV_SESSION"):
                 sandbox.run("pop --session")

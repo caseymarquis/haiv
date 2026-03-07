@@ -5,27 +5,27 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 
-from mg.wrappers.tmux import Tmux, TmuxWindow, TmuxError
-from mg.errors import CommandError
+from haiv.wrappers.tmux import Tmux, TmuxWindow, TmuxError
+from haiv.errors import CommandError
 
 
 @pytest.fixture
 def tmux():
     """Create a Tmux instance with quiet=True for testing."""
-    return Tmux(mg_root=Path("/home/user/mind-games"), quiet=True)
+    return Tmux(hv_root=Path("/home/user/haiv"), quiet=True)
 
 
 class TestTmuxInit:
-    def test_session_derived_from_mg_root_name(self, tmux):
-        assert tmux.session == "mind-games"
+    def test_session_derived_from_hv_root_name(self, tmux):
+        assert tmux.session == "haiv"
 
     def test_session_with_different_path(self):
-        t = Tmux(mg_root=Path("/some/other/project"))
+        t = Tmux(hv_root=Path("/some/other/project"))
         assert t.session == "project"
 
 
 class TestTmuxRun:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_run_creates_session_then_executes(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="output", stderr="")
 
@@ -37,7 +37,7 @@ class TestTmuxRun:
         assert "list-sessions" in mock_run.call_args_list[1][0][0]
         assert result == "output"
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_run_raises_tmux_error_on_failure(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=1, stdout="", stderr="no server running"
@@ -51,7 +51,7 @@ class TestTmuxRun:
 
 
 class TestCreateSessionIfNeeded:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_creates_session_when_missing(self, mock_run, tmux):
         # First call (has-session) fails, second call (new-session) succeeds
         mock_run.side_effect = [
@@ -63,9 +63,9 @@ class TestCreateSessionIfNeeded:
 
         assert created is True
         assert mock_run.call_count == 2
-        assert "new-session -d -s mind-games" in mock_run.call_args_list[1][0][0]
+        assert "new-session -d -s haiv" in mock_run.call_args_list[1][0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_skips_creation_when_exists(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -76,15 +76,15 @@ class TestCreateSessionIfNeeded:
 
 
 class TestHasSession:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_has_session_returns_true_when_exists(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         assert tmux.has_session() is True
         mock_run.assert_called_once()
-        assert "has-session -t mind-games" in mock_run.call_args[0][0]
+        assert "has-session -t haiv" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_has_session_returns_false_when_missing(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=1, stdout="", stderr="no session"
@@ -94,7 +94,7 @@ class TestHasSession:
 
 
 class TestListWindows:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_list_windows_parses_output(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -105,9 +105,9 @@ class TestListWindows:
         windows = tmux.list_windows()
 
         assert windows == ["0:main", "1:editor", "2:tests"]
-        assert "list-windows -t mind-games" in mock_run.call_args[0][0]
+        assert "list-windows -t haiv" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_list_windows_with_custom_format(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=0, stdout="main\neditor\n", stderr=""
@@ -117,7 +117,7 @@ class TestListWindows:
 
         assert "-F '#{window_name}'" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_list_windows_handles_empty_output(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -127,7 +127,7 @@ class TestListWindows:
 
 
 class TestCapturPane:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_capture_pane_default_target(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=0, stdout="pane content\n", stderr=""
@@ -136,17 +136,17 @@ class TestCapturPane:
         result = tmux.capture_pane()
 
         assert result == "pane content\n"
-        assert "capture-pane -p -t mind-games" in mock_run.call_args[0][0]
+        assert "capture-pane -p -t haiv" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_capture_pane_with_target(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
 
         tmux.capture_pane(target="1.0")
 
-        assert "-t mind-games:1.0" in mock_run.call_args[0][0]
+        assert "-t haiv:1.0" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_capture_pane_with_line_range(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="content", stderr="")
 
@@ -158,18 +158,18 @@ class TestCapturPane:
 
 
 class TestSendKeys:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_send_keys_with_enter(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         tmux.send_keys("ls -la")
 
         cmd = mock_run.call_args[0][0]
-        assert "send-keys -t mind-games" in cmd
+        assert "send-keys -t haiv" in cmd
         assert "'ls -la'" in cmd
         assert "Enter" in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_send_keys_without_enter(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -179,15 +179,15 @@ class TestSendKeys:
         assert "'partial'" in cmd
         assert "Enter" not in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_send_keys_with_target(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         tmux.send_keys("cmd", target="2")
 
-        assert "-t mind-games:2" in mock_run.call_args[0][0]
+        assert "-t haiv:2" in mock_run.call_args[0][0]
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_send_keys_escapes_single_quotes(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -218,8 +218,8 @@ class TestAttach:
         assert "Already inside tmux" in str(exc_info.value)
         assert "switch-client" in str(exc_info.value)
 
-    @patch("mg.wrappers.tmux.os.execvp")
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.os.execvp")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_attach_creates_session_and_execs(self, mock_run, mock_execvp, tmux, monkeypatch):
         monkeypatch.delenv("CLAUDECODE", raising=False)
         monkeypatch.delenv("TMUX", raising=False)
@@ -232,12 +232,12 @@ class TestAttach:
         tmux.attach()
 
         mock_execvp.assert_called_once_with(
-            "tmux", ["tmux", "attach-session", "-t", "mind-games"]
+            "tmux", ["tmux", "attach-session", "-t", "haiv"]
         )
 
 
 class TestGetWindow:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.v.wrappers.tmux.subprocess.run")
     def test_get_window_creates_when_missing(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="bash\n", stderr="")
 
@@ -249,7 +249,7 @@ class TestGetWindow:
         # Should have called list-windows and new-window
         assert any("new-window" in str(call) for call in mock_run.call_args_list)
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_get_window_returns_existing(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="bash\nwren\n", stderr="")
 
@@ -260,7 +260,7 @@ class TestGetWindow:
         # Should NOT have called new-window
         assert not any("new-window" in str(call) for call in mock_run.call_args_list)
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_get_window_raises_when_must_create_and_exists(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="wren\n", stderr="")
 
@@ -271,30 +271,30 @@ class TestGetWindow:
 
 
 class TestSetenv:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_setenv_session_scope(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-        tmux.setenv("MG_MIND", "wren")
+        tmux.setenv("HV_MIND", "wren")
 
         cmd = mock_run.call_args[0][0]
         assert "setenv" in cmd
-        assert "-t mind-games" in cmd
-        assert "MG_MIND" in cmd
+        assert "-t haiv" in cmd
+        assert "HV_MIND" in cmd
         assert "'wren'" in cmd
-        # Check -g flag is not present (but -g in mind-games is fine)
+        # Check -g flag is not present (but -g in haiv is fine)
         assert "setenv -g" not in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_setenv_global_scope(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
-        tmux.setenv("MG_ROOT", "/path/to/root", global_=True)
+        tmux.setenv("HV_ROOT", "/path/to/root", global_=True)
 
         cmd = mock_run.call_args[0][0]
         assert "-g" in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_setenv_escapes_single_quotes(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -305,19 +305,19 @@ class TestSetenv:
 
 
 class TestHasWindow:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_has_window_returns_true_when_exists(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="bash\nwren\n", stderr="")
 
         assert tmux.has_window("wren") is True
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_has_window_returns_false_when_missing(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="bash\nother\n", stderr="")
 
         assert tmux.has_window("wren") is False
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_has_window_returns_false_when_empty(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -325,7 +325,7 @@ class TestHasWindow:
 
 
 class TestKillWindow:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_kill_window_sends_correct_command(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
@@ -333,9 +333,9 @@ class TestKillWindow:
 
         cmd = mock_run.call_args[0][0]
         assert "kill-window" in cmd
-        assert "-t mind-games:wren" in cmd
+        assert "-t haiv:wren" in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_kill_window_raises_on_failure(self, mock_run, tmux):
         mock_run.return_value = MagicMock(
             returncode=1, stdout="", stderr="no such window"
@@ -346,7 +346,7 @@ class TestKillWindow:
 
 
 class TestTmuxWindowKill:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_window_kill(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         window = TmuxWindow(tmux, "wren", created=True)
@@ -355,11 +355,11 @@ class TestTmuxWindowKill:
 
         cmd = mock_run.call_args[0][0]
         assert "kill-window" in cmd
-        assert "-t mind-games:wren" in cmd
+        assert "-t haiv:wren" in cmd
 
 
 class TestTmuxWindow:
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_window_send_keys(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         window = TmuxWindow(tmux, "wren", created=True)
@@ -368,10 +368,10 @@ class TestTmuxWindow:
 
         cmd = mock_run.call_args[0][0]
         assert "send-keys" in cmd
-        assert "-t mind-games:wren" in cmd
+        assert "-t haiv:wren" in cmd
         assert "'echo hello'" in cmd
 
-    @patch("mg.wrappers.tmux.subprocess.run")
+    @patch("haiv.wrappers.tmux.subprocess.run")
     def test_window_capture_pane(self, mock_run, tmux):
         mock_run.return_value = MagicMock(returncode=0, stdout="pane content\n", stderr="")
         window = TmuxWindow(tmux, "wren", created=True)
@@ -380,7 +380,7 @@ class TestTmuxWindow:
 
         assert result == "pane content\n"
         cmd = mock_run.call_args[0][0]
-        assert "-t mind-games:wren" in cmd
+        assert "-t haiv:wren" in cmd
 
     def test_window_attributes(self, tmux):
         window = TmuxWindow(tmux, "wren", created=True)

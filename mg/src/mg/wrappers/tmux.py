@@ -10,7 +10,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from mg.errors import CommandError
+from haiv.errors import CommandError
 
 
 class TmuxError(CommandError):
@@ -74,21 +74,21 @@ class TmuxWindow:
 class Tmux:
     """Thin wrapper around tmux commands for a single session.
 
-    The session name is derived from the mg_root directory name.
+    The session name is derived from the hv_root directory name.
 
     Args:
-        mg_root: Path to the mg repository root. Session name = directory name.
+        hv_root: Path to the haiv repository root. Session name = directory name.
         quiet: If True, suppress output and Claude prompts.
     """
 
-    def __init__(self, mg_root: Path, quiet: bool = False):
-        self.mg_root = Path(mg_root)
+    def __init__(self, hv_root: Path, quiet: bool = False):
+        self.hv_root = Path(hv_root)
         self.quiet = quiet
 
     @property
     def session(self) -> str:
-        """The tmux session name, derived from the mg_root directory name."""
-        return self.mg_root.name
+        """The tmux session name, derived from the hv_root directory name."""
+        return self.hv_root.name
 
     def _run(
         self,
@@ -336,7 +336,7 @@ class Tmux:
         if os.environ.get("CLAUDECODE"):
             raise CommandError(
                 "Cannot attach to tmux from within Claude Code. "
-                "Run 'mg tmux' from a regular terminal instead."
+                "Run 'hv tmux' from a regular terminal instead."
             )
         if os.environ.get("TMUX"):
             raise CommandError(

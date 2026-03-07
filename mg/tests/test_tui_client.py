@@ -11,10 +11,10 @@ import pytest
 # on the same xdist worker to avoid address conflicts.
 pytestmark = pytest.mark.xdist_group("tui_server")
 
-from mg._infrastructure.TuiServer import TuiLocalClient, TuiServer
-from mg.helpers.tui.TuiClient import TuiClient
-from mg.helpers.tui.TuiClient import ConcurrencyError
-from mg.helpers.tui.TuiModel import HudSection, TuiModel
+from haiv._infrastructure.TuiServer import TuiLocalClient, TuiServer
+from haiv.helpers.tui.TuiClient import TuiClient
+from haiv.helpers.tui.TuiClient import ConcurrencyError
+from haiv.helpers.tui.TuiModel import HudSection, TuiModel
 
 
 @pytest.fixture

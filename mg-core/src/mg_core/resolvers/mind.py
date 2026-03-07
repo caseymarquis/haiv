@@ -5,9 +5,9 @@ Converts a mind name string to a Mind object using the helpers.minds module.
 
 import sys
 
-from mg._infrastructure.resolvers import ResolverContext
+from haiv._infrastructure.resolvers import ResolverContext
 
-from mg.helpers.minds import Mind, resolve_mind
+from haiv.helpers.minds import Mind, resolve_mind
 
 
 def resolve(value: str, ctx: ResolverContext) -> Mind:

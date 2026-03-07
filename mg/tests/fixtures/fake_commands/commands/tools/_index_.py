@@ -1,6 +1,6 @@
 """Index command - directory default."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:

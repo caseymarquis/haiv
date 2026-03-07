@@ -1,8 +1,8 @@
-# mg-core
+# haiv-core
 
-Core commands for mg.
+Core commands for haiv.
 
-This package is installed by default in mg projects.
+This package is installed by default in haiv projects.
 
 ## Development
 

@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from mg.helpers.utils.message_handler import MessageHandler
+from haiv.helpers.utils.message_handler import MessageHandler
 
 # Fast tick for tests — don't wait 500ms per cycle.
 _TICK = 0.02

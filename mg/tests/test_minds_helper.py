@@ -1,9 +1,9 @@
-"""Tests for mg.helpers.minds module."""
+"""Tests for haiv.helpers.minds module."""
 
 import pytest
 from pathlib import Path
 
-from mg.helpers.minds import (
+from haiv.helpers.minds import (
     Mind,
     MindPaths,
     MindNotFoundError,
@@ -81,7 +81,7 @@ class TestMind:
         mind_dir.mkdir(parents=True)
         (mind_dir / "references.toml").write_text('''
 [[references]]
-path = "src/mg_project/__assets__/roles/coo.md"
+path = "src/hv_project/__assets__/roles/coo.md"
 
 [[references]]
 path = "users/casey/state/minds/wren/docs/problems.md"
@@ -91,7 +91,7 @@ path = "users/casey/state/minds/wren/docs/problems.md"
         refs = mind.get_references()
 
         assert len(refs) == 2
-        assert "src/mg_project/__assets__/roles/coo.md" in refs
+        assert "src/hv_project/__assets__/roles/coo.md" in refs
         assert "users/casey/state/minds/wren/docs/problems.md" in refs
 
     def test_get_references_skips_entries_without_path(self, tmp_path):
@@ -387,7 +387,7 @@ class TestResolveMind:
 
         assert mind.name == "wren"
         assert mind.paths.root == minds_dir / "wren"
-        assert mind.paths.mg_root == tmp_path
+        assert mind.paths.hv_root == tmp_path
 
     def test_resolves_mind_in_organizational_dir(self, tmp_path):
         """Resolves mind inside underscore directory."""
@@ -467,7 +467,7 @@ class TestListMinds:
 
 from unittest.mock import patch
 
-from mg.helpers.minds import (
+from haiv.helpers.minds import (
     InvalidMindNameError,
     MindExistsError,
     validate_mind_name,
@@ -558,7 +558,7 @@ class TestGenerateMindName:
 
     def test_returns_generated_name(self):
         """Returns name from subprocess."""
-        with patch("mg.helpers.minds.subprocess.run") as mock_run:
+        with patch("haiv.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
 
@@ -568,7 +568,7 @@ class TestGenerateMindName:
 
     def test_avoids_existing_names(self):
         """Passes existing names to avoid duplicates."""
-        with patch("mg.helpers.minds.subprocess.run") as mock_run:
+        with patch("haiv.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "robin\n"
             mock_run.return_value.returncode = 0
 
@@ -581,7 +581,7 @@ class TestGenerateMindName:
 
     def test_raises_on_subprocess_failure(self):
         """Raises RuntimeError when subprocess fails."""
-        with patch("mg.helpers.minds.subprocess.run") as mock_run:
+        with patch("haiv.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
             mock_run.return_value.stderr = "error"
 
@@ -594,12 +594,12 @@ class TestScaffoldMind:
 
     @pytest.fixture
     def templates(self):
-        """Create TemplateRenderer for mg_core assets."""
-        import mg_core
-        from mg.paths import PkgPaths
-        from mg.templates import TemplateRenderer
+        """Create TemplateRenderer for haiv_core assets."""
+        import haiv_core
+        from haiv.paths import PkgPaths
+        from haiv.templates import TemplateRenderer
 
-        pkg = PkgPaths.from_module(mg_core)
+        pkg = PkgPaths.from_module(haiv_core)
         return TemplateRenderer(pkg.assets_dir)
 
     def test_creates_mind_at_root_level(self, tmp_path, templates):

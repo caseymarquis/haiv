@@ -3,7 +3,7 @@
 This module contains every TUI operation as a standalone function. Each
 function receives all of its dependencies as parameters (client, file paths,
 etc.) and has no implicit state. This makes them independently testable and
-callable from anywhere — the TUI app, mg commands, tests — without pulling
+callable from anywhere — the TUI app, haiv commands, tests — without pulling
 in a dependency graph.
 
 The Tui class (tui.py) is a thin convenience wrapper that holds pre-loaded
@@ -21,18 +21,18 @@ import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mg.helpers.sessions import (
+from haiv.helpers.sessions import (
     Session,
     get_most_recent_session_for_mind,
     load_sessions,
     resolve_session,
 )
-from mg.helpers.tui._base import ModelClient
-from mg.helpers.tui.TuiModel import SessionEntry, TuiModel
-from mg.wrappers.git import BranchStats, Git
+from haiv.helpers.tui._base import ModelClient
+from haiv.helpers.tui.TuiModel import SessionEntry, TuiModel
+from haiv.wrappers.git import BranchStats, Git
 
 if TYPE_CHECKING:
-    from mg.helpers.tui.terminal import TerminalManager
+    from haiv.helpers.tui.terminal import TerminalManager
 
 
 # -- Model operations --
@@ -87,7 +87,7 @@ def errors_append(client: ModelClient, message: str) -> None:
 
 
 def workspace_start(terminal: TerminalManager) -> None:
-    """Ensure the mg workspace exists (window, hud tab, layout).
+    """Ensure the haiv workspace exists (window, hud tab, layout).
 
     Args:
         terminal: TerminalManager for pane operations.
@@ -103,7 +103,7 @@ def mind_launch(
     client: ModelClient,
     sessions_file: Path,
     mind_name: str,
-    mg_root: Path,
+    hv_root: Path,
     *,
     task: str | None = None,
     parent_id: str = "",
@@ -120,7 +120,7 @@ def mind_launch(
         client: A TuiClient or TuiLocalClient for model updates.
         sessions_file: Path to sessions.ig.toml.
         mind_name: Name of the mind to launch.
-        mg_root: Project root path (for environment variables).
+        hv_root: Project root path (for environment variables).
         task: Task description for new sessions. If None and no existing
               session, creates one with an empty task.
         parent_id: Parent session id (for delegation chains).
@@ -135,7 +135,7 @@ def mind_launch(
         if session is not None:
             print(
                 f"Mind '{mind_name}' is already active in the hud.\n"
-                f"To relaunch here: mg start {mind_name} --here"
+                f"To relaunch here: hv start {mind_name} --here"
             )
             sessions_refresh(client, sessions_file, git=git)
             return session
@@ -155,7 +155,7 @@ def mind_launch(
 
     # Build claude command and launch
     claude_cmd = build_claude_command(mind_name, session.claude_session_id)
-    env = build_env(mind_name, session.id, mg_root)
+    env = build_env(mind_name, session.id, hv_root)
     terminal.launch_in_mind_pane(mind_name, env, [claude_cmd])
 
     return session
@@ -213,8 +213,8 @@ def mind_close_pane(terminal: TerminalManager, mind_name: str) -> None:
 
 def build_claude_command(mind_name: str, claude_session_id: str) -> str:
     """Build the claude CLI command for launching a mind."""
-    prompt = f"Run `mg become {mind_name}`"
-    allowed = f"Bash(mg become {mind_name})"
+    prompt = f"Run `hv become {mind_name}`"
+    allowed = f"Bash(hv become {mind_name})"
     return (
         f"claude {shlex.quote(prompt)} "
         f"--session-id {shlex.quote(claude_session_id)} "
@@ -222,14 +222,14 @@ def build_claude_command(mind_name: str, claude_session_id: str) -> str:
     )
 
 
-def build_env(mind_name: str, session_id: str, mg_root: Path) -> dict[str, str]:
+def build_env(mind_name: str, session_id: str, hv_root: Path) -> dict[str, str]:
     """Build environment variables for a mind pane."""
-    from mg._infrastructure.env import MG_MIND, MG_ROOT, MG_SESSION
+    from haiv._infrastructure.env import HV_MIND, HV_ROOT, HV_SESSION
 
     return {
-        MG_MIND: mind_name,
-        MG_SESSION: session_id,
-        MG_ROOT: str(mg_root),
+        HV_MIND: mind_name,
+        HV_SESSION: session_id,
+        HV_ROOT: str(hv_root),
     }
 
 

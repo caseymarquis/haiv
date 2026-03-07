@@ -1,13 +1,13 @@
-"""Tests for mg.loader module."""
+"""Tests for haiv.loader module."""
 
 import pytest
 from pathlib import Path
 from types import ModuleType
 
-from mg._infrastructure.loader import load_command, load_commands_module, Command
-from mg import cmd
-from mg.paths import Paths
-from mg.util import module_to_folder
+from haiv._infrastructure.loader import load_command, load_commands_module, Command
+from haiv import cmd
+from haiv.paths import Paths
+from haiv.util import module_to_folder
 
 
 def make_paths() -> Paths:
@@ -15,7 +15,7 @@ def make_paths() -> Paths:
     return Paths(
         _called_from=Path("/test/cwd"),
         _pkg_root=Path("/test/pkg"),
-        _mg_root=None,
+        _hv_root=None,
     )
 
 
@@ -78,7 +78,7 @@ class TestLoadCommand:
         """Each load gets a fresh module (not cached)."""
         cmd_file = tmp_path / "counter.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 count = 0
 def define():
     return cmd.Def(description="Counter")
@@ -99,7 +99,7 @@ class TestCommandLifecycle:
         """Command.setup() delegates to module's setup()."""
         cmd_file = tmp_path / "with_setup.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 setup_called = False
 
@@ -123,7 +123,7 @@ def execute(ctx):
         """Command.setup() is no-op when module lacks setup()."""
         cmd_file = tmp_path / "no_setup.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 def define():
     return cmd.Def(description="No setup")
@@ -141,7 +141,7 @@ def execute(ctx):
         """Command.teardown() delegates to module's teardown()."""
         cmd_file = tmp_path / "with_teardown.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 teardown_called = False
 
@@ -165,7 +165,7 @@ def teardown(ctx):
         """Command.teardown() is no-op when module lacks teardown()."""
         cmd_file = tmp_path / "no_teardown.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 def define():
     return cmd.Def(description="No teardown")
@@ -183,7 +183,7 @@ def execute(ctx):
         """All lifecycle methods work together."""
         cmd_file = tmp_path / "full.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 calls = []
 
@@ -228,7 +228,7 @@ def execute(ctx):
         """Command without execute() raises on execute() call."""
         cmd_file = tmp_path / "no_execute.py"
         cmd_file.write_text("""
-from mg import cmd
+from haiv import cmd
 
 def define():
     return cmd.Def(description="No execute")
@@ -281,14 +281,14 @@ class TestLoadCommandsModule:
 
     def test_works_with_require_route(self, tmp_path):
         """Loaded module can be used with require_route."""
-        from mg._infrastructure.routing import require_route
+        from haiv._infrastructure.routing import require_route
 
         # Create commands structure
         commands_dir = tmp_path / "commands"
         commands_dir.mkdir()
         (commands_dir / "__init__.py").write_text("# commands")
         (commands_dir / "hello.py").write_text("""
-from mg import cmd
+from haiv import cmd
 def define():
     return cmd.Def(description="Say hello")
 def execute(ctx):

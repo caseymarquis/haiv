@@ -1,14 +1,14 @@
-"""Tests for mg.helpers.tui.helpers module."""
+"""Tests for haiv.helpers.tui.helpers module."""
 
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from mg.helpers.sessions import create_session, Session
-from mg.helpers.tui.helpers import mind_launch, sessions_refresh
-from mg.helpers.tui.TuiModel import TuiModel
-from mg.wrappers.git import BranchStats, Git
+from haiv.helpers.sessions import create_session, Session
+from haiv.helpers.tui.helpers import mind_launch, sessions_refresh
+from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.wrappers.git import BranchStats, Git
 
 
 def _mock_terminal(*, active_mind: str | None = None, parked_minds: list[str] | None = None):
@@ -96,7 +96,7 @@ class TestMindLaunchNoExistingPane:
         assert session.parent_id == "parent-123"
 
     def test_env_vars_include_mind_and_session(self, tmp_path):
-        """Environment variables contain MG_MIND, MG_SESSION, and MG_ROOT."""
+        """Environment variables contain HV_MIND, HV_SESSION, and HV_ROOT."""
         sessions_file = tmp_path / "sessions.toml"
         create_session(sessions_file, "task", "wren", status="staged")
         terminal = _mock_terminal()
@@ -107,12 +107,12 @@ class TestMindLaunchNoExistingPane:
         )
 
         env = terminal.launch_in_mind_pane.call_args[0][1]
-        assert env["MG_MIND"] == "wren"
-        assert env["MG_SESSION"] == session.id
-        assert env["MG_ROOT"] == str(tmp_path)
+        assert env["HV_MIND"] == "wren"
+        assert env["HV_SESSION"] == session.id
+        assert env["HV_ROOT"] == str(tmp_path)
 
     def test_claude_command_includes_become_and_session(self, tmp_path):
-        """Claude command contains mg become and session id."""
+        """Claude command contains hv become and session id."""
         sessions_file = tmp_path / "sessions.toml"
         create_session(sessions_file, "task", "wren", status="staged")
         terminal = _mock_terminal()
@@ -124,7 +124,7 @@ class TestMindLaunchNoExistingPane:
 
         commands = terminal.launch_in_mind_pane.call_args[0][2]
         assert len(commands) == 1
-        assert "mg become wren" in commands[0]
+        assert "hv become wren" in commands[0]
         assert "--session-id" in commands[0]
 
     def test_refreshes_model(self, tmp_path):

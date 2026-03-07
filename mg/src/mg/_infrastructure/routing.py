@@ -1,4 +1,4 @@
-"""File-based command routing for mg.
+"""File-based command routing for haiv.
 
 Routes command strings to Python files based on directory structure:
 - Literal directories match exactly: `foo/` matches "foo"
@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
-from mg.util import module_to_folder
+from haiv.util import module_to_folder
 
 
 class AmbiguousRouteError(Exception):

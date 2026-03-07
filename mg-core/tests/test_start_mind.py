@@ -1,4 +1,4 @@
-"""Tests for mg start {mind} command."""
+"""Tests for hv start {mind} command."""
 
 from pathlib import Path
 from typing import Any
@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mg import test
-from mg._infrastructure.args import ResolveRequest
-from mg.helpers.minds import Mind, MindPaths
+from haiv import test
+from haiv._infrastructure.args import ResolveRequest
+from haiv.helpers.minds import Mind, MindPaths
 
 
 # =============================================================================
@@ -33,7 +33,7 @@ def _resolve(tmp_path: Path):
 
 def _setup(tmp_path: Path):
     def setup(ctx):
-        ctx.paths._mg_root = tmp_path
+        ctx.paths._hv_root = tmp_path
     return setup
 
 
@@ -125,8 +125,8 @@ class TestStartExecution:
         assert kwargs["task"] is None
 
     def test_passes_parent_from_env(self, tmp_path):
-        """Parent session id is read from MG_SESSION env var."""
-        with patch.dict("os.environ", {"MG_SESSION": "parent-123"}):
+        """Parent session id is read from HV_SESSION env var."""
+        with patch.dict("os.environ", {"HV_SESSION": "parent-123"}):
             result = test.execute(
                 "start wren",
                 resolve=_resolve(tmp_path),
@@ -137,7 +137,7 @@ class TestStartExecution:
         assert kwargs["parent_id"] == "parent-123"
 
     def test_passes_empty_parent_when_no_env(self, tmp_path):
-        """Parent is empty string when MG_SESSION not set."""
+        """Parent is empty string when HV_SESSION not set."""
         with patch.dict("os.environ", {}, clear=True):
             result = test.execute(
                 "start wren",

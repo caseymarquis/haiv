@@ -1,4 +1,4 @@
-"""Unit tests for mg init command.
+"""Unit tests for hv init command.
 
 These test routing and flag parsing without executing the command.
 Integration tests are in test_init.py.
@@ -6,7 +6,7 @@ Integration tests are in test_init.py.
 
 import pytest
 
-from mg import cmd, test
+from haiv import cmd, test
 
 
 class TestInitRouting:

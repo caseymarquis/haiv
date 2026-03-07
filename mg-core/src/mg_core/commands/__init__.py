@@ -1,1 +1,1 @@
-"""mg-core commands."""
+"""haiv-core commands."""

@@ -1,6 +1,6 @@
-"""mg tui debug - Print WezTerm pane layout for debugging."""
+"""hv tui debug - Print WezTerm pane layout for debugging."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:
@@ -10,7 +10,7 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    from mg.wrappers.wezterm import WezTerm
+    from haiv.wrappers.wezterm import WezTerm
 
     wezterm = WezTerm(ctx.settings.wezterm_command, quiet=True)
 

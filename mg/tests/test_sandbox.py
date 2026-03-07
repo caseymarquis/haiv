@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from mg import test
-from mg.test import Sandbox, SandboxConfig, create_sandbox
-from mg.paths import Paths
+from haiv import test
+from haiv.test import Sandbox, SandboxConfig, create_sandbox
+from haiv.paths import Paths
 
 
 class TestCreateSandbox:
@@ -151,7 +151,7 @@ class TestSandboxCleanup:
 
         # Run in subprocess to ensure clean gc
         code = """
-from mg.test import create_sandbox
+from haiv.test import create_sandbox
 sandbox = create_sandbox()
 print(sandbox._temp_dir)
 """
@@ -170,7 +170,7 @@ print(sandbox._temp_dir)
         import sys
 
         code = """
-from mg.test import create_sandbox
+from haiv.test import create_sandbox
 sandbox = create_sandbox()
 nested = sandbox._root / "test.txt"
 nested.write_text("hello")

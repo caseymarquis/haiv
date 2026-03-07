@@ -1,6 +1,6 @@
 """Simple test command for verifying CLI routing."""
 
-from mg import cmd
+from haiv import cmd
 
 
 def define() -> cmd.Def:
@@ -8,4 +8,4 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    print("Hello from mg_core!")
+    print("Hello from haiv_core!")

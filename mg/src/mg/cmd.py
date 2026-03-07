@@ -1,4 +1,4 @@
-"""Command types for mg commands."""
+"""Command types for haiv commands."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ from typing import Any, Callable, TypeVar, overload
 
 from punq import Container
 
-from mg._infrastructure.mg_hooks import MgHookRegistry
-from mg._infrastructure.settings import SettingsCache, get_settings
-from mg.helpers.tui import Tui
-from mg.helpers.tui.TuiClient import TuiClient
-from mg.paths import Paths
-from mg.settings import MgSettings
-from mg.templates import TemplateRenderer
-from mg.wrappers.git import Git
+from haiv._infrastructure.hv_hooks import HvHookRegistry
+from haiv._infrastructure.settings import SettingsCache, get_settings
+from haiv.helpers.tui import Tui
+from haiv.helpers.tui.TuiClient import TuiClient
+from haiv.paths import Paths
+from haiv.settings import HvSettings
+from haiv.templates import TemplateRenderer
+from haiv.wrappers.git import Git
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -53,7 +53,7 @@ class Def:
 
     description: str
     flags: list[Flag] = field(default_factory=list)
-    enable_mg_hooks: bool = False
+    enable_hv_hooks: bool = False
 
 
 class Args:
@@ -164,20 +164,20 @@ class Ctx:
 
     Attributes:
         args: Parsed command arguments and flags.
-        paths: Paths object. See mg/paths.py for details.
+        paths: Paths object. See haiv/paths.py for details.
         container: Dependency injection container.
-        _mg_hook_registry: MgHookRegistry for mg hook dispatch (set when enable_mg_hooks=True).
+        _hv_hook_registry: HvHookRegistry for haiv hook dispatch (set when enable_hv_hooks=True).
     """
 
     args: Args
     paths: Paths
     container: Container = field(default_factory=Container)
-    _mg_hook_registry: MgHookRegistry | None = field(default=None, repr=False)
+    _hv_hook_registry: HvHookRegistry | None = field(default=None, repr=False)
     _settings_cache: SettingsCache = field(default_factory=SettingsCache)
     _tui: Tui | None = field(default=None, repr=False)
 
     @property
-    def settings(self) -> MgSettings:
+    def settings(self) -> HvSettings:
         """Get project settings (merged with user settings if available)."""
         return get_settings(self.paths, self._settings_cache)
 

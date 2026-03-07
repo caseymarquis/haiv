@@ -1,13 +1,13 @@
-"""mg help - List available commands with descriptions.
+"""haiv help - List available commands with descriptions.
 
-Discovers commands from all mg packages (mg_core, mg_project, mg_user)
+Discovers commands from all haiv packages (haiv_core, hv_project, hv_user)
 and displays them with their descriptions from define().
 """
 
 import re
 
-from mg import cmd
-from mg.helpers.commands import CommandInfo, discover_commands
+from haiv import cmd
+from haiv.helpers.commands import CommandInfo, discover_commands
 
 
 def define() -> cmd.Def:
@@ -111,7 +111,7 @@ def execute(ctx: cmd.Ctx) -> None:
         return
 
     # List view
-    ctx.print("Use --for <id> to see detailed help (e.g. mg help --for 1.2)")
+    ctx.print("Use --for <id> to see detailed help (e.g. hv help --for 1.2)")
     ctx.print()
 
     for pkg_idx, pkg_cmds in enumerate(package_commands, start=1):

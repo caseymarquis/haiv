@@ -1,6 +1,6 @@
-"""Tests for mg help command."""
+"""Tests for hv help command."""
 
-from mg import test
+from haiv import test
 
 
 class TestHelpRouting:
@@ -35,7 +35,7 @@ class TestHelpListing:
         test.execute("help")
 
         captured = capsys.readouterr()
-        assert "mg_core" in captured.out
+        assert "haiv_core" in captured.out
 
     def test_shows_numbered_ids(self, capsys):
         """help shows numbered IDs for commands."""

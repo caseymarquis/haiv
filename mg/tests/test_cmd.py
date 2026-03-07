@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import pytest
-from mg import cmd
-from mg.paths import Paths
+from haiv import cmd
+from haiv.paths import Paths
 
 
 def make_paths() -> Paths:
@@ -12,7 +12,7 @@ def make_paths() -> Paths:
     return Paths(
         _called_from=Path("/test/cwd"),
         _pkg_root=Path("/test/pkg"),
-        _mg_root=None,
+        _hv_root=None,
     )
 
 

@@ -1,12 +1,12 @@
-"""Tests for mg init command.
+"""Tests for hv init command.
 
 Modes:
 1. Fresh mode (not in a git repo)
-   - Empty directory → create mg structure
+   - Empty directory → create haiv structure
    - Non-empty directory → require --force, move files to worktree
 
 2. Peer mode (in a git repo)
-   - Create peer `project-mg/` alongside existing checkout
+   - Create peer `project-hv/` alongside existing checkout
    - Requires remote configured
    - Requires clean working tree (unless --force)
 
@@ -21,10 +21,10 @@ from pathlib import Path
 
 import pytest
 
-from mg import test
-from mg.errors import CommandError
-from mg.wrappers.git import Git
-from mg.test import SandboxConfig, Sandbox
+from haiv import test
+from haiv.errors import CommandError
+from haiv.wrappers.git import Git
+from haiv.test import SandboxConfig, Sandbox
 
 
 # =============================================================================
@@ -33,11 +33,11 @@ from mg.test import SandboxConfig, Sandbox
 
 @dataclass
 class InitResult:
-    """Convenience wrapper for mg init test results."""
+    """Convenience wrapper for hv init test results."""
     sandbox: Sandbox
 
     def init(self, args=""):
-        """Run mg init with optional args. Returns self for chaining."""
+        """Run hv init with optional args. Returns self for chaining."""
         cmd = f"init {args}".strip()
         self.sandbox.run(cmd)
         return self
@@ -68,7 +68,7 @@ class InitResult:
 
     @property
     def peer_dir(self):
-        return self.paths.root.parent / f"{self.paths.root.name}-mg"
+        return self.paths.root.parent / f"{self.paths.root.name}-hv"
 
 
 # =============================================================================
@@ -95,7 +95,7 @@ def nonempty_sandbox():
 
 @pytest.fixture
 def fresh_init(empty_sandbox):
-    """Empty sandbox with default mg init already run."""
+    """Empty sandbox with default hv init already run."""
     return empty_sandbox.init()
 
 
@@ -156,10 +156,10 @@ class TestInitFreshEmpty:
     def test_creates_claude_dir(self, fresh_init):
         assert (fresh_init.paths.root / ".claude").is_dir()
 
-    def test_creates_mg_project_package(self, fresh_init):
-        mg_project = fresh_init.paths.root / "src" / "mg_project"
-        assert mg_project.is_dir()
-        assert (mg_project / "__init__.py").exists()
+    def test_creates_hv_project_package(self, fresh_init):
+        hv_project = fresh_init.paths.root / "src" / "hv_project"
+        assert hv_project.is_dir()
+        assert (hv_project / "__init__.py").exists()
 
     def test_creates_tests_dir(self, fresh_init):
         assert (fresh_init.paths.root / "tests").is_dir()
@@ -167,8 +167,8 @@ class TestInitFreshEmpty:
     def test_creates_users_dir(self, fresh_init):
         assert (fresh_init.paths.root / "users").is_dir()
 
-    def test_creates_mg_state_orphan_branch(self, fresh_init):
-        assert fresh_init.git.branch_current() == "mg-state"
+    def test_creates_hv_state_orphan_branch(self, fresh_init):
+        assert fresh_init.git.branch_current() == "haiv"
 
     def test_creates_main_worktree_by_default(self, fresh_init):
         assert fresh_init.main_worktree.is_dir()
@@ -264,7 +264,7 @@ class TestInitFreshNonEmpty:
 # =============================================================================
 
 class TestInitPeerBasic:
-    """Peer mode creates mg repo alongside existing checkout.
+    """Peer mode creates hv repo alongside existing checkout.
 
     Note: Sandboxes are nested inside a wrapper directory, so the peer
     directory created in parent is automatically cleaned up.
@@ -275,10 +275,10 @@ class TestInitPeerBasic:
 
         assert in_repo.peer_dir.is_dir()
 
-    def test_peer_named_with_mg_suffix(self, in_repo):
+    def test_peer_named_with_hv_suffix(self, in_repo):
         in_repo.init()
 
-        assert in_repo.peer_dir.name.endswith("-mg")
+        assert in_repo.peer_dir.name.endswith("-hv")
 
     def test_peer_has_git_directory(self, in_repo):
         in_repo.init()
@@ -290,11 +290,11 @@ class TestInitPeerBasic:
 
         assert (in_repo.peer_dir / "worktrees").is_dir()
 
-    def test_peer_has_mg_state_orphan_branch(self, in_repo):
+    def test_peer_has_hv_state_orphan_branch(self, in_repo):
         in_repo.init()
 
         git = Git(in_repo.peer_dir)
-        assert git.branch_current() == "mg-state"
+        assert git.branch_current() == "haiv"
 
     def test_creates_worktree_for_current_branch(self, in_repo):
         in_repo.init()

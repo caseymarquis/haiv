@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from mg.helpers.tui.TuiModel import TuiModel
+    from haiv.helpers.tui.TuiModel import TuiModel
 
 
 @dataclass

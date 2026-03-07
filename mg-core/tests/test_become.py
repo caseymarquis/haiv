@@ -1,4 +1,4 @@
-"""Tests for mg become command."""
+"""Tests for hv become command."""
 
 import os
 import pytest
@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from mg import test
-from mg._infrastructure.args import ResolveRequest
-from mg.errors import CommandError
+from haiv import test
+from haiv._infrastructure.args import ResolveRequest
+from haiv.errors import CommandError
 
-from mg.helpers.minds import Mind, MindPaths
+from haiv.helpers.minds import Mind, MindPaths
 
 
 class TestBecomeRouting:
@@ -43,10 +43,10 @@ class TestBecomeParsing:
 
 
 class TestBecomeEnvironmentChecks:
-    """Test MG_MIND environment variable handling."""
+    """Test HV_MIND environment variable handling."""
 
-    def test_prints_bootstrap_when_mg_mind_not_set(self, tmp_path, capsys):
-        """When MG_MIND is not set, prints bootstrap instructions."""
+    def test_prints_bootstrap_when_hv_mind_not_set(self, tmp_path, capsys):
+        """When HV_MIND is not set, prints bootstrap instructions."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
 
@@ -54,31 +54,31 @@ class TestBecomeEnvironmentChecks:
             return Mind(paths=MindPaths(root=mind_dir))
 
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("MG_MIND", None)
+            os.environ.pop("HV_MIND", None)
             test.execute("become wren", resolve=mock_resolve)
 
         captured = capsys.readouterr()
-        assert "MG_MIND is not set" in captured.out
-        assert "export MG_MIND=wren" in captured.out
-        assert "mg become wren" in captured.out
+        assert "HV_MIND is not set" in captured.out
+        assert "export HV_MIND=wren" in captured.out
+        assert "hv become wren" in captured.out
 
     def test_errors_when_different_mind(self, tmp_path):
-        """When MG_MIND is set to a different mind, raises error."""
+        """When HV_MIND is set to a different mind, raises error."""
         mind_dir = tmp_path / "wren"
         mind_dir.mkdir()
 
         def mock_resolve(req: ResolveRequest) -> Mind:
             return Mind(paths=MindPaths(root=mind_dir))
 
-        with patch.dict(os.environ, {"MG_MIND": "robin"}):
+        with patch.dict(os.environ, {"HV_MIND": "robin"}):
             with pytest.raises(CommandError) as exc_info:
                 test.execute("become wren", resolve=mock_resolve)
 
             assert "Already running as 'robin'" in str(exc_info.value)
             assert "Cannot become 'wren'" in str(exc_info.value)
 
-    def test_outputs_files_when_mg_mind_matches(self, tmp_path, capsys):
-        """When MG_MIND matches, outputs files to read."""
+    def test_outputs_files_when_hv_mind_matches(self, tmp_path, capsys):
+        """When HV_MIND matches, outputs files to read."""
         mind_dir = tmp_path / "wren"
         work_dir = mind_dir / "work"
         work_dir.mkdir(parents=True)
@@ -86,12 +86,12 @@ class TestBecomeEnvironmentChecks:
         (work_dir / "identity.md").write_text("# Identity")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
+            return Mind(paths=MindPaths(root=mind_dir, hv_root=tmp_path))
 
         def setup(ctx):
-            ctx.paths._mg_root = tmp_path
+            ctx.paths._hv_root = tmp_path
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
@@ -105,21 +105,21 @@ class TestBecomeExecution:
 
     def test_outputs_references_from_toml(self, tmp_path, capsys):
         """Outputs paths from references.toml."""
-        mg_root = tmp_path
+        hv_root = tmp_path
         def mock_resolve(req: ResolveRequest) -> Mind:
             return _create_mock_mind(
                 req.value,
-                mg_root=mg_root,
+                hv_root=hv_root,
                 startup_files=[
-                    mg_root / "src/roles/coo.md",
-                    mg_root / "docs/problems.md",
+                    hv_root / "src/roles/coo.md",
+                    hv_root / "docs/problems.md",
                 ],
             )
 
         def setup(ctx):
-            ctx.paths._mg_root = mg_root
+            ctx.paths._hv_root = hv_root
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
@@ -138,12 +138,12 @@ class TestBecomeExecution:
         (work_dir / "current-focus.md").write_text("# Focus")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
+            return Mind(paths=MindPaths(root=mind_dir, hv_root=tmp_path))
 
         def setup(ctx):
-            ctx.paths._mg_root = tmp_path
+            ctx.paths._hv_root = tmp_path
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
@@ -155,21 +155,21 @@ class TestBecomeExecution:
 
     def test_outputs_files_sorted_by_name(self, tmp_path, capsys):
         """All files are sorted by name in output."""
-        mg_root = tmp_path
+        hv_root = tmp_path
         def mock_resolve(req: ResolveRequest) -> Mind:
             return _create_mock_mind(
                 req.value,
-                mg_root=mg_root,
+                hv_root=hv_root,
                 startup_files=[
-                    mg_root / "wren/work/zebra.md",
-                    mg_root / "wren/work/alpha.md",
+                    hv_root / "wren/work/zebra.md",
+                    hv_root / "wren/work/alpha.md",
                 ],
             )
 
         def setup(ctx):
-            ctx.paths._mg_root = mg_root
+            ctx.paths._hv_root = hv_root
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
@@ -185,12 +185,12 @@ class TestBecomeExecution:
         (mind_dir / "references.toml").write_text("")
 
         def mock_resolve(req: ResolveRequest) -> Mind:
-            return Mind(paths=MindPaths(root=mind_dir, mg_root=tmp_path))
+            return Mind(paths=MindPaths(root=mind_dir, hv_root=tmp_path))
 
         def setup(ctx):
-            ctx.paths._mg_root = tmp_path
+            ctx.paths._hv_root = tmp_path
 
-        with patch.dict(os.environ, {"MG_MIND": "wren"}):
+        with patch.dict(os.environ, {"HV_MIND": "wren"}):
             test.execute("become wren", resolve=mock_resolve, setup=setup)
 
         captured = capsys.readouterr()
@@ -200,23 +200,23 @@ class TestBecomeExecution:
 
 def _create_mock_mind(
     name: str,
-    mg_root: Path,
+    hv_root: Path,
     startup_files: list[Path] | None = None,
 ) -> Mind:
     """Create a Mind with mocked get_startup_files.
 
     Args:
         name: Mind name.
-        mg_root: The mg root path (needed for MindPaths).
+        hv_root: The haiv root path (needed for MindPaths).
         startup_files: List of absolute Paths to return from get_startup_files().
     """
 
     class MockMind(Mind):
-        def __init__(self, name: str, mg_root: Path, files: list[Path]):
-            super().__init__(paths=MindPaths(root=Path(f"/fake/minds/{name}"), mg_root=mg_root))
+        def __init__(self, name: str, hv_root: Path, files: list[Path]):
+            super().__init__(paths=MindPaths(root=Path(f"/fake/minds/{name}"), hv_root=hv_root))
             self._files = files
 
         def get_startup_files(self) -> list[Path]:
             return sorted(self._files, key=lambda p: p.name)
 
-    return MockMind(name, mg_root, startup_files or [])
+    return MockMind(name, hv_root, startup_files or [])

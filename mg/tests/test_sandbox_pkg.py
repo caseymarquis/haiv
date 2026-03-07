@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from mg import test
-from mg.test import SandboxConfig, create_sandbox
-from mg.paths import PkgPaths
+from haiv import test
+from haiv.test import SandboxConfig, create_sandbox
+from haiv.paths import PkgPaths
 
 
 class TestSandboxPkgDiscovery:
@@ -20,14 +20,14 @@ class TestSandboxPkgDiscovery:
     def test_pkg_root_points_to_module(self):
         """pkg.root points to a module directory (contains __init__.py or is importable).
 
-        Note: This is a bit of a hack. The mg repo isn't an mg-structured package
-        (no commands folder, etc.), but it does have src/mg/ with __init__.py.
+        Note: This is a bit of a hack. The haiv repo isn't a haiv-structured package
+        (no commands folder, etc.), but it does have src/haiv/ with __init__.py.
         Good enough to verify auto-discovery logic without complex scaffolding.
         """
         sandbox = create_sandbox()
-        # Should point to src/mg/ since this test is in mg/tests/
+        # Should point to src/haiv/ since this test is in haiv/tests/
         assert sandbox.ctx.paths.pkgs.current.root.parent.name == "src"
-        assert sandbox.ctx.paths.pkgs.current.root.name == "mg"
+        assert sandbox.ctx.paths.pkgs.current.root.name == "haiv"
         assert (sandbox.ctx.paths.pkgs.current.root / "__init__.py").exists()
 
     def test_pkg_assets_derived_from_root(self):

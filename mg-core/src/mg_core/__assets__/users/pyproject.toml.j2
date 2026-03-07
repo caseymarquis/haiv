@@ -1,11 +1,11 @@
-{# Template for user-level pyproject.toml created by mg users new #}
+{# Template for user-level pyproject.toml created by hv users new #}
 [project]
-name = "mg-user"
+name = "haiv-user"
 version = "0.1.0"
-description = "User-level mg commands and configuration"
+description = "User-level haiv commands and configuration"
 requires-python = ">=3.12"
 dependencies = [
-    "mg",
+    "haiv",
 ]
 
 [build-system]
@@ -13,7 +13,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mg_user"]
+packages = ["src/hv_user"]
 
 [dependency-groups]
 dev = [

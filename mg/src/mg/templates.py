@@ -1,4 +1,4 @@
-"""Template rendering utilities for mg commands."""
+"""Template rendering utilities for haiv commands."""
 
 from __future__ import annotations
 

@@ -1,12 +1,12 @@
-"""Tests for mg sessions commands."""
+"""Tests for hv sessions commands."""
 
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import Mock
 
-from mg import test
-from mg._infrastructure.args import ResolveRequest
-from mg.helpers.sessions import Session, save_session
+from haiv import test
+from haiv._infrastructure.args import ResolveRequest
+from haiv.helpers.sessions import Session, save_session
 
 
 class TestSessionsRouting:
@@ -160,6 +160,6 @@ class TestSessionsRemoveExecution:
         result = test.execute("sessions 5 remove", setup=setup, resolve=mock_resolve)
 
         # Verify session was removed
-        from mg.helpers.sessions import load_sessions
+        from haiv.helpers.sessions import load_sessions
         remaining = load_sessions(result.ctx.paths.user.sessions_file)
         assert len(remaining) == 0

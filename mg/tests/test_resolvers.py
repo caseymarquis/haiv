@@ -1,10 +1,10 @@
-"""Tests for mg.resolvers module."""
+"""Tests for haiv.resolvers module."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
-from mg._infrastructure.resolvers import (
+from haiv._infrastructure.resolvers import (
     discover_resolvers,
     load_resolver,
     make_resolver,
@@ -13,7 +13,7 @@ from mg._infrastructure.resolvers import (
     UnknownResolverError,
     UserRequiredError,
 )
-from mg._infrastructure.args import ResolveRequest
+from haiv._infrastructure.args import ResolveRequest
 
 
 class TestDiscoverResolvers:

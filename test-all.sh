@@ -5,7 +5,7 @@ dir="$(dirname "$0")"
 pids=()
 tmpfiles=()
 
-for pkg in mg mg-core mg-cli; do
+for pkg in haiv haiv-core haiv-cli; do
   tmp=$(mktemp)
   tmpfiles+=("$tmp")
   (cd "$dir/$pkg" && uv run pytest -n auto --dist loadgroup -q --tb=no "$@" 2>&1 | tail -1 | sed "s/^/$pkg: /") > "$tmp" &
@@ -22,7 +22,7 @@ done
 type_pids=()
 type_tmps=()
 
-for pkg in mg mg-core mg-cli; do
+for pkg in haiv haiv-core haiv-cli; do
   tmp=$(mktemp)
   type_tmps+=("$tmp")
   (cd "$dir/$pkg" && uv run ty check 2>&1 > /dev/null && echo "ok" || echo "fail") > "$tmp" &
@@ -35,7 +35,7 @@ for i in "${!type_pids[@]}"; do
   result=$(cat "${type_tmps[$i]}")
   rm -f "${type_tmps[$i]}"
   if [ "$result" = "fail" ]; then
-    pkgs=(mg mg-core mg-cli)
+    pkgs=(haiv haiv-core haiv-cli)
     type_errors="$type_errors ${pkgs[$i]}"
   fi
 done

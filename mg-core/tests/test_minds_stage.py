@@ -1,4 +1,4 @@
-"""Integration tests for mg minds stage command.
+"""Integration tests for hv minds stage command.
 
 Tests the full execute() behavior including:
 - Directory structure creation
@@ -14,11 +14,11 @@ from unittest.mock import patch
 
 import pytest
 
-from mg import test
-from mg.errors import CommandError
-from mg.helpers.sessions import load_sessions
-from mg.test import Sandbox
-from mg.wrappers.git import Git
+from haiv import test
+from haiv.errors import CommandError
+from haiv.helpers.sessions import load_sessions
+from haiv.test import Sandbox
+from haiv.wrappers.git import Git
 
 
 # Store original Git.run before any patching
@@ -68,7 +68,7 @@ class TestRouting:
     """Test command routes correctly."""
 
     def test_routes_to_minds_stage(self):
-        """mg minds stage routes to correct file."""
+        """hv minds stage routes to correct file."""
         match = test.require_routes_to("minds stage")
         assert match.file.name == "stage.py"
         assert "minds" in str(match.file.parent)
@@ -89,7 +89,7 @@ class TestNameHandling:
 
     def test_generates_name_when_not_provided(self, sandbox: Sandbox):
         """Generates a name when --name not provided."""
-        with patch("mg.helpers.minds.subprocess.run") as mock_run:
+        with patch("haiv.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
             sandbox.run('minds stage --task "test" --from-branch main')
@@ -212,7 +212,7 @@ class TestOutput:
         """Output includes the start command."""
         sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
-        assert "mg start robin" in output
+        assert "hv start robin" in output
 
 
 # =============================================================================
@@ -304,7 +304,7 @@ class TestMindReuse:
 
     def test_creates_new_when_all_minds_have_sessions(self, sandbox: Sandbox):
         """Creates new mind when all existing minds have active sessions."""
-        from mg.helpers.sessions import create_session
+        from haiv.helpers.sessions import create_session
 
         minds_dir = sandbox.ctx.paths.user.minds_dir
         (minds_dir / "robin" / "work").mkdir(parents=True)
@@ -314,7 +314,7 @@ class TestMindReuse:
         sessions_file = sandbox.ctx.paths.user.sessions_file
         create_session(sessions_file, "test task", "robin")
 
-        with patch("mg.helpers.minds.subprocess.run") as mock_run:
+        with patch("haiv.helpers.minds.subprocess.run") as mock_run:
             mock_run.return_value.stdout = "sparrow\n"
             mock_run.return_value.returncode = 0
             sandbox.run('minds stage --task "test" --from-branch main')
@@ -339,7 +339,7 @@ class TestMindReuse:
 
     def test_skips_minds_with_sessions(self, sandbox: Sandbox, capsys):
         """Only considers minds without sessions for reuse."""
-        from mg.helpers.sessions import create_session
+        from haiv.helpers.sessions import create_session
 
         minds_dir = sandbox.ctx.paths.user.minds_dir
 
@@ -418,14 +418,14 @@ class TestSessionCreation:
         assert sessions[0].description == ""
 
     def test_session_parent_from_env(self, sandbox: Sandbox):
-        """Session parent is set from MG_SESSION env var."""
-        with patch.dict("os.environ", {"MG_SESSION": "parent-session-123"}):
+        """Session parent is set from HV_SESSION env var."""
+        with patch.dict("os.environ", {"HV_SESSION": "parent-session-123"}):
             sandbox.run('minds stage --name robin --task "sub-task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].parent_id == "parent-session-123"
 
     def test_session_parent_empty_without_env(self, sandbox: Sandbox):
-        """Session parent is empty when MG_SESSION not set."""
+        """Session parent is empty when HV_SESSION not set."""
         with patch.dict("os.environ", {}, clear=True):
             sandbox.run('minds stage --name robin --task "root task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
@@ -446,15 +446,15 @@ class TestSessionCreation:
 class TestBaseBranchDetection:
     """Test auto-detection of base branch from parent session."""
 
-    def test_errors_without_mg_session(self, sandbox: Sandbox):
-        """Errors when MG_SESSION is not set and --from-branch not provided."""
+    def test_errors_without_hv_session(self, sandbox: Sandbox):
+        """Errors when HV_SESSION is not set and --from-branch not provided."""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(CommandError, match="MG_SESSION is not set"):
+            with pytest.raises(CommandError, match="HV_SESSION is not set"):
                 sandbox.run('minds stage --name robin --task "test"')
 
     def test_uses_parent_session_branch(self, sandbox: Sandbox):
         """Uses parent session's branch as base branch."""
-        from mg.helpers.sessions import create_session
+        from haiv.helpers.sessions import create_session
 
         # Create a "wren" branch so git worktree can use it as base
         git = Git(sandbox.ctx.paths.root, quiet=True)
@@ -466,7 +466,7 @@ class TestBaseBranchDetection:
             branch="wren", base_branch="main",
         )
 
-        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+        with patch.dict("os.environ", {"HV_SESSION": parent.id}):
             sandbox.run('minds stage --name robin --task "test"')
 
         sessions = load_sessions(sessions_file)
@@ -475,12 +475,12 @@ class TestBaseBranchDetection:
 
     def test_falls_back_to_default_when_parent_has_no_branch(self, sandbox: Sandbox):
         """Falls back to default_branch when parent session has no branch."""
-        from mg.helpers.sessions import create_session
+        from haiv.helpers.sessions import create_session
 
         sessions_file = sandbox.ctx.paths.user.sessions_file
         parent = create_session(sessions_file, "parent task", "wren")
 
-        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+        with patch.dict("os.environ", {"HV_SESSION": parent.id}):
             sandbox.run('minds stage --name robin --task "test" --allow-dirty')
 
         sessions = load_sessions(sessions_file)
@@ -489,7 +489,7 @@ class TestBaseBranchDetection:
 
     def test_from_branch_overrides_parent(self, sandbox: Sandbox):
         """--from-branch takes priority over parent session's branch."""
-        from mg.helpers.sessions import create_session
+        from haiv.helpers.sessions import create_session
 
         # Create branches so git worktree can reference them
         git = Git(sandbox.ctx.paths.root, quiet=True)
@@ -502,7 +502,7 @@ class TestBaseBranchDetection:
         )
 
         # --from-branch main should override the parent's branch (wren)
-        with patch.dict("os.environ", {"MG_SESSION": parent.id}):
+        with patch.dict("os.environ", {"HV_SESSION": parent.id}):
             sandbox.run('minds stage --name robin --task "test" --from-branch main --allow-dirty')
 
         sessions = load_sessions(sessions_file)

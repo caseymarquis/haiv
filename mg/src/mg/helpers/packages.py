@@ -1,9 +1,9 @@
-"""Package discovery for mg.
+"""Package discovery for haiv.
 
-mg commands are organized into packages at three levels:
-- mg_core: Core commands, always available (installed package)
-- mg_project: Project-specific commands in src/mg_project/
-- mg_user: User-specific commands in users/{user}/src/mg_user/
+haiv commands are organized into packages at three levels:
+- haiv_core: Core commands, always available (installed package)
+- hv_project: Project-specific commands in src/hv_project/
+- hv_user: User-specific commands in users/{user}/src/hv_user/
 
 Each package has a commands/ directory containing command files.
 """
@@ -16,10 +16,10 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mg.paths import Paths, PkgPaths
+from haiv.paths import Paths, PkgPaths
 
 if TYPE_CHECKING:
-    from mg.helpers.users import UserInfo
+    from haiv.helpers.users import UserInfo
 
 
 class PackageSource(Enum):
@@ -34,23 +34,23 @@ class PackageSource(Enum):
 
     PROJECT_INSTALLED = auto()
     """Python packages installed with uv at project level.
-    Must follow mg conventions (commands/, resolvers/, etc).
+    Must follow haiv conventions (commands/, resolvers/, etc).
     Applies to all users."""
 
     PROJECT_LOCAL = auto()
-    """Local package in src/mg_project/. Applies to all users."""
+    """Local package in src/hv_project/. Applies to all users."""
 
     USER_INSTALLED = auto()
     """Python packages installed with uv at user level.
-    Must follow mg conventions. Applies to this user only."""
+    Must follow haiv conventions. Applies to this user only."""
 
     USER_LOCAL = auto()
-    """Local package in users/{user}/src/mg_user/. Applies to this user only."""
+    """Local package in users/{user}/src/hv_user/. Applies to this user only."""
 
 
 @dataclass
 class PackageInfo:
-    """Information about an mg package."""
+    """Information about a haiv package."""
 
     name: str
     source: PackageSource
@@ -123,16 +123,16 @@ def _add_result(
 
 
 def discover_packages_detailed(
-    mg_root: Path | None = None,
+    hv_root: Path | None = None,
     user: UserInfo | None = None,
 ) -> PkgDiscoveryResult:
-    """Discover all mg packages with detailed results.
+    """Discover all haiv packages with detailed results.
 
     Always searches all 5 package sources and returns a result for each.
 
     Args:
-        mg_root: Root of the mg-managed repository. If None, project and user
-            packages are skipped with "mg_root not provided".
+        hv_root: Root of the haiv-managed repository. If None, project and user
+            packages are skipped with "hv_root not provided".
         user: Current user info. If None, user-level packages are skipped
             with "user not provided".
 
@@ -146,8 +146,8 @@ def discover_packages_detailed(
 
     # CORE - dynamically import to handle edge cases
     try:
-        mg_core = importlib.import_module("mg_core")
-        core_paths = PkgPaths.from_module(mg_core)
+        haiv_core = importlib.import_module("haiv_core")
+        core_paths = PkgPaths.from_module(haiv_core)
         skip_reason = _check_package(core_paths)
     except ImportError as e:
         core_paths = None
@@ -157,7 +157,7 @@ def discover_packages_detailed(
         skip_reason = f"unexpected error: {e}"
 
     _add_result(
-        PackageSource.CORE, "mg_core", core_paths, skip_reason,
+        PackageSource.CORE, "haiv_core", core_paths, skip_reason,
         packages, included, skipped
     )
 
@@ -167,16 +167,16 @@ def discover_packages_detailed(
         packages, included, skipped
     )
 
-    # PROJECT_LOCAL - src/mg_project/
-    if mg_root is None:
+    # PROJECT_LOCAL - src/hv_project/
+    if hv_root is None:
         project_paths = None
-        skip_reason = "mg_root not provided"
+        skip_reason = "hv_root not provided"
     else:
         try:
             paths = Paths(
                 _called_from=None,
                 _pkg_root=None,
-                _mg_root=mg_root,
+                _hv_root=hv_root,
                 _user_name=user.name if user else None,
             )
             project_paths = paths.pkgs.project
@@ -186,7 +186,7 @@ def discover_packages_detailed(
             skip_reason = f"unexpected error: {e}"
 
     _add_result(
-        PackageSource.PROJECT_LOCAL, "mg_project", project_paths, skip_reason,
+        PackageSource.PROJECT_LOCAL, "hv_project", project_paths, skip_reason,
         packages, included, skipped
     )
 
@@ -196,10 +196,10 @@ def discover_packages_detailed(
         packages, included, skipped
     )
 
-    # USER_LOCAL - users/{user}/src/mg_user/
-    if mg_root is None:
+    # USER_LOCAL - users/{user}/src/hv_user/
+    if hv_root is None:
         user_paths = None
-        skip_reason = "mg_root not provided"
+        skip_reason = "hv_root not provided"
     elif user is None:
         user_paths = None
         skip_reason = "user not provided"
@@ -208,7 +208,7 @@ def discover_packages_detailed(
             paths = Paths(
                 _called_from=None,
                 _pkg_root=None,
-                _mg_root=mg_root,
+                _hv_root=hv_root,
                 _user_name=user.name,
             )
             user_paths = paths.pkgs.user
@@ -218,7 +218,7 @@ def discover_packages_detailed(
             skip_reason = f"unexpected error: {e}"
 
     _add_result(
-        PackageSource.USER_LOCAL, "mg_user", user_paths, skip_reason,
+        PackageSource.USER_LOCAL, "hv_user", user_paths, skip_reason,
         packages, included, skipped
     )
 
@@ -226,13 +226,13 @@ def discover_packages_detailed(
 
 
 def discover_packages(
-    mg_root: Path | None = None,
+    hv_root: Path | None = None,
     user: UserInfo | None = None,
 ) -> list[PackageInfo]:
-    """Discover all mg packages.
+    """Discover all haiv packages.
 
     Args:
-        mg_root: Root of the mg-managed repository. If None, only core packages
+        hv_root: Root of the haiv-managed repository. If None, only core packages
             are discovered.
         user: Current user info. If None, user-level packages are not included.
 
@@ -240,4 +240,4 @@ def discover_packages(
         List of packages in discovery order (core first, user_local last).
         Only includes valid packages (have commands/ with __init__.py).
     """
-    return discover_packages_detailed(mg_root, user).packages
+    return discover_packages_detailed(hv_root, user).packages

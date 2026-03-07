@@ -1,10 +1,10 @@
-"""Tests for mg.identity module - user detection and matching."""
+"""Tests for haiv.identity module - user detection and matching."""
 
 from pathlib import Path
 
 import pytest
 
-from mg._infrastructure.identity import (
+from haiv._infrastructure.identity import (
     AmbiguousIdentityError,
     CurrentEnv,
     Identity,

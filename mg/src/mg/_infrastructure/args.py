@@ -1,4 +1,4 @@
-"""Argument building for mg commands.
+"""Argument building for haiv commands.
 
 Converts route matches + flag definitions into a populated Ctx.
 """
@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from mg import cmd
-from mg.paths import Paths
-from mg._infrastructure.loader import Command
-from mg._infrastructure.routing import RouteMatch
+from haiv import cmd
+from haiv.paths import Paths
+from haiv._infrastructure.loader import Command
+from haiv._infrastructure.routing import RouteMatch
 
 
 @dataclass
@@ -22,7 +22,7 @@ class ResolveRequest:
     to be converted to an object. In production, resolvers load real objects.
     In tests, you provide a mock resolver.
 
-    Example for: mg forge message specs send
+    Example for: hv forge message specs send
         Route: commands/_mind_/message/_target_as_mind_/send.py
 
         Two ResolveRequests would be made:
@@ -41,20 +41,20 @@ def build_ctx(
     route: RouteMatch,
     command: Command,
     *,
-    mg_root: Path | None = None,
-    mg_username: str | None = None,
+    hv_root: Path | None = None,
+    hv_username: str | None = None,
     resolve: Callable[[ResolveRequest], Any] | None = None,
-    mg_hook_registry: Any | None = None,
+    hv_hook_registry: Any | None = None,
 ) -> cmd.Ctx:
     """Build a Ctx from a route match and command definition.
 
     Args:
         route: The matched route with params, rest, and raw_flags
         command: The loaded command (for flag definitions)
-        mg_root: Root of the mg-managed repo, if known
-        mg_username: Name of the current user (folder name in users/)
+        hv_root: Root of the haiv-managed repo, if known
+        hv_username: Name of the current user (folder name in users/)
         resolve: Optional callback to resolve param/flag values to objects
-        mg_hook_registry: Optional MgHookRegistry for mg hook dispatch
+        hv_hook_registry: Optional HvHookRegistry for haiv hook dispatch
 
     Returns:
         Populated Ctx ready for execute()
@@ -87,10 +87,10 @@ def build_ctx(
     paths = Paths(
         _called_from=Path(os.getcwd()),
         _pkg_root=route.pkg_root,
-        _mg_root=mg_root,
-        _user_name=mg_username,
+        _hv_root=hv_root,
+        _user_name=hv_username,
     )
-    return cmd.Ctx(args=args, paths=paths, _mg_hook_registry=mg_hook_registry)
+    return cmd.Ctx(args=args, paths=paths, _hv_hook_registry=hv_hook_registry)
 
 
 def _parse_flags(

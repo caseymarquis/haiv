@@ -1,6 +1,6 @@
 """Session management commands.
 
 Commands:
-- mg sessions: List active sessions
-- mg sessions <id> remove: Remove a session
+- hv sessions: List active sessions
+- hv sessions <id> remove: Remove a session
 """

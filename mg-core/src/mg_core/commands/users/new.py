@@ -1,4 +1,4 @@
-"""Create a new user directory with standard mg structure."""
+"""Create a new user directory with standard haiv structure."""
 
 import re
 import tomllib
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import tomli_w
 
-from mg import cmd
-from mg.errors import CommandError
-from mg._infrastructure.identity import CurrentEnv, get_current_env
+from haiv import cmd
+from haiv.errors import CommandError
+from haiv._infrastructure.identity import CurrentEnv, get_current_env
 
 
 # Valid name pattern: starts with letter, then alphanumeric/hyphen/underscore
@@ -86,18 +86,18 @@ def _create_user_structure(ctx: cmd.Ctx, user_dir: Path) -> None:
     """Create the full user directory structure."""
     # Create directories
     user_dir.mkdir(parents=True)
-    (user_dir / "src" / "mg_user" / "commands").mkdir(parents=True)
+    (user_dir / "src" / "hv_user" / "commands").mkdir(parents=True)
     (user_dir / "state").mkdir(parents=True)
 
     # Write templates
     ctx.templates.write("users/pyproject.toml.j2", user_dir / "pyproject.toml")
     ctx.templates.write(
-        "users/src/mg_user/__init__.py.j2",
-        user_dir / "src" / "mg_user" / "__init__.py",
+        "users/src/hv_user/__init__.py.j2",
+        user_dir / "src" / "hv_user" / "__init__.py",
     )
     ctx.templates.write(
-        "users/src/mg_user/commands/__init__.py.j2",
-        user_dir / "src" / "mg_user" / "commands" / "__init__.py",
+        "users/src/hv_user/commands/__init__.py.j2",
+        user_dir / "src" / "hv_user" / "commands" / "__init__.py",
     )
     ctx.templates.write("users/state/.gitkeep.j2", user_dir / "state" / ".gitkeep")
 

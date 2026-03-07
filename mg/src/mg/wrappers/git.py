@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from mg.errors import CommandError
+from haiv.errors import CommandError
 
 
 @dataclass

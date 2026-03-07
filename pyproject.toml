@@ -1,5 +1,5 @@
 [project]
-name = "mind-games"
+name = "haiv"
 version = "0.1.0"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
@@ -10,7 +10,7 @@ authors = [
 ]
 
 [tool.uv.workspace]
-members = ["mg", "mg-core", "mg-cli", "mg-tui"]
+members = ["haiv", "haiv-core", "haiv-cli", "haiv-tui"]
 
 [dependency-groups]
 dev = [

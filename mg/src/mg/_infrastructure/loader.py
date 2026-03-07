@@ -1,4 +1,4 @@
-"""Command loader for mg.
+"""Command loader for haiv.
 
 Loads Python command modules from file paths and wraps them in a Command
 class that provides a consistent interface with virtual methods for
@@ -9,7 +9,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-from mg import cmd
+from haiv import cmd
 
 
 class Command:
@@ -50,7 +50,7 @@ def load_commands_module(init_file: Path) -> ModuleType:
     """Load a commands package from its __init__.py file.
 
     This enables loading commands from directories not on sys.path,
-    such as mg_project/commands/ in an mg-managed repo.
+    such as hv_project/commands/ in a haiv-managed repo.
 
     Args:
         init_file: Path to commands/__init__.py
@@ -66,7 +66,7 @@ def load_commands_module(init_file: Path) -> ModuleType:
     if not init_file.exists():
         raise FileNotFoundError(f"Commands module not found: {init_file}")
 
-    spec = importlib.util.spec_from_file_location("mg_commands", init_file)
+    spec = importlib.util.spec_from_file_location("hv_commands", init_file)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load commands module from {init_file}")
 
@@ -93,7 +93,7 @@ def load_command(file: Path) -> Command:
         raise FileNotFoundError(f"Command file not found: {file}")
 
     # Create a unique module name to avoid caching
-    module_name = f"mg_command_{file.stem}_{id(file)}"
+    module_name = f"hv_command_{file.stem}_{id(file)}"
 
     spec = importlib.util.spec_from_file_location(module_name, file)
     if spec is None or spec.loader is None:
