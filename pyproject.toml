@@ -1,5 +1,5 @@
 [project]
-name = "haiv"
+name = "haiv-workspace"
 version = "0.1.0"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
