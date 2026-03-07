@@ -1,12 +1,14 @@
 # Immediate Plan
 
-**Updated:** 2026-02-14
+**Updated:** 2026-03-07
 
 ---
 
-## Current Focus: Role Evolution & Visibility
+## Current Focus: Cross-Project Support & Relay Infrastructure
 
-Delegation loop is mature. Now evolving the platform: role-appropriate launch experiences, live mind status, smarter TUI.
+The mg → haiv rename is complete (see AAR: `work/aars/build-relay-infrastructure-for-cross-venv-f695.md`). The git branch is now `haiv-hq`, CLI is `hv`, all packages renamed (haiv, haiv-core, haiv-cli, haiv-tui, haiv_project, haiv_user). Pixel did the rename; it's merged to main.
+
+Next priority: **relay infrastructure** for running haiv across different project venvs. Core commands run in-process, project/user commands relaunch via `uv run` in the target project's venv. Design is settled (tempfile IPC, stdio passthrough, parent passes routed command file path to child). See the AAR and `work/docs/relay-task.md` for the full task spec and design decisions.
 
 Run `hv sessions` to see current active work.
 
@@ -14,30 +16,30 @@ Run `hv sessions` to see current active work.
 
 ## Active Initiatives
 
-- **Mind launch settings** — spark [4]: `settings.toml` per mind, starting with `launch.system_prompt` to give strategic minds a lighter Claude Code experience. Exploring with Casey.
+- **Relay infrastructure** — unbuilt. Required for haiv to manage external projects (e.g., dnd at `/home/casey/code/dnd/`). The problem: `hv` always runs in haiv-cli's venv, but project/user commands need the project's own venv and dependencies.
 
 ---
 
 ## Next Up
 
-- **Live mind status via Claude Code hooks** — spark's research (temp-aar/claude-hook-integration.md) mapped all lifecycle events. Plumbing → TUI status → leaf prioritization → idle automation.
-- **TUI leaf sorting** — recently active leaves float to top (stacked trees → operate at leaves)
-- **Idle timeout automation** — trigger summaries when a mind sits idle too long
-- **Guided close-out prompting** — `hv pop` checklist creates TODOs, mind works through them
+- **Clean up stale sessions** — echo [7] and spark [4] are 23 commits behind main (pre-rename). Likely need to be closed out rather than merged.
+- **dnd project rename** — still references mg_project/mg_user/mg-state. Low priority since it's just a test project with no real content.
+- **Live mind status via Claude Code hooks** — spark's research (temp-aar/claude-hook-integration.md) mapped all lifecycle events.
+- **TUI leaf sorting** — recently active leaves float to top
+- **Mind launch settings** — `settings.toml` per mind, starting with `launch.system_prompt`
 
 ---
 
 ## Recently Completed
 
+- **mg → haiv rename** — full rename across all packages, CLI, CLAUDE.md, mg-state content
+- **Git branch rename** — mg-state → haiv-hq (local + remote)
 - Hook system (`haiv_hooks`) — typed hook points, lazy discovery, fault-tolerant loading
 - `uv sync` auto-runs on worktree creation (quiet mode)
 - Active mind indicator in TUI (highlight background)
 - Git branch stats in TUI sessions (ahead/behind, dirty/clean)
 - `hv pop` command with merge, cleanup-only mode, session removal, work/ wipe
 - Parent-child tree display in `hv sessions` CLI and TUI
-- Non-destructive `scaffold_mind` with `skip_existing` for reused minds
-- Welcome template now includes discussion-first guidance
-- Staging: always worktree, auto-detect base branch, clean tree enforcement
 
 ---
 

@@ -6,8 +6,6 @@ haiv is a CLI tool that manages communities of AI minds across different project
 
 Currently, `hv` always runs in the haiv-cli venv (hardcoded in `~/.local/bin/hv`). This works when the project IS haiv, but breaks when haiv manages a different project (e.g., "dnd") — that project's `haiv_project` and `haiv_user` packages have their own dependencies that aren't in the haiv-cli venv.
 
-**Location:** `worktrees/pixel/`
-
 ## The Design
 
 **Rule:** Core commands run in-process. Project and user commands always relaunch in the correct venv via `uv run`.
@@ -32,6 +30,7 @@ hv <command>
 - Child inherits stdio for interactive commands
 - The IPC file is only created/read when data needs to come back (e.g., `hv help` collecting command lists from multiple venvs)
 - `haiv.relay` lives in the `haiv` package so it's available in every project venv (they all depend on `haiv`)
+- Always relay non-core commands (no venv comparison optimization)
 
 ## What to Build
 
@@ -56,10 +55,11 @@ hv <command>
 
 Use TDD. The relay module should be testable in isolation — you can verify it loads a command file and executes it without needing a full cross-venv setup. Integration testing with actual `uv run` is valuable too.
 
-The dnd project at `/home/casey/code/dnd/` is the test case. It has haiv-hq set up with `haiv_project` but no `.venv` yet.
+The dnd project at `/home/casey/code/dnd/` is the test case. It has haiv-hq set up with `haiv_project` but no `.venv` yet (also still needs rename from mg_ to haiv_).
 
----
+## Design Notes from Discussion
 
-## Before You Begin
-
-Read the full assignment, then discuss your understanding and approach with your human collaborator before writing code. The task description is a starting point — not a spec. Do not use planning tools unless your human explicitly requests it. You work best together.
+- The common case is just "re-exec this command in the right venv" — stdio passthrough, no data back. `help` is the outlier where you need to collect structured data from multiple venvs.
+- A tempfile in `/tmp` is already in-memory on Linux (tmpfs). The "in-memory file" concern doesn't exist in practice.
+- The IPC file is only created when the child has data to return. The common case never touches it.
+- Full re-routing in the child was considered but rejected as wasteful — the parent already did the routing work.
