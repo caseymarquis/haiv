@@ -3,9 +3,11 @@
 name = "mg-project"
 version = "0.1.0"
 description = "Project-level mg commands and configuration"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "mg",
+    "mg-cli",
+    "mg-tui",
 ]
 
 [build-system]
@@ -14,6 +16,8 @@ build-backend = "hatchling.build"
 
 [tool.uv.sources]
 mg = { path = "worktrees/main/mg", editable = true }
+mg-cli = { path = "worktrees/main/mg-cli", editable = true }
+mg-tui = { path = "worktrees/main/mg-tui", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mg_project"]
