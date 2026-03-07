@@ -30,8 +30,8 @@ class HaivSettings:
 
     @property
     def tui_command(self) -> list[str]:
-        """The command to launch the TUI application. Falls back to ['haiv-tui']."""
-        return self._tui_command if self._tui_command is not None else ["haiv-tui"]
+        """The command to launch the TUI application. Falls back to ['hv-tui']."""
+        return self._tui_command if self._tui_command is not None else ["hv-tui"]
 
     @property
     def keybindings(self) -> dict[str, str]:

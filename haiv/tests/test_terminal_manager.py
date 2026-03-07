@@ -51,7 +51,7 @@ def wezterm():
 @pytest.fixture
 def manager(wezterm):
     """Create a TerminalManager with mocked WezTerm."""
-    return TerminalManager(wezterm, Path("/home/user/my-project"), ["haiv-tui"])
+    return TerminalManager(wezterm, Path("/home/user/my-project"), ["hv-tui"])
 
 
 class TestTabTitleNaming:
@@ -136,7 +136,7 @@ class TestEnsureWorkspace:
 
         # Created new window with TUI command + project name
         wezterm.spawn.assert_called_once_with(
-            new_window=True, cwd="/home/user/my-project", command=["haiv-tui", "my-project"],
+            new_window=True, cwd="/home/user/my-project", command=["hv-tui", "my-project"],
         )
         # Named hud tab
         wezterm.set_tab_title.assert_called_once_with("hv(my-project)", pane_id=10)

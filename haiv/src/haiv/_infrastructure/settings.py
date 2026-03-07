@@ -59,7 +59,7 @@ PROJECT_SETTINGS_TEMPLATE = """\
 
 # default_branch = "main"
 # wezterm_command = ["flatpak", "run", "org.wezfurlong.wezterm"]
-# tui_command = ["haiv-tui"]
+# tui_command = ["hv-tui"]
 """
 
 
