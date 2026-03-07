@@ -1,7 +1,7 @@
 [project]
-name = "haiv-tui"
+name = "haiv"
 version = "0.1.0"
-description = "Terminal UI for haiv"
+description = "Seamless management of a collaborative AI team"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
@@ -13,22 +13,17 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "textual",
-    "haiv-lib",
-    "blinker",
-    "watchdog>=6.0.0",
+    "haiv-cli",
+    "haiv-tui",
 ]
 
 [tool.uv.sources]
-haiv-lib = { workspace = true }
-
-[project.scripts]
-haiv-tui = "haiv_tui:main"
+haiv-cli = { workspace = true }
+haiv-tui = { workspace = true }
 
 [project.urls]
 Homepage = "https://github.com/caseymarquis/haiv"
@@ -39,11 +34,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/haiv_tui"]
-
-[dependency-groups]
-dev = ["ty"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+packages = ["src/haiv_meta"]

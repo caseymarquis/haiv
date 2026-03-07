@@ -10,7 +10,7 @@ authors = [
 ]
 
 [tool.uv.workspace]
-members = ["haiv-lib", "haiv-core", "haiv-cli", "haiv-tui"]
+members = ["haiv", "haiv-lib", "haiv-core", "haiv-cli", "haiv-tui"]
 
 [dependency-groups]
 dev = [
