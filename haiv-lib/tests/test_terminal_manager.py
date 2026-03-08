@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from haiv.errors import CommandError
-from haiv.helpers.tui.terminal import TerminalManager
+from haiv.helpers.tui.terminal import TUI_PANE_TITLE, TerminalManager
 from haiv.wrappers.wezterm import Pane, PaneSize
 
 
@@ -14,6 +14,7 @@ def make_pane(
     *,
     pane_id: int = 1,
     tab_title: str = "",
+    title: str = "",
     left_col: int = 0,
     window_id: int = 1,
     tab_id: int = 1,
@@ -28,7 +29,7 @@ def make_pane(
         window_id=window_id,
         tab_id=tab_id,
         size=PaneSize(rows=24, cols=80, pixel_width=800, pixel_height=600, dpi=96),
-        title="",
+        title=title,
         cwd="/home/user",
         cursor_x=0,
         cursor_y=0,
@@ -104,11 +105,12 @@ class TestFindHudPane:
 class TestEnsureWorkspace:
     """Tests for the context-dependent startup matrix.
 
-    | In WezTerm? | Window exists? | Action                          |
-    |-------------|----------------|---------------------------------|
-    | No          | N/A            | Launch WezTerm with 'hv start'  |
-    | Yes         | No             | Create new window, set up layout|
-    | Yes         | Yes            | Activate hud pane               |
+    | In WezTerm? | Hud tab? | TUI pane? | Action                        |
+    |-------------|----------|-----------|-------------------------------|
+    | No          | —        | —         | Launch WezTerm with 'hv start'|
+    | Yes         | No       | —         | Create new window + layout    |
+    | Yes         | Yes      | Yes       | Activate it, already healthy  |
+    | Yes         | Yes      | No        | Recover: recreate TUI pane    |
     """
 
     def test_not_in_wezterm_launches_instance(self, manager, wezterm):
@@ -148,9 +150,9 @@ class TestEnsureWorkspace:
         wezterm.activate_pane.assert_called_with(10)
 
     def test_in_wezterm_window_exists_activates_it(self, manager, wezterm):
-        """Inside WezTerm, haiv window exists — activate hud pane."""
+        """Inside WezTerm, hud tab + TUI pane alive — activate TUI pane."""
         wezterm.list_panes.return_value = [
-            make_pane(pane_id=42, tab_title="hv(my-project)", left_col=0),
+            make_pane(pane_id=42, tab_title="hv(my-project)", left_col=0, title=TUI_PANE_TITLE),
             make_pane(pane_id=43, tab_title="hv(my-project)", left_col=40),
             make_pane(pane_id=44, tab_title="hv(my-project):buffer"),
         ]
@@ -161,6 +163,26 @@ class TestEnsureWorkspace:
         wezterm.activate_pane.assert_called_once_with(42)
         wezterm.spawn.assert_not_called()
         wezterm.run_external.assert_not_called()
+
+    def test_in_wezterm_hud_tab_but_tui_crashed_recovers(self, manager, wezterm):
+        """Inside WezTerm, hud tab exists but TUI pane is gone — recover."""
+        wezterm.list_panes.return_value = [
+            # Bare shell after crash (title is NOT TUI_PANE_TITLE)
+            make_pane(pane_id=42, tab_title="hv(my-project)", left_col=0, title="casey@host: ~/code"),
+            make_pane(pane_id=43, tab_title="hv(my-project)", left_col=40),
+        ]
+        wezterm.split_pane.return_value = 50
+
+        with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
+            manager.ensure_workspace()
+
+        # Should split the surviving pane to the left with the TUI command
+        wezterm.split_pane.assert_called_once_with(
+            42, direction="left", cwd=str(manager.haiv_root),
+            command=manager.tui_command + [manager.project],
+        )
+        wezterm.activate_pane.assert_called_once_with(50)
+        wezterm.spawn.assert_not_called()
 
 
 class TestGetActiveMindName:
