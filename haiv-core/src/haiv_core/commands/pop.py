@@ -155,7 +155,7 @@ def _do_session(ctx: cmd.Ctx) -> None:
     aar_rel = aar_path.relative_to(ctx.paths.root)
     ctx.tui.mind_try_send_text(
         parent.mind,
-        f"<haiv>{mind_name} finished. Please read '{aar_rel}'</haiv>",
+        f"<haiv>{mind_name} finished. Their work has been reviewed and merged into your worktree. Please read '{aar_rel}'</haiv>",
     )
 
     remove_session(ctx.paths.user.sessions_file, session.id)
