@@ -47,3 +47,10 @@ In `journeys/building-the-chart-command/001-setting-out.md`, Luna writes "Four h
 **Journey:** `journeys/the-routing-table/`
 
 Mapped the full path from `hv become luna` to running code: CLI entry → source discovery (user → project → core) → filesystem routing (literal > param) → dynamic loading → context building → lifecycle execution. Key finding: search order is user-first (opposite of the conceptual layering), meaning higher-level packages can shadow lower-level commands.
+
+### The Hook System
+**Completed by:** Ember
+**Reward earned:** Compass
+**Journey:** `journeys/the-hook-system/`
+
+Mapped the full hook system: typed extension points (`HaivHookPoint`) defined in `haiv_hook_points.py`, emitted by commands that opt in with `enable_haiv_hooks=True`, handled by `@haiv_hook`-decorated functions in `haiv_hook_handlers/` directories. Discovery is lazy (only for opt-in commands) and follows package order (core → project → user). One hook point exists: `AFTER_WORKTREE_CREATED` in `hv minds stage`, with a project-level handler that runs `uv sync`.
