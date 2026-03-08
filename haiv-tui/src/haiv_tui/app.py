@@ -35,6 +35,7 @@ is purely a command center.
 
 from __future__ import annotations
 
+import sys
 from collections import deque
 from pathlib import Path
 
@@ -44,6 +45,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
 from haiv._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
 from haiv.helpers.tui import helpers
+from haiv.helpers.tui.terminal import TUI_PANE_TITLE
 from haiv.helpers.utils.file_watcher import FileWatcher
 from haiv.wrappers.git import Git
 from haiv_tui.init import init as init_haiv_deps
@@ -103,6 +105,11 @@ class HaivApp(App):
 
     def on_mount(self) -> None:
         """Start the TUI server and load initial state."""
+        # Set the WezTerm pane title so `hv start` can detect whether the
+        # TUI process is alive. See TUI_PANE_TITLE for the full story.
+        sys.stdout.write(f"\033]2;{TUI_PANE_TITLE}\007")
+        sys.stdout.flush()
+
         self._server.start()
         if self.settings.keybindings:
             self.set_keymap(self.settings.keybindings)

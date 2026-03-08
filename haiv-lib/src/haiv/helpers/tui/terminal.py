@@ -13,6 +13,12 @@ from haiv.errors import CommandError
 if TYPE_CHECKING:
     from haiv.wrappers.wezterm import Pane, WezTerm
 
+# The TUI app sets this as its WezTerm pane title (via OSC 2) on startup.
+# When the TUI crashes, the pane survives as a bare shell and the shell's
+# prompt resets the pane title to something else. This lets us distinguish
+# "hud tab exists with TUI alive" from "hud tab exists but TUI crashed."
+TUI_PANE_TITLE = "haiv-tui"
+
 
 class TerminalManager:
     """Manages WezTerm window and tab layout for a haiv project.
@@ -166,24 +172,40 @@ class TerminalManager:
     def ensure_workspace(self) -> None:
         """Ensure the haiv window exists with the standard tab layout.
 
-        | In WezTerm? | Window exists? | Action                                  |
-        |-------------|----------------|-----------------------------------------|
-        | No          | N/A            | Launch WezTerm with 'hv start'          |
-        | Yes         | No             | Create new window, set up layout        |
-        | Yes         | Yes            | Activate it, print message if needed    |
+        Detection uses two binary signals:
+
+          1. Does the hud **tab** exist?
+             Any pane whose tab_title starts with our prefix.
+
+          2. Does the TUI **pane** exist inside that tab?
+             The TUI app sets its WezTerm pane title to TUI_PANE_TITLE on
+             startup (via OSC 2). If the TUI crashes, the pane reverts to a
+             bare shell whose prompt resets the title to something else.
+
+        | In WezTerm? | Hud tab? | TUI pane? | Action                        |
+        |-------------|----------|-----------|-------------------------------|
+        | No          | —        | —         | Launch WezTerm with 'hv start'|
+        | Yes         | No       | —         | Create new window + layout    |
+        | Yes         | Yes      | Yes       | Activate it, already healthy  |
+        | Yes         | Yes      | No        | Recover: recreate TUI pane    |
         """
         if not self._in_wezterm():
             self._launch_wezterm()
             return
 
-        hud_pane = self._find_hud_pane()
-        if hud_pane is None:
+        hud_tab_pane = self._find_any_hud_tab_pane()
+        if hud_tab_pane is None:
             self._create_window()
             return
 
-        # Window exists — focus it
-        self.wezterm.activate_pane(hud_pane.pane_id)
-        print(f"haiv window for '{self.project}' is ready.")
+        tui_pane = self._find_tui_pane()
+        if tui_pane is not None:
+            self.wezterm.activate_pane(tui_pane.pane_id)
+            print(f"haiv window for '{self.project}' is ready.")
+            return
+
+        # Hud tab exists but TUI pane is gone — recover.
+        self._recover_tui(hud_tab_pane)
 
     def try_send_text_to_mind(self, mind: str, text: str, *, submit: bool = False) -> bool:
         """Send text to a mind's pane, whether active or parked.
@@ -271,6 +293,25 @@ class TerminalManager:
                 return pane
         return None
 
+    def _find_any_hud_tab_pane(self) -> Pane | None:
+        """Find any pane that belongs to the hud tab."""
+        for pane in self.wezterm.list_panes():
+            if pane.tab_title.startswith(self.hud_tab_prefix):
+                return pane
+        return None
+
+    def _find_tui_pane(self) -> Pane | None:
+        """Find the live TUI pane by its pane title.
+
+        The TUI app sets its pane title to TUI_PANE_TITLE on startup.
+        If this returns None but _find_any_hud_tab_pane returns a pane,
+        the TUI has crashed and recovery is needed.
+        """
+        for pane in self.wezterm.list_panes():
+            if pane.tab_title.startswith(self.hud_tab_prefix) and pane.title == TUI_PANE_TITLE:
+                return pane
+        return None
+
     def _find_mind_pane(self) -> Pane | None:
         """Find the active mind pane (right pane in the hud tab)."""
         for pane in self.wezterm.list_panes():
@@ -300,6 +341,23 @@ class TerminalManager:
             ["start", "--cwd", str(self.haiv_root), "--", "hv", "start"],
             intent=f"launch WezTerm for '{self.project}'",
         )
+
+    def _recover_tui(self, hud_tab_pane: Pane) -> None:
+        """Recreate the TUI pane in an existing hud tab.
+
+        The hud tab survived but the TUI process is gone. Split the
+        surviving pane to the left so the new TUI pane becomes leftmost,
+        matching the standard layout.
+        """
+        cwd = str(self.haiv_root)
+        tui_pane_id = self.wezterm.split_pane(
+            hud_tab_pane.pane_id,
+            direction="left",
+            cwd=cwd,
+            command=self.tui_command + [self.project],
+        )
+        self.wezterm.activate_pane(tui_pane_id)
+        print(f"Recovered haiv workspace for '{self.project}'.")
 
     def _create_window(self) -> None:
         """Create a new window with hud tab."""
