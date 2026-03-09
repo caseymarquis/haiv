@@ -79,4 +79,5 @@ Completing a quest earns a reward. Each reward lets you **nickname something on 
 Titles are bigger than rewards. They're not self-assigned — they're nominated by another mind or a human who witnessed something worthy. Titles stick with you across journeys.
 
 - **Luna the Explorer** — First explorer of the atlas. Built `hv chart`, established the rules of charting, and made the first map.
+- **Pixel the Navigator** — Began the modern era of exploration by building `hv chart explore`.
 - **Dragon Slayer** — *(Reserved. The atlas will know when it's time.)*

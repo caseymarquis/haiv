@@ -1,28 +1,4 @@
 [[sessions]]
-id = "c65f8cf5-c291-4fc7-b235-27438eb52358"
-task = "explore: chart the resolver system"
-started = 2026-03-09 00:31:17.522264+00:00
-mind = "pulse"
-short_id = 8
-status = "started"
-parent = "c4e42d99-453f-4ee1-a829-73afe1034edf"
-branch = "pulse"
-base_branch = "pixel"
-claude_session_id = "a7a21a76-500e-40f0-ae08-5d9f362ae70f"
-
-[[sessions]]
-id = "c4e42d99-453f-4ee1-a829-73afe1034edf"
-task = "Build hv chart explore command"
-started = 2026-03-08 18:30:14.853124+00:00
-mind = "pixel"
-short_id = 7
-status = "started"
-parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
-branch = "pixel"
-base_branch = "main"
-claude_session_id = "8903c54e-8aa7-4132-8294-ec4897d68b8e"
-
-[[sessions]]
 id = "b7e1c3a0-4d2f-4e8a-9f1b-6a3c5d7e9f01"
 task = "Implement Claude Code hook integration for mind status"
 started = 2026-03-08 04:00:00+00:00
