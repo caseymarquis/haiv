@@ -32,8 +32,16 @@ haiv_core/
 
 Single source of truth for hook points emitted by core commands. Defines request dataclasses and `HaivHookPoint` constants. Currently has one: `AFTER_WORKTREE_CREATED` (emitted by `hv minds stage`). See `journeys/the-hook-system/`.
 
+## `resolvers/` — "The Interpreters"
+
+Concrete resolver implementations. Each file is a thin bridge: translates `ResolverContext` into helper-specific arguments and delegates. ~30-40 lines each.
+
+- **`mind.py`** — Converts a mind name string to a `Mind` object via `resolve_mind()` from `helpers/minds.py`. Also runs `mind.ensure_structure(fix=True)` as a side effect — every mind resolution auto-repairs structural issues. Errors: `MindNotFoundError`, `DuplicateMindError` (hard stops); structural issues are warnings only.
+- **`session.py`** — Converts a session identifier (short ID like `"3"` or partial/full UUID) to a `Session` object via `get_session()` from `helpers/sessions.py`. Defines its own `SessionNotFoundError`.
+
+These are the only two resolvers in core. Communities can add their own by creating `resolvers/foo.py` in project or user packages. The resolver infrastructure (discovery, loading, dispatch) lives in haiv-lib's `_infrastructure/resolvers.py` — see "The Translators" in the haiv-lib map, and `journeys/the-resolver-system/` for the full story.
+
 ## Uncharted
 
-- `resolvers/` — param resolvers for `mind` and `session` types (see The Resolver Mystery quest)
 - `__assets__/` — Jinja2 templates for mind scaffolding, pop AARs, roles
 - Most commands beyond what's been read during journeys
