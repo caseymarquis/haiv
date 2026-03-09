@@ -4,11 +4,13 @@
 
 ---
 
-## Current Focus: Cross-Project Support & Relay Infrastructure
+## Current Focus: PyPI Published, Atlas Built, Relay Still Pending
 
-The mg → haiv rename is complete (see AAR: `work/aars/build-relay-infrastructure-for-cross-venv-f695.md`). The git branch is now `haiv-hq`, CLI is `hv`, all packages renamed (haiv, haiv-core, haiv-cli, haiv-tui, haiv_project, haiv_user). Pixel did the rename; it's merged to main.
+We claimed all five PyPI names: `haiv`, `haiv-lib`, `haiv-core`, `haiv-cli`, `haiv-tui` — all at v0.1.0, tagged. The old `haiv` package was renamed to `haiv-lib` (imports unchanged), and `haiv` is now the meta-package (depends on haiv-cli + haiv-tui). GitHub repo renamed from mind-games to haiv, remote URL updated.
 
-Next priority: **relay infrastructure** for running haiv across different project venvs. Core commands run in-process, project/user commands relaunch via `uv run` in the target project's venv. Design is settled (tempfile IPC, stdio passthrough, parent passes routed command file path to child). See the AAR and `work/docs/relay-task.md` for the full task spec and design decisions.
+Luna built an atlas system (`atlas/` on haiv-hq) — a mind-driven codebase exploration framework with journeys, maps, quests, and rewards. She also built `hv chart` to brief minds on how to explore. She completed The Routing Table quest and left three open quests plus one mystery.
+
+Next priority: **relay infrastructure** for running haiv across different project venvs. Design is settled (tempfile IPC, stdio passthrough). See `work/docs/relay-task.md`.
 
 Run `hv sessions` to see current active work.
 
@@ -22,8 +24,10 @@ Run `hv sessions` to see current active work.
 
 ## Next Up
 
-- **Clean up stale sessions** — echo [7] and spark [4] are 23 commits behind main (pre-rename). Likely need to be closed out rather than merged.
-- **dnd project rename** — still references mg_project/mg_user/mg-state. Low priority since it's just a test project with no real content.
+- **CLAUDE.md clarification** — command search order is user → project → core (highest precedence first), but CLAUDE.md describes it as "haiv_core → haiv_project → haiv_user". Luna flagged this in her AAR. Should be clarified.
+- **`pip install haiv` user story** — the meta-package exists but we haven't worked out how a user goes from installing to having `hv` and `hv-tui` commands working.
+- **Clean up stale sessions** — echo [7] and spark [4] are 26+ commits behind main (pre-rename). Close out rather than merge.
+- **dnd project rename** — still references mg_project/mg_user/mg-state. Low priority.
 - **Live mind status via Claude Code hooks** — spark's research (temp-aar/claude-hook-integration.md) mapped all lifecycle events.
 - **TUI leaf sorting** — recently active leaves float to top
 - **Mind launch settings** — `settings.toml` per mind, starting with `launch.system_prompt`
@@ -32,14 +36,16 @@ Run `hv sessions` to see current active work.
 
 ## Recently Completed
 
-- **mg → haiv rename** — full rename across all packages, CLI, CLAUDE.md, mg-state content
-- **Git branch rename** — mg-state → haiv-hq (local + remote)
-- Hook system (`haiv_hooks`) — typed hook points, lazy discovery, fault-tolerant loading
-- `uv sync` auto-runs on worktree creation (quiet mode)
-- Active mind indicator in TUI (highlight background)
-- Git branch stats in TUI sessions (ahead/behind, dirty/clean)
-- `hv pop` command with merge, cleanup-only mode, session removal, work/ wipe
-- Parent-child tree display in `hv sessions` CLI and TUI
+- **PyPI name claim** — haiv, haiv-lib, haiv-core, haiv-cli, haiv-tui all published at 0.1.0, tagged v0.1.0
+- **haiv → haiv-lib rename** — package renamed, folder renamed, imports unchanged
+- **haiv meta-package** — depends on haiv-cli + haiv-tui
+- **Atlas system** — Luna built exploration framework, `hv chart` command, maps, quests, rewards
+- **mg-* cleanup** — removed dead mg/, mg-cli/, mg-core/, mg-tui/ from main worktree
+- **type-all.sh / test-all.sh fixes** — updated for haiv-lib rename
+- **Remote URL update** — mind-games.git → haiv.git
+- **Pop notification fix** — now tells parent mind work is already reviewed and merged
+- **mg → haiv rename** — full rename across all packages, CLI, CLAUDE.md
+- Hook system, TUI, `hv pop`, session tree display (older)
 
 ---
 
@@ -51,6 +57,8 @@ Run `hv sessions` to see current active work.
 - Always worktree, always commit first — one path, clean branch points
 - Push regularly — safety net for main
 - Research deliverables should go in `temp-aar/`, not `work/` — `work/` gets wiped on pop
+- After folder renames, nuke `.venv/` and `uv sync` fresh — hardlinked venvs point to old paths
+- Minds working on haiv-hq content need reminding to commit there — pop only handles the worktree branch
 
 ---
 
@@ -73,12 +81,13 @@ TUI app:      helpers.mind_launch(term, ...)   # app passes deps directly
 
 | File | Role |
 |------|------|
-| `haiv/src/haiv/haiv_hooks.py` | Hook public API: HookPoint, @haiv_hook, configure |
-| `haiv/src/haiv/helpers/tui/helpers.py` | All TUI logic |
-| `haiv/src/haiv/helpers/tui/terminal.py` | WezTerm abstraction |
-| `haiv/src/haiv/helpers/sessions.py` | Session model, CRUD |
+| `haiv-lib/src/haiv/haiv_hooks.py` | Hook public API: HookPoint, @haiv_hook, configure |
+| `haiv-lib/src/haiv/helpers/tui/helpers.py` | All TUI logic |
+| `haiv-lib/src/haiv/helpers/tui/terminal.py` | WezTerm abstraction |
+| `haiv-lib/src/haiv/helpers/sessions.py` | Session model, CRUD |
 | `haiv-core/src/haiv_core/commands/pop.py` | Session close-out |
 | `haiv-core/src/haiv_core/commands/minds/stage.py` | Staging |
+| `haiv-core/src/haiv_core/commands/chart.py` | Atlas exploration briefing |
 | `haiv-tui/src/haiv_tui/widgets/sessions.py` | Sessions tree widget |
 
 ---
@@ -87,3 +96,4 @@ TUI app:      helpers.mind_launch(term, ...)   # app passes deps directly
 
 - **Manual prompting for hv pop** — minds need to be told to run it
 - **No push in close-out** — base branch not pushed after merge; acceptable for now
+- **Minds don't commit haiv-hq content** — pop handles worktree branch but atlas/state lives on haiv-hq

@@ -1,4 +1,4 @@
-# AAR: Smoke test Claude Code hook with $CLAUDE_PROJECT_DIR expansion
+# AAR: explore: chart the resolver system
 
 ## Summary
 
@@ -41,7 +41,7 @@ Describe what couldn't be tested and what the parent should check.
 
 Small task (1-2 commits):
 
-- abc1234 Add AAR scaffolding to hv pop
+- abc1234 Add AAR scaffolding to haiv pop
   Key files: pop.py, paths.py
 
 Large task (many commits):

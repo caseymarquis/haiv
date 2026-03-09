@@ -2,7 +2,7 @@
 
 **Implement Claude Code hook integration for mind status**
 
-Build the pipeline that lets Claude Code lifecycle events flow into the TUI as live mind status. Spark's research has a complete design — read it first.
+Build the pipeline that lets Claude Code lifecycle events flow into the TUI as live mind status. You've worked on this before — your prior planning notes are in `work/docs/prior-scratchpad.md`. Some of the file paths in those notes are out of date (the codebase went through a rename from mg to haiv, and haiv was renamed to haiv-lib). Use exploration to reconcile what you planned with where things actually live now.
 
 **Location:** `worktrees/echo/`
 
@@ -12,21 +12,7 @@ Build the pipeline that lets Claude Code lifecycle events flow into the TUI as l
 
 We manage multiple minds working in parallel. Right now there's no way to see who's idle and needs attention vs who's actively working. Claude Code provides hooks that fire on lifecycle events (idle, working, waiting for approval, session start/end). We need to capture these and surface them in the TUI.
 
-## Essential Reading
-
-- `temp-aar/claude-hook-integration.md` — Spark's full research and implementation plan. This is your roadmap. It covers typed models, IPC changes, the dispatch command, and TUI integration across 6 phases.
-- `temp-aar/luna-haiv-hooks.md` — The existing haiv hook system (different from Claude Code hooks). Understand the distinction.
-
-## Key files
-
-- `haiv/src/haiv/_infrastructure/TuiServer/` — IPC server, needs message wrapper extension
-- `haiv/src/haiv/helpers/tui/TuiClient.py` — IPC client
-- `haiv/src/haiv/helpers/tui/TuiModel.py` — `SessionEntry` needs status fields
-- `haiv-tui/src/haiv_tui/widgets/sessions.py` — TUI rendering
-
-## Scope
-
-This is a substantial project. The research doc has 6 phases — you may not get through all of them. Focus on getting the plumbing right (phases 1-3) so events can flow, then wire status into the TUI (phases 4-6). Discuss priorities with Casey.
+Spark's research is at `temp-aar/claude-hook-integration.md` — it has the full design. Luna's AAR on the existing haiv hook system is at `temp-aar/luna-haiv-hooks.md`.
 
 ---
 
@@ -40,4 +26,15 @@ This is a substantial project. The research doc has 6 phases — you may not get
 
 ## Before You Begin
 
-Read the full assignment, then discuss your understanding and approach with your human collaborator before writing code. The task description is a starting point — not a spec. Do not use planning tools unless your human explicitly requests it. You work best together.
+1. Read the full assignment above.
+2. Run `hv chart` and check the maps for anything relevant to your task.
+3. **Decision point:** Does the Atlas have what you need to understand the codebase for this task?
+   - **Yes** → Continue to step 4.
+   - **No** → Propose an exploration to your human collaborator. What territory do you need to chart? This becomes a journey before you write code.
+4. Discuss your approach with your human collaborator.
+
+Use `TaskCreate` to track these steps — there may be significant work between them. The task description is a starting point — not a spec. Work collaboratively with your human. Do not use planning tools unless they explicitly request it.
+
+> **IMPORTANT:** When you need to explore the codebase, follow the `hv chart` process. Do NOT read through code files without it. Exploration that follows the charting process builds the Atlas for future minds. Exploration that doesn't is wasted.
+>
+> Before starting your exploration, read the most recent journey in `atlas/journeys/` to see what the process looks like in practice. Then state the charting rules back to your human before you begin. If you can't articulate the rules, you haven't understood them yet.

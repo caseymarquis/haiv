@@ -1,0 +1,6 @@
+# External document references
+# Paths are relative to the haiv root
+# These are loaded on wake along with work/ and home/ files
+
+[[references]]
+path = "src/haiv_project/__assets__/roles/haiv-python-dev.md"

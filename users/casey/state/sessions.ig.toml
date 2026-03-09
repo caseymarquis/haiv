@@ -1,18 +1,37 @@
 [[sessions]]
-id = "5d01fba9-18e1-40b1-b64a-e3ae066b4fe3"
-task = "Implement Claude Code hook integration for mind status"
-started = 2026-02-15 13:26:30.766268+00:00
-mind = "echo"
+id = "c65f8cf5-c291-4fc7-b235-27438eb52358"
+task = "explore: chart the resolver system"
+started = 2026-03-09 00:31:17.522264+00:00
+mind = "pulse"
+short_id = 8
+status = "started"
+parent = "c4e42d99-453f-4ee1-a829-73afe1034edf"
+branch = "pulse"
+base_branch = "pixel"
+claude_session_id = "a7a21a76-500e-40f0-ae08-5d9f362ae70f"
+
+[[sessions]]
+id = "c4e42d99-453f-4ee1-a829-73afe1034edf"
+task = "Build hv chart explore command"
+started = 2026-03-08 18:30:14.853124+00:00
+mind = "pixel"
 short_id = 7
+status = "started"
+parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
+branch = "pixel"
+base_branch = "main"
+claude_session_id = "8903c54e-8aa7-4132-8294-ec4897d68b8e"
+
+[[sessions]]
+id = "b7e1c3a0-4d2f-4e8a-9f1b-6a3c5d7e9f01"
+task = "Implement Claude Code hook integration for mind status"
+started = 2026-03-08 04:00:00+00:00
+mind = "echo"
+short_id = 6
 status = "started"
 parent = "57fa2e41-dee8-4851-b5ac-52b887f1e293"
 branch = "echo"
 base_branch = "main"
-description = "Spark's research (temp-aar/claude-hook-integration.md) has a complete design. Implement: typed hook event models, IPC message wrapper on TuiServer channel, haiv claude_hook dispatch command, status fields in TuiModel, TUI status display, and setup command. Six phases detailed in the research doc."
-claude_session_id = "dd75a565-ca8f-4bf8-a342-3ab659a51303"
-old_claude_session_ids = [
-    "0ed3e1a0-7960-4032-b4a5-2550ef7266c6",
-]
 
 [[sessions]]
 id = "fa1418d4-0f79-4b25-abcb-aec6f14ccd81"
@@ -48,7 +67,7 @@ started = 2026-02-01 23:23:22.092324+00:00
 mind = "wren"
 short_id = 2
 status = "started"
-claude_session_id = "a98c9e33-d0b4-41ac-97c7-1f476e032ab3"
+claude_session_id = "d379ab57-fb3c-4324-9dd3-4bc30dc3bb2a"
 old_claude_session_ids = [
     "308f9093-f00f-4197-bda0-ae264fdb4e99",
     "30e3033f-ebbc-4d56-be94-4884fad44a26",
@@ -60,4 +79,6 @@ old_claude_session_ids = [
     "4aca1f51-6b99-47b4-9236-2bbc45a44fc1",
     "6459d379-aa82-4f98-a005-9f10d3067992",
     "4bf0b4be-a966-416c-8ab4-a5507d6ee0e8",
+    "a98c9e33-d0b4-41ac-97c7-1f476e032ab3",
+    "737d482f-5a7a-4102-807f-d5bbe4b023c8",
 ]
