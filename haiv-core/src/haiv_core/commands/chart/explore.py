@@ -275,7 +275,7 @@ def _find_example_journey(ctx: cmd.Ctx) -> Path | None:
     Returns the path to the example journey in __assets__/chart/.
     Projects can override this via hook (TODO).
     """
-    example = ctx.paths.pkgs.current.assets_dir / "chart" / "example-journey.md"
-    if example.exists():
+    example = ctx.paths.pkgs.current.assets_dir / "chart" / "example-journey"
+    if example.exists() and example.is_dir():
         return example
     return None
