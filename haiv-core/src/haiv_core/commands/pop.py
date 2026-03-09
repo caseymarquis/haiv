@@ -56,7 +56,7 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
         parent_paths.work.aars_dir.mkdir(parents=True, exist_ok=True)
         ctx.templates.write("pop/aar.md.j2", aar_path, skip_existing=True, task=session.task)
         aar_rel = aar_path.relative_to(ctx.paths.root)
-        aar_item = f"Fill in your AAR at `{aar_rel}`."
+        aar_item = f"Fill in your AAR at `{aar_rel}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
 
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
