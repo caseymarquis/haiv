@@ -18,23 +18,21 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    atlas_dir = ctx.paths.root / "atlas"
-    journeys_dir = atlas_dir / "journeys"
-    maps_dir = atlas_dir / "maps"
+    atlas = ctx.paths.atlas
 
     # Ensure atlas structure exists
-    journeys_dir.mkdir(parents=True, exist_ok=True)
-    maps_dir.mkdir(exist_ok=True)
+    atlas.journeys_dir.mkdir(parents=True, exist_ok=True)
+    atlas.maps_dir.mkdir(exist_ok=True)
 
-    has_welcome = (atlas_dir / "welcome.md").exists()
+    has_welcome = atlas.welcome_file.exists()
     goal = ctx.args.get_one("goal", default_value=None)
 
     # Build the briefing
     lines = []
 
-    lines.append(f"The atlas lives at: {atlas_dir}")
+    lines.append(f"The atlas lives at: {atlas.root}")
     if has_welcome:
-        lines.append(f"Read {atlas_dir / 'welcome.md'} for how the atlas works.")
+        lines.append(f"Read {atlas.welcome_file} for how the atlas works.")
     lines.append("")
 
     if goal:

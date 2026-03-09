@@ -1,0 +1,37 @@
+STARTING AN EXPLORATION
+
+You're about to explore the codebase and leave a trail for those
+who follow. Before you head out, there's some preparation.
+
+Your journey: "{{ name }}"
+{% if goal %}Your goal: "{{ goal }}"
+{% endif %}
+{% if example_journey %}BEFORE YOU BEGIN
+
+Read this journey to see what exploration looks like:
+  {{ example_journey }}
+
+Notice the voice. Notice how each entry captures genuine reactions —
+surprise, confusion, connections forming. That's what makes a journey
+worth reading. You're not writing a report. You're leaving a trail
+that helps the next explorer feel less alone in unfamiliar territory.
+{% endif %}
+YOUR RESEARCH LOG
+
+Now search the atlas for what's already known about your topic:
+
+  1. Check the maps in atlas/maps/ — they distill what's known.
+  2. Check the quest board at atlas/quests.md — someone may have left clues.
+  3. Search the journeys in atlas/journeys/ — someone may have passed through.
+
+Then write your research log — entry 001. This is where you record:
+  - What pulled you here (what are you curious about?)
+  - What the atlas already knows (what did you find?)
+  - What's missing (what gap are you filling?)
+  - Where you plan to go first
+
+Your journey directory is ready: {{ journey_dir }}
+Create your research log: {{ journey_dir }}/001-research-log.md
+
+When your research log is written, run:
+  hv chart explore --log

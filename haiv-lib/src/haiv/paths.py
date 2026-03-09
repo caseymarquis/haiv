@@ -171,6 +171,11 @@ class WorkPaths:
     root: Path
 
     @property
+    def exploration_file(self) -> Path:
+        """Path to exploration.json (active exploration state)."""
+        return self.root / "exploration.json"
+
+    @property
     def aars_dir(self) -> Path:
         """Path to work/aars/ directory (after-action reviews)."""
         return self.root / "aars"
@@ -260,6 +265,47 @@ class MindPaths:
     def references_file(self) -> Path:
         """Path to references.toml (at root level)."""
         return self.root / "references.toml"
+
+
+@dataclass
+class AtlasPaths:
+    """Paths for the atlas — the shared map of the codebase.
+
+    Structure:
+        atlas/
+        ├── welcome.md
+        ├── quests.md
+        ├── journeys/
+        │   └── eras/
+        └── maps/
+    """
+
+    root: Path
+
+    @property
+    def welcome_file(self) -> Path:
+        """Path to atlas/welcome.md."""
+        return self.root / "welcome.md"
+
+    @property
+    def quests_file(self) -> Path:
+        """Path to atlas/quests.md (the quest board)."""
+        return self.root / "quests.md"
+
+    @property
+    def journeys_dir(self) -> Path:
+        """Path to atlas/journeys/."""
+        return self.root / "journeys"
+
+    @property
+    def maps_dir(self) -> Path:
+        """Path to atlas/maps/."""
+        return self.root / "maps"
+
+    @property
+    def eras_dir(self) -> Path:
+        """Path to atlas/journeys/eras/."""
+        return self.journeys_dir / "eras"
 
 
 @dataclass
@@ -384,6 +430,11 @@ class Paths:
                 "Run 'hv users new --name <name>' to create one."
             )
         return UserPaths(root=self.users_dir / self._user_name)
+
+    @property
+    def atlas(self) -> AtlasPaths:
+        """Atlas paths (shared codebase map)."""
+        return AtlasPaths(root=self.root / "atlas")
 
     @property
     def project_settings_file(self) -> Path:

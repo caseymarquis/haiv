@@ -7,9 +7,9 @@ class TestChartRouting:
     """Test that 'chart' routes correctly."""
 
     def test_routes_to_chart_file(self):
-        """'chart' routes to chart.py."""
+        """'chart' routes to chart/_index_.py."""
         match = test.require_routes_to("chart")
-        assert match.file.name == "chart.py"
+        assert match.file.name == "_index_.py"
 
 
 class TestChartOutput:
