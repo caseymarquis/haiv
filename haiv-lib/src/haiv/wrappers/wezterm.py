@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -152,7 +153,7 @@ class WezTerm:
 
         return result.stdout
 
-    def run_external(self, args: list[str], *, intent: str | None = None) -> str:
+    def run_external(self, args: list[str], *, intent: str | None = None) -> str | None:
         """Run a WezTerm command outside the CLI context.
 
         Unlike run(), this does NOT prepend 'cli'. Use this for commands
@@ -160,21 +161,33 @@ class WezTerm:
         controlling an existing one. All other commands should use run(),
         which requires being inside a WezTerm session.
 
+        On Windows the process is fully detached (fire-and-forget) because
+        wezterm start blocks otherwise. On other platforms it runs
+        synchronously with error reporting.
+
         Args:
             args: Arguments after the base command (e.g., ["start", "--workspace", "x"]).
             intent: Optional description of what we're trying to accomplish.
 
         Returns:
-            stdout from the command.
+            stdout from the command (Unix), or None (Windows).
 
         Raises:
-            WezTermError: If the command fails.
+            WezTermError: If the command fails (Unix only).
         """
         full_cmd = self.command + args
         display_cmd = " ".join(full_cmd)
 
         if not self.quiet:
             print(f"→ {display_cmd}")
+
+        if sys.platform == "win32":
+            subprocess.Popen(
+                full_cmd,
+                close_fds=True,
+                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+            )
+            return None
 
         result = subprocess.run(
             full_cmd,
