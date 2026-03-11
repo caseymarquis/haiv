@@ -19,3 +19,7 @@ HV_MIND = "HV_MIND"
 # Current haiv session ID, set by `hv start {mind}`.
 # Used to track delegation chains (parent session).
 HV_SESSION = "HV_SESSION"
+
+# Set when hv relaunches itself in a project's venv context.
+# Prevents infinite relaunch loops.
+HV_PROJECT_CONTEXT = "HV_PROJECT_CONTEXT"

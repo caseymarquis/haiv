@@ -1,11 +1,28 @@
 """General utilities for haiv."""
 
+import shlex
+import subprocess
+import sys
 import threading
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
+
+
+def shell_quote(s: str) -> str:
+    """Quote a string for the current platform's shell."""
+    if sys.platform == "win32":
+        return subprocess.list2cmdline([s])
+    return shlex.quote(s)
+
+
+def shell_join(args: list[str]) -> str:
+    """Join a command list into a shell string for the current platform."""
+    if sys.platform == "win32":
+        return subprocess.list2cmdline(args)
+    return shlex.join(args)
 
 
 def module_to_file(module: ModuleType) -> Path:

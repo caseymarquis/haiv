@@ -17,7 +17,7 @@ related functions sort together.
 
 from __future__ import annotations
 
-import shlex
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -213,12 +213,14 @@ def mind_close_pane(terminal: TerminalManager, mind_name: str) -> None:
 
 def build_claude_command(mind_name: str, claude_session_id: str) -> str:
     """Build the claude CLI command for launching a mind."""
+    from haiv.util import shell_quote
+
     prompt = f"Run `hv become {mind_name}`"
     allowed = f"Bash(hv become {mind_name})"
     return (
-        f"claude {shlex.quote(prompt)} "
-        f"--session-id {shlex.quote(claude_session_id)} "
-        f"--allowedTools {shlex.quote(allowed)}"
+        f"claude {shell_quote(prompt)} "
+        f"--session-id {shell_quote(claude_session_id)} "
+        f"--allowedTools {shell_quote(allowed)}"
     )
 
 

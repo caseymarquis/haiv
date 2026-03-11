@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import os
-import shlex
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from haiv.errors import CommandError
+from haiv.util import shell_join, shell_quote
 
 if TYPE_CHECKING:
     from haiv.wrappers.wezterm import Pane, WezTerm
@@ -113,9 +113,9 @@ class TerminalManager:
                 parts.append(f'set "{key}={value}"')
         else:
             for key, value in env.items():
-                parts.append(f"export {key}={shlex.quote(value)}")
+                parts.append(f"export {key}={shell_quote(value)}")
         parts.extend(commands)
-        self.wezterm.send_text(new_pane_id, " && ".join(parts) + "\n", no_paste=True)
+        self.wezterm.send_text(new_pane_id, " && ".join(parts) + os.linesep, no_paste=True)
 
         # 5. Focus new pane, update hud tab title
         self.wezterm.activate_pane(new_pane_id)
@@ -335,10 +335,23 @@ class TerminalManager:
 
     # -- Actions --
 
+    @staticmethod
+    def _shell_wrap(command: list[str]) -> list[str]:
+        """Wrap a command in a shell that stays open on failure."""
+        cmd_str = shell_join(command)
+        if sys.platform == "win32":
+            return ["cmd", "/k", cmd_str]
+        return ["bash", "-c", f"{cmd_str}; exec bash"]
+
     def _launch_wezterm(self) -> None:
-        """Launch a new WezTerm instance that runs 'hv start'."""
+        """Launch a new WezTerm instance and run 'hv start' inside it.
+
+        Wraps the command in a shell so that if hv start fails, the
+        shell stays open and the error remains visible.
+        """
         self.wezterm.run_external(
-            ["start", "--cwd", str(self.haiv_root), "--", "hv", "start"],
+            ["start", "--cwd", str(self.haiv_root), "--"]
+            + self._shell_wrap(["hv", "start"]),
             intent=f"launch WezTerm for '{self.project}'",
         )
 
@@ -364,8 +377,9 @@ class TerminalManager:
         cwd = str(self.haiv_root)
 
         # New window with TUI running in the hud pane
+        tui_cmd = self.tui_command + [self.project]
         hud_pane_id = self.wezterm.spawn(
-            new_window=True, cwd=cwd, command=self.tui_command + [self.project],
+            new_window=True, cwd=cwd, command=self._shell_wrap(tui_cmd),
         )
         self.wezterm.set_tab_title(self._hud_tab_title(), pane_id=hud_pane_id)
 
