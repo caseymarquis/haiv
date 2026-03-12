@@ -5,6 +5,7 @@ from pathlib import Path
 
 from haiv.helpers.chart import (
     ensure_atlas_structure,
+    ensure_chart_templates,
     ensure_example_journey,
     get_briefing,
     load_exploration,
@@ -39,6 +40,28 @@ def bundled_dir(tmp_path) -> Path:
     (d / "002-some-entry.md").write_text("# Some Entry\n")
     (d / "not-markdown.txt").write_text("ignored\n")
     return d
+
+
+@pytest.fixture
+def bundled_templates(tmp_path) -> Path:
+    """A fake bundled chart templates directory with .j2 files."""
+    d = tmp_path / "bundled" / "chart"
+    d.mkdir(parents=True)
+    (d / "briefing.md.j2").write_text("Briefing: {{ goal }}\n")
+    (d / "explore-start.md.j2").write_text("Start: {{ name }}\n")
+    (d / "research-log.md.j2").write_text("Log: {{ mind }}\n")
+    # Non-template file should be ignored
+    (d / "README.md").write_text("not a template\n")
+    # Subdirectory should be ignored
+    (d / "example-journey").mkdir()
+    (d / "example-journey" / "001.md").write_text("example\n")
+    return d
+
+
+@pytest.fixture
+def local_templates(tmp_path) -> Path:
+    """A project-local chart templates directory."""
+    return tmp_path / "atlas" / "templates" / "chart"
 
 
 # =============================================================================
@@ -116,6 +139,72 @@ class TestEnsureExampleJourney:
 
         assert atlas.examples_dir.is_dir()
         assert len(files) == 2
+
+
+# =============================================================================
+# Chart templates
+# =============================================================================
+
+
+class TestEnsureChartTemplates:
+    def test_copies_all_templates_when_empty(self, local_templates: Path, bundled_templates: Path):
+        ensure_chart_templates(local_templates, bundled_templates)
+
+        assert (local_templates / "briefing.md.j2").exists()
+        assert (local_templates / "explore-start.md.j2").exists()
+        assert (local_templates / "research-log.md.j2").exists()
+
+    def test_copies_only_j2_files(self, local_templates: Path, bundled_templates: Path):
+        """Non-.j2 files and subdirectories are not copied."""
+        ensure_chart_templates(local_templates, bundled_templates)
+
+        assert not (local_templates / "README.md").exists()
+        assert not (local_templates / "example-journey").exists()
+
+    def test_preserves_existing_templates(self, local_templates: Path, bundled_templates: Path):
+        """Existing customized templates are not overwritten."""
+        local_templates.mkdir(parents=True)
+        (local_templates / "briefing.md.j2").write_text("Custom briefing\n")
+
+        ensure_chart_templates(local_templates, bundled_templates)
+
+        assert (local_templates / "briefing.md.j2").read_text() == "Custom briefing\n"
+
+    def test_copies_missing_files_individually(self, local_templates: Path, bundled_templates: Path):
+        """If one template exists but others don't, only missing ones are copied."""
+        local_templates.mkdir(parents=True)
+        (local_templates / "briefing.md.j2").write_text("Custom briefing\n")
+
+        ensure_chart_templates(local_templates, bundled_templates)
+
+        # Custom file preserved
+        assert (local_templates / "briefing.md.j2").read_text() == "Custom briefing\n"
+        # Missing files restored from bundled
+        assert (local_templates / "explore-start.md.j2").exists()
+        assert (local_templates / "research-log.md.j2").exists()
+
+    def test_creates_templates_dir_if_missing(self, local_templates: Path, bundled_templates: Path):
+        assert not local_templates.exists()
+        ensure_chart_templates(local_templates, bundled_templates)
+        assert local_templates.is_dir()
+
+    def test_returns_templates_dir(self, local_templates: Path, bundled_templates: Path):
+        result = ensure_chart_templates(local_templates, bundled_templates)
+        assert result == local_templates
+
+    def test_handles_missing_bundled_dir(self, local_templates: Path, tmp_path: Path):
+        """Gracefully handles a nonexistent bundled directory."""
+        nonexistent = tmp_path / "does-not-exist"
+        result = ensure_chart_templates(local_templates, nonexistent)
+
+        assert result == local_templates
+        assert local_templates.is_dir()
+
+    def test_idempotent(self, local_templates: Path, bundled_templates: Path):
+        ensure_chart_templates(local_templates, bundled_templates)
+        ensure_chart_templates(local_templates, bundled_templates)
+
+        assert (local_templates / "briefing.md.j2").exists()
 
 
 # =============================================================================

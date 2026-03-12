@@ -43,6 +43,36 @@ def ensure_atlas_structure(atlas: AtlasPaths) -> None:
     atlas.examples_dir.mkdir(exist_ok=True)
 
 
+def ensure_chart_templates(
+    templates_dir: Path,
+    bundled_dir: Path,
+) -> Path:
+    """Ensure project-local chart templates exist.
+
+    Checks each .j2 file in bundled_dir individually. If a file is
+    missing from templates_dir, copies it from bundled_dir. This means
+    projects can customize some templates while still getting defaults
+    for the rest.
+
+    Args:
+        templates_dir: Project-local templates directory (atlas/templates/chart/).
+        bundled_dir: Bundled templates directory (__assets__/chart/).
+
+    Returns:
+        The templates_dir path (for convenience).
+    """
+    templates_dir.mkdir(parents=True, exist_ok=True)
+
+    if bundled_dir.is_dir():
+        for src in bundled_dir.iterdir():
+            if src.is_file() and src.suffix == ".j2":
+                dest = templates_dir / src.name
+                if not dest.exists():
+                    shutil.copy2(src, dest)
+
+    return templates_dir
+
+
 def get_briefing(
     atlas: AtlasPaths,
     goal: str | None,
@@ -55,7 +85,7 @@ def get_briefing(
     ensure_atlas_structure(atlas)
 
     return templates.render(
-        "chart/briefing.md.j2",
+        "briefing.md.j2",
         atlas_root=atlas.root,
         has_welcome=atlas.welcome_file.exists(),
         welcome_file=atlas.welcome_file,
@@ -129,7 +159,7 @@ def prompt_for_name(
     templates: TemplateRenderer,
 ) -> str:
     """Return prompt text asking the user to provide a journey name."""
-    return templates.render("chart/explore-start-needs-name.md.j2", goal=goal)
+    return templates.render("explore-start-needs-name.md.j2", goal=goal)
 
 
 def start_journey(
@@ -153,7 +183,7 @@ def start_journey(
     journey_dir.mkdir(parents=True, exist_ok=True)
 
     templates.write(
-        "chart/research-log.md.j2",
+        "research-log.md.j2",
         journey_dir / "001-research-log.md",
         mind=mind_name,
         date=date.today().isoformat(),
@@ -171,7 +201,7 @@ def start_journey(
     example_files = ensure_example_journey(atlas, bundled_examples_dir)
 
     return templates.render(
-        "chart/explore-start.md.j2",
+        "explore-start.md.j2",
         name=name,
         goal=goal,
         example_files=example_files,
@@ -245,7 +275,7 @@ def plan_next(
     save_exploration(mind, state)
 
     return templates.render(
-        "chart/explore-plan.md.j2",
+        "explore-plan.md.j2",
         current_file=current_entries[0] if current_entries else None,
     )
 
@@ -267,7 +297,7 @@ def embark(
     entry_file = journey_dir / f"{entry_label}.md"
 
     templates.write(
-        "chart/explore-entry.md.j2", entry_file,
+        "explore-entry.md.j2", entry_file,
         entry=entry_label, destination=destination,
     )
 
@@ -278,7 +308,7 @@ def embark(
     save_exploration(mind, state)
 
     return templates.render(
-        "chart/explore-embark.md.j2",
+        "explore-embark.md.j2",
         entry=entry_label, entry_file=entry_file, destination=destination,
     )
 
@@ -295,7 +325,7 @@ def reflect(
     state["status"] = "reflected"
     save_exploration(mind, state)
 
-    return templates.render("chart/explore-reflect.md.j2")
+    return templates.render("explore-reflect.md.j2")
 
 
 def finish_journey(
@@ -312,7 +342,7 @@ def finish_journey(
     entries = sorted(journey_dir.glob("*.md"))
 
     message = templates.render(
-        "chart/explore-return.md.j2",
+        "explore-return.md.j2",
         journey_name=state["journey"],
         entry_count=len(entries),
         journey_dir=journey_dir,

@@ -313,6 +313,11 @@ class AtlasPaths:
         """Path to atlas/journeys/eras/."""
         return self.journeys_dir / "eras"
 
+    @property
+    def templates_dir(self) -> Path:
+        """Path to atlas/templates/."""
+        return self.root / "templates"
+
 
 @dataclass
 class Pkgs:
