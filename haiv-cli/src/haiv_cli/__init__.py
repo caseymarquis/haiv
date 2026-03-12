@@ -20,7 +20,7 @@ from haiv._infrastructure.routing import find_route, RouteMatch
 from haiv._infrastructure.loader import load_command, load_commands_module
 from haiv._infrastructure.args import build_ctx
 from haiv._infrastructure.runner import run_command
-from haiv._infrastructure.identity import detect_user, Identity
+from haiv._infrastructure.identity import detect_user, Identity, AmbiguousIdentityError
 from haiv._infrastructure.resolvers import make_resolver
 from haiv._infrastructure.haiv_hooks import configure_haiv_hooks
 from haiv.util import module_to_folder
@@ -271,7 +271,15 @@ def main():
 
     try:
         command = load_command(route.file)
-        haiv_username = _user.name if _user else None
+        # Always surface ambiguous identity — it's a config problem the user must fix.
+        # Other detection failures (no user) are fine; some commands don't need one.
+        try:
+            user = _detect_user_cached()
+            haiv_username = user.name
+        except AmbiguousIdentityError:
+            raise
+        except Exception:
+            haiv_username = None
 
         # Build resolver callback from discovered resolvers
         # Order: haiv_core, haiv_project, haiv_user (later overrides earlier)
