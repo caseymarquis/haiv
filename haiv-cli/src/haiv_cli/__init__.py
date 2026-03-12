@@ -232,6 +232,50 @@ def _print_not_found(command_string: str, sources: list[CommandSource]) -> None:
                 print(f"    {s.error}", file=sys.stderr)
 
 
+def _maybe_relaunch_in_project() -> None:
+    """Relaunch hv in the project's venv if it has haiv-cli installed.
+
+    When hv is installed globally (via `hv dev install`), it runs in haiv-cli's
+    own venv. But projects may have their own venv with additional dependencies
+    (e.g., pymssql for database commands). If the project has haiv-cli installed,
+    we relaunch in that context so project-level imports and dependencies work.
+    """
+    try:
+        haiv_root = get_haiv_root(cwd=Path.cwd())
+    except Exception:
+        return  # Not in a haiv project
+
+    # Skip relaunch if we already relaunched for this exact project
+    launched_for = os.environ.get(env.HV_PROJECT_CONTEXT)
+    if launched_for and Path(launched_for).resolve() == haiv_root.resolve():
+        return  # Already relaunched for this project
+
+    # Check if haiv-cli is installed in the project's venv
+    venv = haiv_root / ".venv"
+    if not venv.exists():
+        return
+
+    if sys.platform == "win32":
+        hv_script = venv / "Scripts" / "hv.exe"
+    else:
+        hv_script = venv / "bin" / "hv"
+
+    if not hv_script.exists():
+        return  # Project venv doesn't have haiv-cli
+
+    import subprocess
+
+    relaunch_env = os.environ.copy()
+    relaunch_env[env.HV_PROJECT_CONTEXT] = str(haiv_root.resolve())
+    relaunch_env.pop("VIRTUAL_ENV", None)
+
+    result = subprocess.run(
+        ["uv", "run", "--project", str(haiv_root), "hv"] + sys.argv[1:],
+        env=relaunch_env,
+    )
+    sys.exit(result.returncode)
+
+
 def main():
     """Entry point for haiv CLI.
 
@@ -242,6 +286,8 @@ def main():
     """
     cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
     cast(io.TextIOWrapper, sys.stderr).reconfigure(encoding="utf-8")
+
+    _maybe_relaunch_in_project()
 
     # HV_PROG allows the wrapper script to pass its name (e.g., when using python -c)
     prog = os.environ.get(env.HV_PROG) or Path(sys.argv[0]).name
@@ -271,6 +317,7 @@ def main():
 
     try:
         command = load_command(route.file)
+
         # Always surface ambiguous identity — it's a config problem the user must fix.
         # Other detection failures (no user) are fine; some commands don't need one.
         try:
