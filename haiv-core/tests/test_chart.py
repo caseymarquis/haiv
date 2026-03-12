@@ -75,10 +75,11 @@ class TestChartCreatesAtlas:
     """Test that chart creates the atlas structure."""
 
     def test_creates_atlas_directories(self):
-        """chart creates atlas/, journeys/, and maps/ if missing."""
+        """chart creates atlas/, journeys/, maps/, and examples/ if missing."""
         result = test.execute("chart")
 
-        atlas_dir = result.ctx.paths.root / "atlas"
-        assert atlas_dir.is_dir()
-        assert (atlas_dir / "journeys").is_dir()
-        assert (atlas_dir / "maps").is_dir()
+        atlas = result.ctx.paths.atlas
+        assert atlas.root.is_dir()
+        assert atlas.journeys_dir.is_dir()
+        assert atlas.maps_dir.is_dir()
+        assert atlas.examples_dir.is_dir()

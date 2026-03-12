@@ -7,6 +7,7 @@ import pytest
 from haiv import test
 from haiv.errors import CommandError
 from haiv.helpers.sessions import create_session
+from haiv.paths import MindPaths
 from haiv.test import Sandbox
 
 
@@ -19,7 +20,7 @@ from haiv.test import Sandbox
 def sandbox():
     """Sandbox with a mind session ready to explore."""
     sb = test.create_sandbox()
-    root = sb.ctx.paths.root
+    atlas = sb.ctx.paths.atlas
 
     # Create minds directory for our test mind
     mind_dir = sb.ctx.paths.user.minds_dir / "pixel"
@@ -33,9 +34,8 @@ def sandbox():
     )
 
     # Create atlas structure
-    atlas = root / "atlas"
-    (atlas / "journeys").mkdir(parents=True)
-    (atlas / "maps").mkdir(parents=True)
+    atlas.journeys_dir.mkdir(parents=True)
+    atlas.maps_dir.mkdir(parents=True)
 
     sb._session = session
     return sb
@@ -48,6 +48,13 @@ def _run(sandbox, command, capsys=None):
     if capsys:
         return capsys.readouterr().out
     return ctx
+
+
+def _mind_paths(sandbox: Sandbox) -> MindPaths:
+    return MindPaths(
+        root=sandbox.ctx.paths.user.minds_dir / "pixel",
+        haiv_root=sandbox.ctx.paths.root,
+    )
 
 
 # =============================================================================
@@ -78,13 +85,13 @@ class TestStart:
 
     def test_creates_journey_directory(self, sandbox: Sandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
-        journey_dir = sandbox.ctx.paths.root / "atlas" / "journeys" / "test-journey"
-        assert journey_dir.is_dir()
+        atlas = sandbox.ctx.paths.atlas
+        assert (atlas.journeys_dir / "test-journey").is_dir()
 
     def test_creates_research_log(self, sandbox: Sandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
-        journey_dir = sandbox.ctx.paths.root / "atlas" / "journeys" / "test-journey"
-        log = journey_dir / "001-research-log.md"
+        atlas = sandbox.ctx.paths.atlas
+        log = atlas.journeys_dir / "test-journey" / "001-research-log.md"
         assert log.exists()
         content = log.read_text()
         assert "pixel" in content
@@ -92,18 +99,37 @@ class TestStart:
 
     def test_creates_exploration_state(self, sandbox: Sandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
-        state_file = sandbox.ctx.paths.user.minds_dir / "pixel" / "work" / "exploration.json"
-        assert state_file.exists()
+        mind = _mind_paths(sandbox)
+        assert mind.work.exploration_file.exists()
 
     def test_errors_if_journey_exists(self, sandbox: Sandbox):
-        journey_dir = sandbox.ctx.paths.root / "atlas" / "journeys" / "existing"
-        journey_dir.mkdir(parents=True)
+        atlas = sandbox.ctx.paths.atlas
+        (atlas.journeys_dir / "existing").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
             _run(sandbox, "chart explore --name existing")
 
     def test_shows_example_journey(self, sandbox: Sandbox, capsys):
         output = _run(sandbox, 'chart explore --name test-journey', capsys)
-        assert "example-journey" in output
+        assert "examples" in output
+        assert "001-research-log.md" in output
+
+    def test_populates_examples_from_bundled_assets(self, sandbox: Sandbox):
+        _run(sandbox, 'chart explore --name test-journey')
+        atlas = sandbox.ctx.paths.atlas
+        assert atlas.examples_dir.is_dir()
+        example_files = list(atlas.examples_dir.glob("*.md"))
+        assert len(example_files) > 0
+
+    def test_preserves_existing_examples(self, sandbox: Sandbox, capsys):
+        atlas = sandbox.ctx.paths.atlas
+        atlas.examples_dir.mkdir(parents=True)
+        custom = atlas.examples_dir / "custom-example.md"
+        custom.write_text("# Custom example\n")
+
+        output = _run(sandbox, 'chart explore --name test-journey', capsys)
+        assert "custom-example.md" in output
+        # Should not have copied bundled files over custom content
+        assert not (atlas.examples_dir / "001-research-log.md").exists()
 
 
 # =============================================================================
@@ -141,7 +167,8 @@ class TestEmbark:
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
         _run(sandbox, 'chart explore --embark src/haiv/cmd.py')
-        entry = sandbox.ctx.paths.root / "atlas" / "journeys" / "test-journey" / "002.md"
+        atlas = sandbox.ctx.paths.atlas
+        entry = atlas.journeys_dir / "test-journey" / "002.md"
         assert entry.exists()
         assert "cmd.py" in entry.read_text()
 
@@ -179,8 +206,8 @@ class TestReturn:
         _run(sandbox, 'chart explore --embark src/haiv/cmd.py')
         _run(sandbox, 'chart explore --reflect')
         _run(sandbox, 'chart explore --return')
-        state_file = sandbox.ctx.paths.user.minds_dir / "pixel" / "work" / "exploration.json"
-        assert not state_file.exists()
+        mind = _mind_paths(sandbox)
+        assert not mind.work.exploration_file.exists()
 
     def test_shows_review_guidance(self, sandbox: Sandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')

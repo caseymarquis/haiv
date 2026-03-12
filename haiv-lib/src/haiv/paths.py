@@ -276,6 +276,7 @@ class AtlasPaths:
         ├── welcome.md
         ├── quests.md
         ├── journeys/
+        │   ├── examples/
         │   └── eras/
         └── maps/
     """
@@ -301,6 +302,11 @@ class AtlasPaths:
     def maps_dir(self) -> Path:
         """Path to atlas/maps/."""
         return self.root / "maps"
+
+    @property
+    def examples_dir(self) -> Path:
+        """Path to atlas/journeys/examples/."""
+        return self.journeys_dir / "examples"
 
     @property
     def eras_dir(self) -> Path:
