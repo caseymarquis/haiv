@@ -1,0 +1,4 @@
+wezterm_command = ["flatpak", "run", "org.wezfurlong.wezterm"]
+
+[keybindings]
+"nav.next_tab" = "space"

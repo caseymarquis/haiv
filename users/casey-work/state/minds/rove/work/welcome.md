@@ -1,0 +1,55 @@
+# Task Assignment
+
+**[Brief task title]**
+
+[Describe what this mind should accomplish]
+
+
+**Location:** `worktrees/rove/`
+
+
+---
+
+## Requirements
+
+- [Requirement 1]
+- [Requirement 2]
+
+---
+
+## Success Criteria
+
+- [Criterion 1]
+- [Criterion 2]
+
+---
+
+## Verification
+
+```bash
+[Commands to verify success]
+```
+
+---
+
+## Process
+
+1. [Step 1]
+2. [Step 2]
+
+---
+
+## Before You Begin
+
+1. Read the full assignment above.
+2. Run `hv chart` and check the maps for anything relevant to your task.
+3. **Decision point:** Does the Atlas have what you need to understand the codebase for this task?
+   - **Yes** → Continue to step 4.
+   - **No** → Propose an exploration to your human collaborator. What territory do you need to chart? This becomes a journey before you write code.
+4. Discuss your approach with your human collaborator.
+
+Use `TaskCreate` to track these steps — there may be significant work between them. The task description is a starting point — not a spec. Work collaboratively with your human. Do not use planning tools unless they explicitly request it.
+
+> **IMPORTANT:** When you need to explore the codebase, follow the `hv chart` process. Do NOT read through code files without it. Exploration that follows the charting process builds the Atlas for future minds. Exploration that doesn't is wasted.
+>
+> Before starting your exploration, read the most recent journey in `atlas/journeys/` to see what the process looks like in practice. Then state the charting rules back to your human before you begin. If you can't articulate the rules, you haven't understood them yet.

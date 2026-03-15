@@ -25,13 +25,20 @@ This is one of the most valuable landmarks you could chart. A mind who understan
 
 ### The Charting Tools
 **Reward:** Landmark
+**Status:** Completed by Nova — see below
 
-`hv chart` used to be a single file (`chart.py`). Now it's a directory with subcommands — `hv chart` and `hv chart explore`. The haiv-core map still shows `chart.py` as a single entry. A proper survey would map:
+### The Settings System
+**Reward:** Skeleton Key
 
-- The chart command family and what each subcommand does
-- How `hv chart explore` manages exploration state (flags, templates, file scaffolding)
-- The `AtlasPaths` addition to `paths.py` and `WorkPaths.exploration_file`
-- The templates in `__assets__/chart/` including the bundled example journey
+`haiv-lib/src/haiv/settings.py` defines the settings shape (`HaivSettings`) and `_infrastructure/settings.py` handles loading, caching, and merging. Currently listed as Uncharted in the haiv-lib map. A proper survey would map:
+
+- How TOML keys map to `HaivSettings` fields (underscore-stripping convention)
+- The merge logic: project settings as base, user settings as override
+- How TOML sections (like `[keybindings]`) vs top-level keys interact with the loader
+- The caching strategy and when user settings become available
+- What settings exist today and what each controls
+
+This came up when we needed to know whether a `[keybindings]` TOML section would load correctly — the atlas pointed us to the right file but we had to read the code to answer the question.
 
 ---
 
@@ -59,6 +66,14 @@ Mapped the full path from `hv become luna` to running code: CLI entry → source
 **Journey:** `journeys/the-hook-system/`
 
 Mapped the full hook system: typed extension points (`HaivHookPoint`) defined in `haiv_hook_points.py`, emitted by commands that opt in with `enable_haiv_hooks=True`, handled by `@haiv_hook`-decorated functions in `haiv_hook_handlers/` directories. Discovery is lazy (only for opt-in commands) and follows package order (core → project → user). One hook point exists: `AFTER_WORKTREE_CREATED` in `hv minds stage`, with a project-level handler that runs `uv sync`.
+
+### The Charting Tools
+**Completed by:** Nova
+**Reward earned:** Landmark
+**Journey:** `journeys/charting-tools-local-examples/`
+**Map:** `maps/commands/chart.md`
+
+Mapped the chart command family: `_index_.py` (atlas briefing, structure bootstrapping) and `explore.py` (state-machine guided exploration). Explored `AtlasPaths` in `paths.py`, the template system in `__assets__/chart/`, and the helper pattern in `helpers/minds.py` and `helpers/sessions.py`. Key finding: the example journey reference is isolated to `explore.py:_find_example_journey()` and one template, making it a clean extraction target. The helper pattern (standalone functions, explicit `Path` params, no `ctx`) is well established and directly applicable.
 
 ### The Resolver Mystery
 **Completed by:** Pulse

@@ -25,25 +25,14 @@ name = "haiv"
 version = "0.1.0"
 source = { editable = "worktrees/main/haiv" }
 dependencies = [
-    { name = "jinja2" },
-    { name = "punq" },
-    { name = "tomli-w" },
-    { name = "watchdog" },
+    { name = "haiv-cli" },
+    { name = "haiv-tui" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "punq", specifier = ">=0.7.0" },
-    { name = "tomli-w", specifier = ">=1.0.0" },
-    { name = "watchdog", specifier = ">=4.0.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.0.2" },
-    { name = "pytest-xdist", specifier = ">=3.0" },
-    { name = "ty" },
+    { name = "haiv-cli", editable = "worktrees/main/haiv-cli" },
+    { name = "haiv-tui", editable = "worktrees/main/haiv-tui" },
 ]
 
 [[package]]
@@ -69,11 +58,37 @@ name = "haiv-core"
 version = "0.1.0"
 source = { editable = "worktrees/main/haiv-core" }
 dependencies = [
-    { name = "haiv" },
+    { name = "haiv-lib" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "haiv", editable = "worktrees/main/haiv" }]
+requires-dist = [{ name = "haiv-lib", editable = "worktrees/main/haiv-lib" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-xdist", specifier = ">=3.0" },
+    { name = "ty" },
+]
+
+[[package]]
+name = "haiv-lib"
+version = "0.1.0"
+source = { editable = "worktrees/main/haiv-lib" }
+dependencies = [
+    { name = "jinja2" },
+    { name = "punq" },
+    { name = "tomli-w" },
+    { name = "watchdog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "punq", specifier = ">=0.7.0" },
+    { name = "tomli-w", specifier = ">=1.0.0" },
+    { name = "watchdog", specifier = ">=4.0.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -113,7 +128,7 @@ version = "0.1.0"
 source = { editable = "worktrees/main/haiv-tui" }
 dependencies = [
     { name = "blinker" },
-    { name = "haiv" },
+    { name = "haiv-lib" },
     { name = "textual" },
     { name = "watchdog" },
 ]
@@ -121,7 +136,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "blinker" },
-    { name = "haiv", editable = "worktrees/main/haiv" },
+    { name = "haiv-lib", editable = "worktrees/main/haiv-lib" },
     { name = "textual" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]

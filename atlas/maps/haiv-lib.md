@@ -102,8 +102,8 @@ Thin subprocess wrapper around `wezterm cli`. Educational by default — prints 
 
 Known to exist but not properly explored. Earn a reward, give them a name.
 
-- `helpers/minds.py` — Mind scaffolding and management (see `journeys/mind-templates-atlas-integration/`)
-- `helpers/sessions.py` — Session persistence and lookup
+- `helpers/minds.py` — Mind scaffolding and management (partially explored in `journeys/charting-tools-local-examples/007`)
+- `helpers/sessions.py` — Session persistence and lookup (partially explored in `journeys/charting-tools-local-examples/006`)
 - `helpers/commands.py`, `helpers/packages.py`, `helpers/users.py` — Other helper modules
 - `templates.py` — Jinja2 template rendering for `__assets__/`
 - `wrappers/git.py` — Git subprocess wrapper

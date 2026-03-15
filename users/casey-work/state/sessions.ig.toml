@@ -1,0 +1,41 @@
+[[sessions]]
+id = "4c42f790-96dd-4287-80a3-96c1f771817b"
+task = "fix(minds stage): surface task vs welcome.md distinction"
+started = 2026-03-12 18:21:32.903397+00:00
+mind = "ember"
+short_id = 4
+status = "started"
+parent = "5722b626-e74f-4ad0-abff-b8947aca19fc"
+branch = "ember"
+base_branch = "main"
+description = "The stage command should explain that --task/--description are management labels while welcome.md is what the new mind reads. Reduce trial-and-error learning."
+claude_session_id = "f34a54c0-af78-450f-b3cc-5ad47b6aa7b1"
+
+[[sessions]]
+id = "9325a371-85fc-4e52-b1e6-5b4e2df917ae"
+task = "fix: Windows test compatibility"
+started = 2026-03-12 18:16:16.478946+00:00
+mind = "nova"
+short_id = 2
+status = "started"
+parent = "5722b626-e74f-4ad0-abff-b8947aca19fc"
+branch = "nova"
+base_branch = "main"
+description = "Investigate and resolve test failures on Windows — path separators in test_become/test_mine, 88 errors in test_minds_stage/test_pop. Tests should pass on both platforms."
+claude_session_id = "894104bc-8107-4fda-995f-0b0023302537"
+
+[[sessions]]
+id = "5722b626-e74f-4ad0-abff-b8947aca19fc"
+task = "Windows Side Task Management"
+started = 2026-03-12 11:38:54.401790+00:00
+mind = "rove"
+short_id = 1
+status = "started"
+branch = "main"
+base_branch = "main"
+claude_session_id = "476e1c04-03f0-4cfe-b76d-872a9eb231be"
+old_claude_session_ids = [
+    "5db5fc89-8154-4a62-8346-51f5fa569a18",
+    "2947326c-c6b0-43b9-b997-d08c8f576899",
+    "6b6de1f4-e4c0-462e-9248-d053077ea1e4",
+]

@@ -20,7 +20,9 @@ haiv_core/
     ├── tui/
     │   └── debug.py         # hv tui debug — print pane layout
     ├── pop.py               # hv pop — wind down a mind's assignment
-    ├── chart.py             # hv chart — atlas exploration helper
+    ├── chart/               # hv chart — atlas navigation and exploration
+    │   ├── _index_.py       #   bare chart: atlas briefing + bootstrapping
+    │   └── explore.py       #   chart explore: guided codebase exploration
     ├── help.py              # hv help — list commands
     ├── init.py              # hv init — initialize a haiv project
     └── mine.py              # hv mine — claim work
@@ -41,7 +43,11 @@ Concrete resolver implementations. Each file is a thin bridge: translates `Resol
 
 These are the only two resolvers in core. Communities can add their own by creating `resolvers/foo.py` in project or user packages. The resolver infrastructure (discovery, loading, dispatch) lives in haiv-lib's `_infrastructure/resolvers.py` — see "The Translators" in the haiv-lib map, and `journeys/the-resolver-system/` for the full story.
 
+## Deeper maps
+
+- [maps/commands/](commands/) — Detailed maps for individual commands and command groups
+
 ## Uncharted
 
-- `__assets__/` — Jinja2 templates for mind scaffolding, pop AARs, roles
+- `__assets__/` — Jinja2 templates for mind scaffolding, pop AARs, roles, and chart exploration
 - Most commands beyond what's been read during journeys
