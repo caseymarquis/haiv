@@ -369,7 +369,7 @@ class TestSessionCreation:
 
     def test_task_flag_required(self, sandbox: Sandbox):
         """Error when --task not provided."""
-        with pytest.raises(CommandError, match="--task is required"):
+        with pytest.raises(CommandError, match="--task is missing"):
             sandbox.run("minds stage --name robin")
 
     def test_creates_session_with_staged_status(self, sandbox: Sandbox):
