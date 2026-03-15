@@ -56,11 +56,11 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
         parent_paths.work.aars_dir.mkdir(parents=True, exist_ok=True)
         ctx.templates.write("pop/aar.md.j2", aar_path, skip_existing=True, task=session.task)
         aar_rel = aar_path.relative_to(ctx.paths.root)
-        aar_item = f"Fill in your AAR at `{aar_rel}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
+        aar_item = f"Fill in your AAR at `{aar_rel.as_posix()}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
 
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
-        merge_step = f'Run `cd "{cd_to}" && hv pop --merge`'
+        merge_step = f'Run `cd "{cd_to.as_posix()}" && hv pop --merge`'
     else:
         merge_step = "Run `hv pop --merge`"
 
@@ -104,7 +104,7 @@ def _do_merge(ctx: cmd.Ctx) -> None:
     # Check if the branch still exists
     base_git = ctx.git.at_worktree(base_branch)
     branch_exists = base_git.run(
-        f"branch --list {branch}", intent=f"check if branch '{branch}' exists",
+        ["branch", "--list", branch], intent=f"check if branch '{branch}' exists",
     ).strip()
 
     if not branch_exists:
@@ -116,18 +116,18 @@ def _do_merge(ctx: cmd.Ctx) -> None:
 
     # Check if branch has commits to merge
     ahead = base_git.run(
-        f"rev-list {base_branch}..{branch} --count",
+        ["rev-list", f"{base_branch}..{branch}", "--count"],
         intent=f"check if '{branch}' has commits ahead of '{base_branch}'",
     ).strip()
 
     if int(ahead) > 0:
-        base_git.run(f"merge {branch}", intent=f"merge '{branch}' into '{base_branch}'")
+        base_git.run(["merge", branch], intent=f"merge '{branch}' into '{base_branch}'")
     else:
         ctx.print(f"'{branch}' has no new commits vs '{base_branch}', skipping merge.")
 
     # Remove the worktree and branch (delete from base so git sees it as merged)
-    ctx.git.run(f"worktree remove worktrees/{branch}", intent=f"remove worktree for '{branch}'")
-    base_git.run(f"branch -d {branch}", intent=f"delete branch '{branch}'")
+    ctx.git.run(["worktree", "remove", f"worktrees/{branch}"], intent=f"remove worktree for '{branch}'")
+    base_git.run(["branch", "-d", branch], intent=f"delete branch '{branch}'")
 
 
 def _do_session(ctx: cmd.Ctx) -> None:
@@ -155,7 +155,7 @@ def _do_session(ctx: cmd.Ctx) -> None:
     aar_rel = aar_path.relative_to(ctx.paths.root)
     ctx.tui.mind_try_send_text(
         parent.mind,
-        f"<haiv>{mind_name} finished. Their work has been reviewed and merged into your worktree. Please read '{aar_rel}'</haiv>",
+        f"<haiv>{mind_name} finished. Their work has been reviewed and merged into your worktree. Please read '{aar_rel.as_posix()}'</haiv>",
     )
 
     remove_session(ctx.paths.user.sessions_file, session.id)

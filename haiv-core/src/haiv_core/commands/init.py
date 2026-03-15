@@ -84,19 +84,19 @@ def _write_haiv_state_files(root: Path, ctx: cmd.Ctx) -> None:
 
 def _init_haiv_structure(git: Git, ctx: cmd.Ctx) -> None:
     """Create base haiv structure: git init, orphan branch, initial commit, worktrees dir."""
-    git.run("init", intent="create git repository")
-    git.run("checkout --orphan haiv-hq", intent="create haiv-hq orphan branch")
+    git.run(["init"], intent="create git repository")
+    git.run(["checkout", "--orphan", "haiv-hq"], intent="create haiv-hq orphan branch")
 
     _write_haiv_state_files(git.path, ctx)
 
-    git.run("add .", intent="stage haiv files")
-    git.run('commit -m "Initialize haiv"', intent="create initial commit")
+    git.run(["add", "."], intent="stage haiv files")
+    git.run(["commit", "-m", "Initialize haiv"], intent="create initial commit")
 
 
 def _create_orphan_worktree(git: Git, branch: str) -> Path:
     """Create orphan branch and worktree for fresh mode."""
     git.run(
-        f"worktree add --orphan -b {branch} worktrees/{branch}",
+        ["worktree", "add", "--orphan", "-b", branch, f"worktrees/{branch}"],
         intent=f"create worktree for {branch}",
     )
     return git.path / "worktrees" / branch
@@ -157,14 +157,14 @@ def _init_fresh_empty(
     if empty:
         # Create empty initial commit
         worktree_git.run(
-            'commit --allow-empty -m "Initial commit"',
+            ["commit", "--allow-empty", "-m", "Initial commit"],
             intent="create empty initial commit",
         )
     else:
         # Create README and commit
         (worktree_path / "README.md").write_text(f"# {branch}\n", encoding="utf-8")
-        worktree_git.run("add README.md", intent="stage README")
-        worktree_git.run('commit -m "Initial commit"', intent="create initial commit")
+        worktree_git.run(["add", "README.md"], intent="stage README")
+        worktree_git.run(["commit", "-m", "Initial commit"], intent="create initial commit")
 
     _print_next_steps(ctx, branch=branch, quiet=quiet)
 
@@ -194,8 +194,8 @@ def _init_fresh_nonempty(
 
     # Commit moved files
     worktree_git = Git(worktree_path, quiet=quiet)
-    worktree_git.run("add .", intent="stage moved files")
-    worktree_git.run('commit -m "Initial commit"', intent="commit moved files")
+    worktree_git.run(["add", "."], intent="stage moved files")
+    worktree_git.run(["commit", "-m", "Initial commit"], intent="commit moved files")
 
     _print_next_steps(ctx, branch=branch, quiet=quiet)
 
@@ -269,7 +269,7 @@ def _init_peer_mode(
     if not quiet:
         ctx.print(f"Cloning from {remote_url}...")
     Git(git_root, quiet=quiet).run(
-        f'clone --no-checkout "{remote_url}" "{peer_dir}"',
+        ["clone", "--no-checkout", remote_url, str(peer_dir)],
         intent="clone repository",
     )
 
@@ -278,16 +278,16 @@ def _init_peer_mode(
 
     # Set up haiv branch
     if _has_remote_haiv_state(git):
-        git.run("switch haiv-hq", intent="switch to existing haiv-hq branch")
+        git.run(["switch", "haiv-hq"], intent="switch to existing haiv-hq branch")
     else:
-        git.run("switch --orphan haiv-hq", intent="create haiv-hq orphan branch")
+        git.run(["switch", "--orphan", "haiv-hq"], intent="create haiv-hq orphan branch")
         _write_haiv_state_files(peer_dir, ctx)
-        git.run("add .", intent="stage haiv-hq files")
-        git.run('commit -m "Initialize haiv-hq"', intent="create initial commit on haiv-hq")
+        git.run(["add", "."], intent="stage haiv-hq files")
+        git.run(["commit", "-m", "Initialize haiv-hq"], intent="create initial commit on haiv-hq")
 
     # Create worktree for target branch
     git.run(
-        f"worktree add worktrees/{target_branch} {target_branch}",
+        ["worktree", "add", f"worktrees/{target_branch}", target_branch],
         intent=f"create worktree for {target_branch}",
     )
 
@@ -296,21 +296,21 @@ def _init_peer_mode(
 
 def _has_remote_haiv_state(git: Git) -> bool:
     """Check if haiv-hq exists as a remote tracking branch after clone."""
-    output = git.run("branch -r --list origin/haiv-hq", intent="check for existing haiv-hq")
+    output = git.run(["branch", "-r", "--list", "origin/haiv-hq"], intent="check for existing haiv-hq")
     return bool(output.strip())
 
 
 def _get_remote_url(git: Git) -> str | None:
     """Get the URL of the 'origin' remote, or None if not configured."""
     try:
-        return git.run("remote get-url origin", intent="get remote URL").strip()
+        return git.run(["remote", "get-url", "origin"], intent="get remote URL").strip()
     except Exception:
         return None
 
 
 def _is_clean_working_tree(git: Git) -> bool:
     """Check if working tree is clean (no staged, unstaged, or untracked files)."""
-    status = git.run("status --porcelain", intent="check working tree status").strip()
+    status = git.run(["status", "--porcelain"], intent="check working tree status").strip()
     return status == ""
 
 
@@ -318,7 +318,7 @@ def _remote_has_branch(git: Git, remote_url: str, branch: str) -> bool:
     """Check if a branch exists on the remote."""
     try:
         output = git.run(
-            f'ls-remote --heads "{remote_url}" {branch}',
+            ["ls-remote", "--heads", remote_url, branch],
             intent=f"check if branch '{branch}' exists on remote",
         )
         return bool(output.strip())
@@ -330,7 +330,7 @@ def _commits_ahead_of_remote(git: Git, branch: str) -> int:
     """Count how many commits the local branch is ahead of origin."""
     try:
         output = git.run(
-            f"rev-list --count origin/{branch}..{branch}",
+            ["rev-list", "--count", f"origin/{branch}..{branch}"],
             intent=f"check if '{branch}' is ahead of remote",
         )
         return int(output.strip())

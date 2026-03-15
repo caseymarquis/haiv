@@ -61,4 +61,4 @@ def _output_startup_files(ctx: cmd.Ctx, mind: Mind) -> None:
     ctx.print("")
     for file in startup_files:
         rel_path = file.relative_to(ctx.paths.root)
-        ctx.print(f"- {rel_path}")
+        ctx.print(f"- {rel_path.as_posix()}")

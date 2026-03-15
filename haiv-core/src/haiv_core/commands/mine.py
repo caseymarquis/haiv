@@ -32,8 +32,8 @@ def execute(ctx: cmd.Ctx) -> None:
 
     # Output mind info
     ctx.print(f"Mind: {mind.name}")
-    ctx.print(f"Location: {mind.paths.root}")
-    ctx.print(f"Work: {mind.paths.work.root}")
+    ctx.print(f"Location: {mind.paths.root.as_posix()}")
+    ctx.print(f"Work: {mind.paths.work.root.as_posix()}")
 
     # Check for role in references.toml
     if mind.paths.references_file.exists():

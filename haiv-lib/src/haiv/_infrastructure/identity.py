@@ -31,7 +31,7 @@ class AmbiguousIdentityError(Exception):
         self.paths = paths
 
     def __str__(self) -> str:
-        paths_str = "\n  ".join(str(p) for p in self.paths)
+        paths_str = "\n  ".join(p.as_posix() for p in self.paths)
         return (
             f"Multiple users match the current environment:\n  {paths_str}\n"
             f"Edit one of the identity.toml files to resolve the conflict."

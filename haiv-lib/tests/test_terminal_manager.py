@@ -1,5 +1,7 @@
 """Tests for TerminalManager logic."""
 
+import os
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -50,9 +52,11 @@ def wezterm():
 
 
 @pytest.fixture
-def manager(wezterm):
+def manager(wezterm, tmp_path):
     """Create a TerminalManager with mocked WezTerm."""
-    return TerminalManager(wezterm, Path("/home/user/my-project"), ["hv-tui"])
+    project_path = tmp_path / "my-project"
+    project_path.mkdir()
+    return TerminalManager(wezterm, project_path, ["hv-tui"])
 
 
 class TestTabTitleNaming:
@@ -114,15 +118,20 @@ class TestEnsureWorkspace:
     """
 
     def test_not_in_wezterm_launches_instance(self, manager, wezterm):
-        """Outside WezTerm — launch a new instance."""
-        with patch.dict("os.environ", {}, clear=True):
+        """Outside WezTerm — launch a new instance with shell-wrapped hv start."""
+        env = os.environ.copy()
+        env.pop("TERM_PROGRAM", None)
+        with patch.dict("os.environ", env, clear=True):
             manager.ensure_workspace()
 
+        cwd = str(manager.haiv_root)
+        expected = (
+            ["start", "--cwd", cwd, "--"]
+            + TerminalManager._shell_wrap(["hv", "start"])
+        )
         wezterm.run_external.assert_called_once()
         args = wezterm.run_external.call_args[0][0]
-        assert args[0] == "start"
-        assert "hv" in args
-        assert "start" in args
+        assert args == expected
 
     def test_in_wezterm_no_window_creates_one(self, manager, wezterm):
         """Inside WezTerm, no haiv window — create new window with layout."""
@@ -136,15 +145,17 @@ class TestEnsureWorkspace:
         with patch.dict("os.environ", {"TERM_PROGRAM": "WezTerm"}):
             manager.ensure_workspace()
 
-        # Created new window with TUI command + project name
+        # Created new window with TUI command (shell-wrapped per platform)
+        cwd = str(manager.haiv_root)
+        expected_cmd = TerminalManager._shell_wrap(["hv-tui", "my-project"])
         wezterm.spawn.assert_called_once_with(
-            new_window=True, cwd="/home/user/my-project", command=["hv-tui", "my-project"],
+            new_window=True, cwd=cwd, command=expected_cmd,
         )
         # Named hud tab
         wezterm.set_tab_title.assert_called_once_with("hv(my-project)", pane_id=10)
         # Split right for mind pane
         wezterm.split_pane.assert_called_once_with(
-            10, direction="right", percent=50, cwd="/home/user/my-project",
+            10, direction="right", percent=50, cwd=cwd,
         )
         # Focused hud pane
         wezterm.activate_pane.assert_called_with(10)

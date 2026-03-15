@@ -24,18 +24,18 @@ def sandbox():
     root = sb.ctx.paths.root
     git = Git(root, quiet=True)
 
-    git.run("init -b main")
-    git.run("config user.email test@test.com")
-    git.run("config user.name Test")
+    git.run(["init", "-b", "main"])
+    git.run(["config", "user.email", "test@test.com"])
+    git.run(["config", "user.name", "Test"])
 
     (root / "README.md").write_text("# Test\n")
-    git.run("add .")
-    git.run("commit -m 'Initial commit'")
+    git.run(["add", "."])
+    git.run(["commit", "-m", "Initial commit"])
 
     # Switch root to haiv so main can live in a worktree
-    git.run("checkout -b haiv")
+    git.run(["checkout", "-b", "haiv"])
     main_worktree = root / "worktrees" / "main"
-    git.run(f"worktree add {main_worktree} main")
+    git.run(["worktree", "add", str(main_worktree), "main"])
 
     return sb
 
@@ -169,11 +169,11 @@ class TestMerge:
 
         # Create a worktree branch with a commit
         echo_worktree = root / "worktrees" / "echo"
-        git.run(f"worktree add -b echo {echo_worktree} main")
+        git.run(["worktree", "add", "-b", "echo", str(echo_worktree), "main"])
         echo_git = Git(echo_worktree, quiet=True)
         (echo_worktree / "feature.txt").write_text("new feature\n")
-        echo_git.run("add .")
-        echo_git.run("commit -m 'Add feature'")
+        echo_git.run(["add", "."])
+        echo_git.run(["commit", "-m", "Add feature"])
 
         session = _create_session_with_branch(sandbox)
 
@@ -190,7 +190,7 @@ class TestMerge:
         git = Git(root, quiet=True)
 
         echo_worktree = root / "worktrees" / "echo"
-        git.run(f"worktree add -b echo {echo_worktree} main")
+        git.run(["worktree", "add", "-b", "echo", str(echo_worktree), "main"])
 
         session = _create_session_with_branch(sandbox)
 
@@ -212,7 +212,7 @@ class TestMerge:
 
         # Create a worktree branch with NO new commits (identical to main)
         echo_worktree = root / "worktrees" / "echo"
-        git.run(f"worktree add -b echo {echo_worktree} main")
+        git.run(["worktree", "add", "-b", "echo", str(echo_worktree), "main"])
 
         session = _create_session_with_branch(sandbox)
 

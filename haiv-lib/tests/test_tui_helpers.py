@@ -224,18 +224,18 @@ class TestSessionsRefreshWithGit:
         """A git repo with a worktree branch."""
         git = Git(tmp_path / "repo", quiet=True)
         git.path.mkdir()
-        git.run("init -b main")
-        git.run("config user.email test@test.com")
-        git.run("config user.name Test")
+        git.run(["init", "-b", "main"])
+        git.run(["config", "user.email", "test@test.com"])
+        git.run(["config", "user.name", "Test"])
         (git.path / "README.md").write_text("# Test\n")
-        git.run("add .")
-        git.run("commit -m 'Initial commit'")
+        git.run(["add", "."])
+        git.run(["commit", "-m", "Initial commit"])
         return git
 
     def test_populates_stats_for_session_with_branch(self, tmp_path, git_repo):
         """Entries with a branch get stats from git."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
         # Make the feature branch dirty
         (worktree_path / "new.txt").write_text("hello\n")
 
@@ -265,7 +265,7 @@ class TestSessionsRefreshWithGit:
     def test_survives_git_error(self, tmp_path, git_repo):
         """A broken branch doesn't prevent other entries from loading."""
         worktree_path = git_repo.path / "worktrees" / "good"
-        git_repo.run(f"worktree add -b good {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "good", str(worktree_path)])
 
         sessions_file = tmp_path / "sessions.toml"
         create_session(sessions_file, "good task", "wren", branch="good", base_branch="main")

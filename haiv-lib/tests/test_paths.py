@@ -161,7 +161,8 @@ class TestGetHaivRoot:
         from haiv._infrastructure import env
         from haiv.paths import get_haiv_root
 
-        monkeypatch.setenv(env.HV_ROOT, "/nonexistent/path")
+        nonexistent = str(tmp_path / "nonexistent" / "path")
+        monkeypatch.setenv(env.HV_ROOT, nonexistent)
         with pytest.raises(ValueError, match="path does not exist"):
             get_haiv_root(cwd=tmp_path)
 

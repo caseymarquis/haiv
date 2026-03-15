@@ -151,7 +151,7 @@ def execute(ctx: cmd.Ctx) -> None:
 
     # Create the worktree
     ctx.git.run(
-        f"worktree add -b {name} worktrees/{name} {base_branch}",
+        ["worktree", "add", "-b", name, f"worktrees/{name}", base_branch],
         intent=f"create worktree for mind '{name}'",
     )
     location = f"worktrees/{name}/"
@@ -198,7 +198,7 @@ def execute(ctx: cmd.Ctx) -> None:
         ctx.print(f"Reusing mind: {name}")
     else:
         ctx.print(f"Created mind: {name}")
-    ctx.print(f"Location: {rel_path}")
+    ctx.print(f"Location: {rel_path.as_posix()}")
     ctx.print(f"Task: {task}")
     ctx.print(f"Session: {session.short_id} (staged)")
 
@@ -242,7 +242,7 @@ def _check_clean_working_tree(ctx: cmd.Ctx, base_branch: str) -> None:
         return  # Branch not checked out, nothing to check
 
     status = ctx.git.at_path(worktree_path).run(
-        "status --porcelain", intent="check working tree status"
+        ["status", "--porcelain"], intent="check working tree status"
     ).strip()
     if status:
         raise CommandError(

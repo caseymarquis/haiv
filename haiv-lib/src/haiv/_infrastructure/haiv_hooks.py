@@ -71,7 +71,7 @@ class HaivHookRegistry:
                     "All handlers must be registered via @haiv_hook()."
                 )
             source = Path(handler._haiv_hook_source).relative_to(ctx.paths.root)
-            ctx.print(f"{handler._haiv_hook_description} ({source})")
+            ctx.print(f"{handler._haiv_hook_description} ({source.as_posix()})")
             results.append(handler(request, ctx))
         return results
 

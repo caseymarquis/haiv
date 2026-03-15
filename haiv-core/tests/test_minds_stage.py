@@ -10,6 +10,7 @@ Tests the full execute() behavior including:
 - Clean working tree enforcement
 """
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +29,7 @@ _original_git_run = Git.run
 def _intercept_worktree_list(worktree_output: str):
     """Return a Git.run replacement that intercepts 'worktree list --porcelain'."""
     def mock_run(self, cmd, *, intent=None):
-        if cmd == "worktree list --porcelain":
+        if cmd == ["worktree", "list", "--porcelain"]:
             return worktree_output
         return _original_git_run(self, cmd, intent=intent)
     return mock_run
@@ -47,14 +48,14 @@ def sandbox():
     git = Git(root, quiet=True)
 
     # Initialize git repo with explicit main branch
-    git.run("init -b main")
-    git.run("config user.email test@test.com")
-    git.run("config user.name Test")
+    git.run(["init", "-b", "main"])
+    git.run(["config", "user.email", "test@test.com"])
+    git.run(["config", "user.name", "Test"])
 
     # Create initial commit (required for worktrees)
     (root / "README.md").write_text("# Test\n")
-    git.run("add .")
-    git.run("commit -m 'Initial commit'")
+    git.run(["add", "."])
+    git.run(["commit", "-m", "Initial commit"])
 
     return sb
 
@@ -426,7 +427,9 @@ class TestSessionCreation:
 
     def test_session_parent_empty_without_env(self, sandbox: Sandbox):
         """Session parent is empty when HV_SESSION not set."""
-        with patch.dict("os.environ", {}, clear=True):
+        env = os.environ.copy()
+        env.pop("HV_SESSION", None)
+        with patch.dict("os.environ", env, clear=True):
             sandbox.run('minds stage --name robin --task "root task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].parent_id == ""
@@ -458,7 +461,7 @@ class TestBaseBranchDetection:
 
         # Create a "wren" branch so git worktree can use it as base
         git = Git(sandbox.ctx.paths.root, quiet=True)
-        git.run("branch wren")
+        git.run(["branch", "wren"])
 
         sessions_file = sandbox.ctx.paths.user.sessions_file
         parent = create_session(
@@ -493,7 +496,7 @@ class TestBaseBranchDetection:
 
         # Create branches so git worktree can reference them
         git = Git(sandbox.ctx.paths.root, quiet=True)
-        git.run("branch wren")
+        git.run(["branch", "wren"])
 
         sessions_file = sandbox.ctx.paths.user.sessions_file
         parent = create_session(
@@ -542,7 +545,7 @@ class TestCleanWorkingTree:
         root = sandbox.ctx.paths.root
         git = Git(root, quiet=True)
         (root / "README.md").write_text("modified\n")
-        git.run("add README.md")
+        git.run(["add", "README.md"])
 
         output = self._worktree_output(root)
         with patch.object(Git, "run", _intercept_worktree_list(output)):
