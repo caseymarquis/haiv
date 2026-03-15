@@ -9,12 +9,12 @@ from haiv.wrappers.git import BranchStats, Git, GitError
 def git_repo(tmp_path):
     """A minimal git repo with one commit."""
     git = Git(tmp_path, quiet=True)
-    git.run("init -b main")
-    git.run("config user.email test@test.com")
-    git.run("config user.name Test")
+    git.run(["init", "-b", "main"])
+    git.run(["config", "user.email", "test@test.com"])
+    git.run(["config", "user.name", "Test"])
     (tmp_path / "README.md").write_text("# Test\n")
-    git.run("add .")
-    git.run("commit -m 'Initial commit'")
+    git.run(["add", "."])
+    git.run(["commit", "-m", "Initial commit"])
     return git
 
 
@@ -64,7 +64,7 @@ class TestWorktreePathForBranch:
     def test_finds_added_worktree(self, git_repo):
         """Finds a worktree added with git worktree add."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
 
         result = git_repo.worktree_path_for_branch("feature")
 
@@ -98,7 +98,7 @@ class TestBranchStats:
     def test_clean_branch_at_same_commit(self, git_repo):
         """Branch with no changes and same commit as base returns all zeros."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
 
         stats = git_repo.branch_stats("feature", "main")
 
@@ -107,11 +107,11 @@ class TestBranchStats:
     def test_branch_ahead(self, git_repo):
         """Branch with commits ahead of base reports ahead count."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
         feature_git = Git(worktree_path, quiet=True)
         (worktree_path / "new.txt").write_text("hello\n")
-        feature_git.run("add .")
-        feature_git.run("commit -m 'feature commit'")
+        feature_git.run(["add", "."])
+        feature_git.run(["commit", "-m", "feature commit"])
 
         stats = git_repo.branch_stats("feature", "main")
 
@@ -121,11 +121,11 @@ class TestBranchStats:
     def test_branch_behind(self, git_repo):
         """Branch behind base reports behind count."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
         # Commit on main (base) after branching
         (git_repo.path / "main-change.txt").write_text("change\n")
-        git_repo.run("add .")
-        git_repo.run("commit -m 'main commit'")
+        git_repo.run(["add", "."])
+        git_repo.run(["commit", "-m", "main commit"])
 
         stats = git_repo.branch_stats("feature", "main")
 
@@ -135,7 +135,7 @@ class TestBranchStats:
     def test_dirty_worktree(self, git_repo):
         """Uncommitted changes report changed_files count."""
         worktree_path = git_repo.path / "worktrees" / "feature"
-        git_repo.run(f"worktree add -b feature {worktree_path}")
+        git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
         (worktree_path / "dirty.txt").write_text("uncommitted\n")
         (worktree_path / "dirty2.txt").write_text("also uncommitted\n")
 

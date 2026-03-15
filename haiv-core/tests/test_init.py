@@ -104,19 +104,19 @@ def in_repo():
     """Inside a git repo with remote - for peer mode tests."""
     # Create bare repo to act as "remote"
     remote = test.create_sandbox(SandboxConfig(explicit=True))
-    Git(remote.ctx.paths.root, quiet=True).run("init --bare")
+    Git(remote.ctx.paths.root, quiet=True).run(["init", "--bare"])
 
     # Create working repo pointing to local "remote"
     sandbox = test.create_sandbox(SandboxConfig(explicit=True))
     result = InitResult(sandbox=sandbox)
     git = Git(result.paths.root, quiet=True)
-    git.run("init")
-    git.run("branch -m main")  # Ensure branch is named "main"
-    git.run(f"remote add origin {remote.ctx.paths.root}")
+    git.run(["init"])
+    git.run(["branch", "-m", "main"])  # Ensure branch is named "main"
+    git.run(["remote", "add", "origin", str(remote.ctx.paths.root)])
     (result.paths.root / "README.md").write_text("# Test\n")
-    git.run("add .")
-    git.run("commit -m 'Initial commit'")
-    git.run("push -u origin main")
+    git.run(["add", "."])
+    git.run(["commit", "-m", "Initial commit"])
+    git.run(["push", "-u", "origin", "main"])
     return result
 
 
@@ -126,11 +126,11 @@ def in_repo_no_remote():
     sandbox = test.create_sandbox(SandboxConfig(explicit=True))
     result = InitResult(sandbox=sandbox)
     git = Git(result.paths.root, quiet=True)
-    git.run("init")
-    git.run("branch -m main")  # Ensure branch is named "main"
+    git.run(["init"])
+    git.run(["branch", "-m", "main"])  # Ensure branch is named "main"
     (result.paths.root / "README.md").write_text("# Test\n")
-    git.run("add .")
-    git.run("commit -m 'Initial commit'")
+    git.run(["add", "."])
+    git.run(["commit", "-m", "Initial commit"])
     return result
 
 
@@ -305,9 +305,9 @@ class TestInitPeerBasic:
     def test_branch_flag_overrides_current_branch(self, in_repo):
         # Create develop branch on remote first
         git = Git(in_repo.paths.root, quiet=True)
-        git.run("checkout -b develop")
-        git.run("push -u origin develop")
-        git.run("checkout main")
+        git.run(["checkout", "-b", "develop"])
+        git.run(["push", "-u", "origin", "develop"])
+        git.run(["checkout", "main"])
 
         in_repo.init("--branch develop")
 
@@ -341,7 +341,7 @@ class TestInitPeerPrerequisites:
 
     def test_fails_with_staged_changes(self, in_repo):
         (in_repo.paths.root / "new.txt").write_text("staged")
-        Git(in_repo.paths.root, quiet=True).run("add new.txt")
+        Git(in_repo.paths.root, quiet=True).run(["add", "new.txt"])
 
         with pytest.raises(CommandError):
             in_repo.init()
@@ -384,9 +384,9 @@ class TestInitPeerPrerequisites:
     def test_ignored_files_dont_cause_error(self, in_repo):
         git = Git(in_repo.paths.root, quiet=True)
         (in_repo.paths.root / ".gitignore").write_text("*.log\n")
-        git.run("add .gitignore")
-        git.run("commit -m 'Add gitignore'")
-        git.run("push")
+        git.run(["add", ".gitignore"])
+        git.run(["commit", "-m", "Add gitignore"])
+        git.run(["push"])
         (in_repo.paths.root / "debug.log").write_text("ignored content")
 
         in_repo.init()
@@ -397,8 +397,8 @@ class TestInitPeerPrerequisites:
         # Create a local commit that isn't pushed
         git = Git(in_repo.paths.root, quiet=True)
         (in_repo.paths.root / "local.txt").write_text("local only")
-        git.run("add local.txt")
-        git.run("commit -m 'Local commit'")
+        git.run(["add", "local.txt"])
+        git.run(["commit", "-m", "Local commit"])
 
         with pytest.raises(CommandError) as exc_info:
             in_repo.init()
@@ -409,8 +409,8 @@ class TestInitPeerPrerequisites:
         # Create a local commit that isn't pushed
         git = Git(in_repo.paths.root, quiet=True)
         (in_repo.paths.root / "local.txt").write_text("local only")
-        git.run("add local.txt")
-        git.run("commit -m 'Local commit'")
+        git.run(["add", "local.txt"])
+        git.run(["commit", "-m", "Local commit"])
 
         in_repo.init("--force")
 
