@@ -32,18 +32,21 @@ from haiv_core.haiv_hook_points import AFTER_WORKTREE_CREATED, WorktreeCreated
 
 def define() -> cmd.Def:
     return cmd.Def(
-        description="Prep a mind for a new task (see details for usage conventions)",
+        description="Prep a mind for a new task (run 'hv help --for minds.stage' before use)",
         enable_haiv_hooks=True,
         flags=[
             cmd.Flag(
                 "task",
                 type=str,
+                min_args=0,
+                max_args=1,
                 description=(
-                    "Task summary (required). Keep it short like a git commit subject: "
-                    "50 chars recommended, 72 max. "
-                    "Conventional commit style encouraged, e.g. "
+                    "A short label for *you* to track this delegation — not instructions "
+                    "for the new mind. Think git commit subject: 50 chars recommended, "
+                    "72 max. Conventional commit style encouraged, e.g. "
                     '"feat(session): add timeout support". '
-                    "Use --description for longer context."
+                    "The new mind's actual briefing goes in work/welcome.md, "
+                    "which is created after staging."
                 ),
             ),
             cmd.Flag(
@@ -52,9 +55,9 @@ def define() -> cmd.Def:
                 min_args=0,
                 max_args=1,
                 description=(
-                    "Additional high-level context. Keep it brief — "
-                    "templates for detailed task instructions are "
-                    "provided after the mind is created."
+                    "Optional additional context for *you*, the coordinator. "
+                    "Like --task, this is a label for tracking — the new mind "
+                    "does not see it. Their actual assignment goes in work/welcome.md."
                 ),
             ),
             cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
@@ -78,15 +81,24 @@ def execute(ctx: cmd.Ctx) -> None:
     minds_dir = ctx.paths.user.minds_dir
 
     # --task is required
+    help_hint = "  Run 'hv help --for minds.stage' for full details."
     if not ctx.args.has("task"):
-        raise CommandError("--task is required\n\n  hv minds stage --task \"description\"")
+        raise CommandError(
+            "--task is missing.\n\n"
+            "  It is HIGHLY recommended to read the help before using this command.\n"
+            "  It explains what --task and --description are for, and what goes\n"
+            "  in welcome.md instead.\n\n"
+            f"{help_hint}"
+        )
 
     task = ctx.args.get_one("task")
     if len(task) > 72:
         raise CommandError(
             f"--task is too long ({len(task)} chars, max 72).\n\n"
-            "  Keep it short like a git commit subject.\n"
-            "  Use --description for longer context."
+            "  --task is a short label for *you* to track this delegation.\n"
+            "  The new mind's actual briefing goes in welcome.md, which is\n"
+            "  created after staging.\n\n"
+            f"{help_hint}"
         )
     if len(task) > 50:
         ctx.print(f"Hint: --task is {len(task)} chars (recommended: 50 or fewer)")
@@ -194,7 +206,9 @@ def execute(ctx: cmd.Ctx) -> None:
 
     ctx.print()
     ctx.print("Next steps:")
-    ctx.print("1. Edit work/welcome.md with task details")
+    ctx.print(f"1. Edit work/welcome.md — this is the assignment {name} reads when they wake up.")
+    ctx.print("   (--task and --description are labels for *you* to track this delegation —")
+    ctx.print(f"   {name} doesn't see them.)")
     ctx.print("2. Assign a role in references.toml (see src/haiv_project/__assets__/roles/)")
     ctx.print(f"3. Start: hv start {name}")
 
