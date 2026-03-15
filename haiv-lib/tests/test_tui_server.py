@@ -1,6 +1,7 @@
 """Tests for TuiServer."""
 
 import socket
+import sys
 import threading
 from typing import cast
 
@@ -46,6 +47,7 @@ class TestServerLifecycle:
         with pytest.raises(RuntimeError):
             second.start()
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Unix sockets not available on Windows; named pipes don't leave stale files")
     def test_stale_socket_recovery(self, tmp_path):
         """If a stale socket file exists, server recovers and starts."""
         project = f"test-{tmp_path.name}"

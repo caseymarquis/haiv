@@ -56,11 +56,11 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
         parent_paths.work.aars_dir.mkdir(parents=True, exist_ok=True)
         ctx.templates.write("pop/aar.md.j2", aar_path, skip_existing=True, task=session.task)
         aar_rel = aar_path.relative_to(ctx.paths.root)
-        aar_item = f"Fill in your AAR at `{aar_rel}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
+        aar_item = f"Fill in your AAR at `{aar_rel.as_posix()}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
 
     cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
     if cd_to != ".":
-        merge_step = f'Run `cd "{cd_to}" && hv pop --merge`'
+        merge_step = f'Run `cd "{cd_to.as_posix()}" && hv pop --merge`'
     else:
         merge_step = "Run `hv pop --merge`"
 
@@ -155,7 +155,7 @@ def _do_session(ctx: cmd.Ctx) -> None:
     aar_rel = aar_path.relative_to(ctx.paths.root)
     ctx.tui.mind_try_send_text(
         parent.mind,
-        f"<haiv>{mind_name} finished. Their work has been reviewed and merged into your worktree. Please read '{aar_rel}'</haiv>",
+        f"<haiv>{mind_name} finished. Their work has been reviewed and merged into your worktree. Please read '{aar_rel.as_posix()}'</haiv>",
     )
 
     remove_session(ctx.paths.user.sessions_file, session.id)

@@ -186,7 +186,7 @@ def execute(ctx: cmd.Ctx) -> None:
         ctx.print(f"Reusing mind: {name}")
     else:
         ctx.print(f"Created mind: {name}")
-    ctx.print(f"Location: {rel_path}")
+    ctx.print(f"Location: {rel_path.as_posix()}")
     ctx.print(f"Task: {task}")
     ctx.print(f"Session: {session.short_id} (staged)")
 

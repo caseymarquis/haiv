@@ -47,8 +47,8 @@ def haiv_project_with_user(haiv_project, monkeypatch):
     user_dir = haiv_project / "users" / "testuser"
     user_dir.mkdir(parents=True)
 
-    # Get current system user for matching
-    system_user = os.environ.get("USER", "nobody")
+    # Get current system user for matching (USER on Linux, os.getlogin() on Windows)
+    system_user = os.environ.get("USER") or os.getlogin()
     (user_dir / "identity.toml").write_text(f'''\
 [match]
 system_user = ["{system_user}"]

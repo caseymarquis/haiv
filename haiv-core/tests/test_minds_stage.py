@@ -10,6 +10,7 @@ Tests the full execute() behavior including:
 - Clean working tree enforcement
 """
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -426,7 +427,9 @@ class TestSessionCreation:
 
     def test_session_parent_empty_without_env(self, sandbox: Sandbox):
         """Session parent is empty when HV_SESSION not set."""
-        with patch.dict("os.environ", {}, clear=True):
+        env = os.environ.copy()
+        env.pop("HV_SESSION", None)
+        with patch.dict("os.environ", env, clear=True):
             sandbox.run('minds stage --name robin --task "root task" --from-branch main')
         sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
         assert sessions[0].parent_id == ""

@@ -44,8 +44,8 @@ def _show_command_detail(ctx: cmd.Ctx, info, pkg_name: str, commands_dir) -> Non
 
     relative_path = info.file.relative_to(commands_dir)
     ctx.print(f"  Module:      {pkg_name}")
-    ctx.print(f"  File:        commands/{relative_path}")
-    ctx.print(f"  Full path:   {info.file}")
+    ctx.print(f"  File:        commands/{relative_path.as_posix()}")
+    ctx.print(f"  Full path:   {info.file.as_posix()}")
 
 
 def execute(ctx: cmd.Ctx) -> None:
