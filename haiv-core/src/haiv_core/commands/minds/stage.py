@@ -84,6 +84,15 @@ def define() -> cmd.Def:
                 type=bool,
                 description="Skip worktree creation",
             ),
+            cmd.Flag(
+                "allow-path",
+                type=str,
+                description=(
+                    "Paths the mind is allowed to edit in autonomous mode. "
+                    "The worktree path is included automatically when a worktree is created. "
+                    "Use this to grant access to additional directories."
+                ),
+            ),
         ],
     )
 
@@ -188,6 +197,13 @@ def execute(ctx: cmd.Ctx) -> None:
             ctx,
         )
 
+    # Build allowed paths for autonomous mode
+    allowed_paths: list[str] = []
+    if not no_worktree:
+        allowed_paths.append(f"worktrees/{name}/")
+    if ctx.args.has("allow-path"):
+        allowed_paths.extend(ctx.args.get_list("allow-path"))
+
     # Scaffold mind (non-destructive for reused minds)
     try:
         mind = scaffold_mind(
@@ -211,6 +227,7 @@ def execute(ctx: cmd.Ctx) -> None:
         description=description,
         autonomous=autonomous,
         has_worktree=not no_worktree,
+        allowed_paths=allowed_paths,
     )
 
     # Push to TUI
@@ -231,6 +248,11 @@ def execute(ctx: cmd.Ctx) -> None:
 
     welcome_path = mind.paths.work.root / "welcome.md"
     welcome_rel = welcome_path.relative_to(ctx.paths.root).as_posix()
+
+    if autonomous:
+        ctx.print()
+        ctx.print("!! Autonomous mode: this mind will run without human approval for edits.")
+        ctx.print("   Commit and push all branches before starting to protect against mistakes.")
 
     ctx.print()
     ctx.print("Next steps:")

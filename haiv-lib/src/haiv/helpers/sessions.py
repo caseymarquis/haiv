@@ -42,6 +42,7 @@ class Session:
     old_claude_session_ids: list[str] = field(default_factory=list)
     autonomous: bool = False  # Running without human supervision
     has_worktree: bool = True  # Whether this session has a worktree
+    allowed_paths: list[str] = field(default_factory=list)  # Paths the mind can edit (autonomous mode)
 
     _MAX_FILENAME_LENGTH = 50
 
@@ -97,6 +98,7 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 old_claude_session_ids=entry.get("old_claude_session_ids", []),
                 autonomous=entry.get("autonomous", False),
                 has_worktree=entry.get("has_worktree", True),
+                allowed_paths=entry.get("allowed_paths", []),
             )
         )
     return sessions
@@ -154,6 +156,8 @@ def _session_to_dict(s: Session) -> dict[str, object]:
         d["autonomous"] = s.autonomous
     if s.has_worktree is not None:
         d["has_worktree"] = s.has_worktree
+    if s.allowed_paths:
+        d["allowed_paths"] = s.allowed_paths
     return d
 
 
@@ -169,6 +173,7 @@ def create_session(
     description: str = "",
     autonomous: bool = False,
     has_worktree: bool = True,
+    allowed_paths: list[str] | None = None,
 ) -> Session:
     """Create and save a new session.
 
@@ -194,6 +199,7 @@ def create_session(
         description=description,
         autonomous=autonomous,
         has_worktree=has_worktree,
+        allowed_paths=allowed_paths or [],
     )
     all_sessions = [session] + existing
     all_sessions = all_sessions[:MAX_SESSIONS]

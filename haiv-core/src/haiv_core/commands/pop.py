@@ -58,22 +58,32 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
         aar_rel = aar_path.relative_to(ctx.paths.root)
         aar_item = f"Fill in your AAR at `{aar_rel.as_posix()}`. (This lives in {parent.mind}'s directory — you write it, they read it.)"
 
-    cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
-    if cd_to != ".":
-        merge_step = f'Run `cd "{cd_to.as_posix()}" && hv pop --merge`'
-    else:
-        merge_step = "Run `hv pop --merge`"
-
     items = [
         "Review your original assignment for gaps in completion.",
         "Review for small improvements that are easy to add.",
-        "Discuss your findings.",
-        "Ensure proper test coverage and run tests.",
-        "Commit all changes to your worktree branch.",
     ]
+
+    if not session.autonomous:
+        items.append("Discuss your findings.")
+
+    likely_has_tests = session.has_worktree or not session.autonomous
+    if likely_has_tests:
+        items.append("Ensure proper test coverage and run tests.")
+
+    if session.has_worktree:
+        items.append("Commit all changes to your worktree branch.")
+
     if aar_item:
         items.append(aar_item)
-    items.append(merge_step)
+
+    if session.has_worktree:
+        cd_to = ctx.paths.root.relative_to(ctx.paths.called_from, walk_up=True)
+        if cd_to != ".":
+            merge_step = f'Run `cd "{cd_to.as_posix()}" && hv pop --merge`'
+        else:
+            merge_step = "Run `hv pop --merge`"
+        items.append(merge_step)
+
     items.append("Run `hv pop --session`")
 
     ctx.mind.checklist(
@@ -88,6 +98,10 @@ def _print_checklist(ctx: cmd.Ctx) -> None:
 def _do_merge(ctx: cmd.Ctx) -> None:
     """Merge current branch into its base branch, then clean up."""
     session = get_current_session(ctx.paths.user.sessions_file)
+
+    if not session.has_worktree:
+        ctx.print("No worktree to merge — skipping.")
+        return
 
     if not session.branch or not session.base_branch:
         raise CommandError(

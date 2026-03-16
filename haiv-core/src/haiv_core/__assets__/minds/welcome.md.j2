@@ -7,6 +7,10 @@
 
 **Location:** `{{ location }}`
 {% endif %}
+{% if not has_worktree %}
+
+**Working directory:** [Tell the mind where they should be working — e.g., the repo root, a specific worktree, or haiv-hq. They have no worktree of their own.]
+{% endif %}
 
 ---
 
@@ -38,6 +42,17 @@
 2. [Step 2]
 
 ---
+{% if autonomous %}
+
+## Boundaries
+
+[Tell the mind where they are allowed to make changes and where they should stop and ask first. Be specific — this mind will run without human approval for edits.]
+
+- **OK to edit:** [e.g., `worktrees/ember/haiv-core/`]
+- **Ask first:** [e.g., anything outside the worktree, shared config files]
+
+---
+{% endif %}
 
 ## Before You Begin
 
@@ -45,9 +60,17 @@
 2. Run `hv chart` and check the maps for anything relevant to your task.
 3. **Decision point:** Does the Atlas have what you need to understand the codebase for this task?
    - **Yes** → Continue to step 4.
-   - **No** → Propose an exploration to your human collaborator. What territory do you need to chart? This becomes a journey before you write code.
+   - **No** → {% if autonomous %}Run `hv chart explore` to map the territory you need. Do NOT read through code files without it.{% else %}Propose an exploration to your human collaborator. What territory do you need to chart? This becomes a journey before you write code.{% endif %}
+{% if autonomous %}
+4. Proceed with implementation. Make your own decisions — but if something is ambiguous or risky, escalate. Autonomous doesn't mean isolated.
+{% else %}
 4. Discuss your approach with your human collaborator.
+{% endif %}
 
-Use `TaskCreate` to track these steps — there may be significant work between them. The task description is a starting point — not a spec. Work collaboratively with your human. Do not use planning tools unless they explicitly request it.
+Use `TaskCreate` to track these steps — there may be significant work between them.{% if not autonomous %} The task description is a starting point — not a spec. Work collaboratively with your human. Do not use planning tools unless they explicitly request it.{% endif %}
 
 > **IMPORTANT:** When you need to understand the codebase, start with `hv chart` to check what's already mapped. If the Atlas doesn't have enough information, use `hv chart explore` — it will guide you through the exploration process. Do NOT read through code files without it. Exploration that follows the charting process builds the Atlas for future minds. Exploration that doesn't is wasted.
+
+> **When you are finished**, run `hv pop` and follow the checklist. This is how you hand your work back — review, merge, and clean up.
+
+> **cd must always be a separate Bash call.** Do not chain cd with `&&` or `;` (e.g., `Bash(cd ./abc && some-command)`). This will be flagged and require human permission. Instead, run `Bash(cd ./abc)` first, then your command in the next call.

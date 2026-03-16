@@ -46,7 +46,10 @@ def _launch_here(
     """Resolve a session and launch Claude in the current terminal."""
     session = resolve_session(ctx.paths.user.sessions_file, mind_name, task=task, parent_id=parent_id)
     env = build_env(mind_name, session.id, ctx.paths.root)
-    claude_cmd = build_claude_command(mind_name, session.claude_session_id)
+    claude_cmd = build_claude_command(
+        mind_name, session.claude_session_id,
+        autonomous=session.autonomous, allowed_paths=session.allowed_paths,
+    )
 
     # Set env vars in current process so Claude inherits them
     os.environ.update(env)

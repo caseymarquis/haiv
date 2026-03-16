@@ -154,7 +154,10 @@ def mind_launch(
     sessions_refresh(client, sessions_file, git=git)
 
     # Build claude command and launch
-    claude_cmd = build_claude_command(mind_name, session.claude_session_id)
+    claude_cmd = build_claude_command(
+        mind_name, session.claude_session_id,
+        autonomous=session.autonomous, allowed_paths=session.allowed_paths,
+    )
     env = build_env(mind_name, session.id, haiv_root)
     terminal.launch_in_mind_pane(mind_name, env, [claude_cmd])
 
@@ -211,12 +214,35 @@ def mind_close_pane(terminal: TerminalManager, mind_name: str) -> None:
 # consumer, but they should move if a better home emerges.
 
 
-def build_claude_command(mind_name: str, claude_session_id: str) -> str:
+def build_claude_command(
+    mind_name: str,
+    claude_session_id: str,
+    *,
+    autonomous: bool = False,
+    allowed_paths: list[str] | None = None,
+) -> str:
     """Build the claude CLI command for launching a mind."""
     from haiv.util import shell_quote
 
     prompt = f"Run `hv become {mind_name}`"
-    allowed = f"Bash(hv become {mind_name})"
+    tools = [
+        f"Bash(hv become {mind_name})",
+        "Bash(cd *)",
+        "Bash(hv chart *)",
+        "Bash(hv pop *)",
+        "Bash(git status)",
+        "Bash(git diff *)",
+        "Bash(git log *)",
+    ]
+    if autonomous:
+        tools.extend([
+            "Bash(git add *)",
+            "Bash(git commit *)",
+        ])
+        for path in allowed_paths or []:
+            tools.append(f"Edit(/{path}**)")
+            tools.append(f"Write(/{path}**)")
+    allowed = " ".join(tools)
     return (
         f"claude {shell_quote(prompt)} "
         f"--session-id {shell_quote(claude_session_id)} "
