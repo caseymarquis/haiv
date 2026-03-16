@@ -245,10 +245,12 @@ def _maybe_relaunch_in_project() -> None:
     except Exception:
         return  # Not in a haiv project
 
-    # Skip relaunch if we already relaunched for this exact project
+    # Skip relaunch if we're already running in this project's venv
     launched_for = os.environ.get(env.HV_PROJECT_CONTEXT)
     if launched_for and Path(launched_for).resolve() == haiv_root.resolve():
-        return  # Already relaunched for this project
+        project_venv = haiv_root / ".venv"
+        if project_venv.exists() and Path(sys.prefix).resolve() == project_venv.resolve():
+            return  # Actually in the right venv already
 
     # Check if haiv-cli is installed in the project's venv
     venv = haiv_root / ".venv"
