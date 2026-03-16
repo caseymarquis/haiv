@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import random
+import shutil
 
 from haiv import cmd
 from haiv._infrastructure.env import HV_SESSION
@@ -73,6 +74,16 @@ def define() -> cmd.Def:
                 type=bool,
                 description="Skip clean working tree check",
             ),
+            cmd.Flag(
+                "autonomous",
+                type=bool,
+                description="Enable autonomous mode for the mind",
+            ),
+            cmd.Flag(
+                "no-worktree",
+                type=bool,
+                description="Skip worktree creation",
+            ),
         ],
     )
 
@@ -103,6 +114,8 @@ def execute(ctx: cmd.Ctx) -> None:
     if len(task) > 50:
         ctx.print(f"Hint: --task is {len(task)} chars (recommended: 50 or fewer)")
     description = ctx.args.get_one("description") if ctx.args.has("description") else ""
+    autonomous = ctx.args.has("autonomous")
+    no_worktree = ctx.args.has("no-worktree")
 
     # Check for available minds (no active session) when name not provided
     reused_mind = None
@@ -131,47 +144,56 @@ def execute(ctx: cmd.Ctx) -> None:
         except InvalidMindNameError as e:
             raise CommandError(e.reason) from e
 
-    # Determine base branch
-    if ctx.args.has("from-branch"):
-        base_branch = ctx.args.get_one("from-branch")
+    # Worktree creation (skipped with --no-worktree)
+    if no_worktree:
+        branch = ""
+        base_branch = ""
+        location = None
     else:
-        base_branch = _detect_base_branch(ctx)
+        # Determine base branch
+        if ctx.args.has("from-branch"):
+            base_branch = ctx.args.get_one("from-branch")
+        else:
+            base_branch = _detect_base_branch(ctx)
 
-    # Check that the base branch's working tree is clean
-    if not ctx.args.has("allow-dirty"):
-        _check_clean_working_tree(ctx, base_branch)
+        # Check that the base branch's working tree is clean
+        if not ctx.args.has("allow-dirty"):
+            _check_clean_working_tree(ctx, base_branch)
 
-    # Check if worktree directory already exists and has contents
-    worktree_path = ctx.paths.root / "worktrees" / name
-    if worktree_path.exists() and any(worktree_path.iterdir()):
-        raise CommandError(
-            f"Worktree directory already exists and is not empty: worktrees/{name}/\n"
-            f"Use --name to choose a different mind name."
+        # Try to clear stale worktree if one exists
+        worktree_path = ctx.paths.root / "worktrees" / name
+        if worktree_path.exists() and any(worktree_path.iterdir()):
+            if not _try_remove_stale_worktree(ctx, name, base_branch):
+                raise CommandError(
+                    f"Worktree directory already exists and is not empty: worktrees/{name}/\n"
+                    f"Use --name to choose a different mind name."
+                )
+
+        # Create the worktree
+        ctx.git.run(
+            ["worktree", "add", "-b", name, f"worktrees/{name}", base_branch],
+            intent=f"create worktree for mind '{name}'",
         )
+        location = f"worktrees/{name}/"
+        branch = name
 
-    # Create the worktree
-    ctx.git.run(
-        ["worktree", "add", "-b", name, f"worktrees/{name}", base_branch],
-        intent=f"create worktree for mind '{name}'",
-    )
-    location = f"worktrees/{name}/"
-
-    # Emit hook for post-worktree-creation tasks (e.g., uv sync)
-    AFTER_WORKTREE_CREATED.emit(
-        WorktreeCreated(
-            worktree_path=worktree_path,
-            branch=name,
-            base_branch=base_branch,
-            mind_name=name,
-        ),
-        ctx,
-    )
+        # Emit hook for post-worktree-creation tasks (e.g., uv sync)
+        AFTER_WORKTREE_CREATED.emit(
+            WorktreeCreated(
+                worktree_path=worktree_path,
+                branch=name,
+                base_branch=base_branch,
+                mind_name=name,
+            ),
+            ctx,
+        )
 
     # Scaffold mind (non-destructive for reused minds)
     try:
         mind = scaffold_mind(
             name, minds_dir, ctx.templates,
             location=location, skip_existing=reused_mind is not None,
+            autonomous=autonomous, has_worktree=not no_worktree,
         )
     except MindExistsError as e:
         raise CommandError(str(e)) from e
@@ -184,9 +206,11 @@ def execute(ctx: cmd.Ctx) -> None:
         name,
         status="staged",
         parent_id=parent_id,
-        branch=name,
+        branch=branch,
         base_branch=base_branch,
         description=description,
+        autonomous=autonomous,
+        has_worktree=not no_worktree,
     )
 
     # Push to TUI
@@ -202,11 +226,15 @@ def execute(ctx: cmd.Ctx) -> None:
     ctx.print(f"Task: {task}")
     ctx.print(f"Session: {session.short_id} (staged)")
 
-    ctx.print(f"Worktree: worktrees/{name}/")
+    if not no_worktree:
+        ctx.print(f"Worktree: worktrees/{name}/")
+
+    welcome_path = mind.paths.work.root / "welcome.md"
+    welcome_rel = welcome_path.relative_to(ctx.paths.root).as_posix()
 
     ctx.print()
     ctx.print("Next steps:")
-    ctx.print(f"1. Edit work/welcome.md — this is the assignment {name} reads when they wake up.")
+    ctx.print(f"1. Edit {welcome_rel} — this is the assignment {name} reads when they wake up.")
     ctx.print("   (--task and --description are labels for *you* to track this delegation —")
     ctx.print(f"   {name} doesn't see them.)")
     ctx.print("2. Assign a role in references.toml (see src/haiv_project/__assets__/roles/)")
@@ -233,6 +261,40 @@ def _detect_base_branch(ctx: cmd.Ctx) -> str:
         return parent_session.branch
 
     return ctx.settings.default_branch
+
+
+def _try_remove_stale_worktree(ctx: cmd.Ctx, name: str, base_branch: str) -> bool:
+    """Try to remove a stale worktree if it's empty or fully merged.
+
+    Returns True if the worktree was successfully removed, False otherwise.
+    """
+    worktree_path = ctx.paths.root / "worktrees" / name
+
+    # Case 1: directory exists but is not a git worktree (e.g. leftover empty dir)
+    if not (worktree_path / ".git").exists():
+        try:
+            shutil.rmtree(worktree_path)
+            return True
+        except OSError:
+            return False
+
+    # Case 2: git worktree — check if branch is fully merged into base
+    try:
+        base_git = ctx.git.at_worktree(base_branch)
+        ahead = base_git.run(
+            ["rev-list", f"{base_branch}..{name}", "--count"],
+            intent=f"check if '{name}' has commits ahead of '{base_branch}'",
+        ).strip()
+        if int(ahead) > 0:
+            return False
+        ctx.git.run(
+            ["worktree", "remove", f"worktrees/{name}"],
+            intent=f"remove stale worktree for '{name}'",
+        )
+        base_git.run(["branch", "-d", name], intent=f"delete stale branch '{name}'")
+        return True
+    except Exception:
+        return False
 
 
 def _check_clean_working_tree(ctx: cmd.Ctx, base_branch: str) -> None:

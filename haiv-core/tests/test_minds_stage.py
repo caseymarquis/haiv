@@ -197,10 +197,10 @@ class TestOutput:
         assert "robin" in output
 
     def test_outputs_welcome_edit_instruction(self, sandbox: Sandbox, capsys):
-        """Output instructs to edit welcome.md."""
+        """Output instructs to edit welcome.md with full path."""
         sandbox.run('minds stage --name robin --task "test" --from-branch main')
         output = capsys.readouterr().out
-        assert "welcome.md" in output.lower()
+        assert "minds/robin/work/welcome.md" in output
 
     def test_outputs_role_instruction(self, sandbox: Sandbox, capsys):
         """Output includes role assignment instruction."""
@@ -264,14 +264,15 @@ class TestWorktreeCreation:
         content = path.read_text()
         assert "**Location:** `worktrees/robin/`" in content
 
-    def test_rejects_existing_nonempty_worktree_dir(self, sandbox: Sandbox):
-        """Error when worktree directory exists and is not empty."""
+    def test_removes_stale_non_git_worktree_dir(self, sandbox: Sandbox):
+        """Silently removes leftover non-git directory and proceeds."""
         worktree_dir = sandbox.ctx.paths.root / "worktrees" / "robin"
         worktree_dir.mkdir(parents=True)
         (worktree_dir / "some-file.txt").write_text("content")
 
-        with pytest.raises(CommandError, match="already exists and is not empty"):
-            sandbox.run('minds stage --name robin --task "test" --from-branch main --allow-dirty')
+        sandbox.run('minds stage --name robin --task "test" --from-branch main --allow-dirty')
+        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
+        assert (sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
 
     def test_outputs_worktree_location(self, sandbox: Sandbox, capsys):
         """Output includes worktree location."""
@@ -577,4 +578,112 @@ class TestCleanWorkingTree:
         with patch.object(Git, "run", _intercept_worktree_list(output)):
             sandbox.run('minds stage --name robin --task "test" --from-branch main')
         assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
+
+
+# =============================================================================
+# --autonomous Flag Tests
+# =============================================================================
+
+
+class TestAutonomousFlag:
+    """Test --autonomous flag behavior."""
+
+    def test_session_has_autonomous_true(self, sandbox: Sandbox):
+        """--autonomous sets session.autonomous to True."""
+        sandbox.run('minds stage --name robin --task "test" --from-branch main --autonomous')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].autonomous is True
+
+    def test_session_autonomous_false_by_default(self, sandbox: Sandbox):
+        """Session autonomous is False when flag not provided."""
+        sandbox.run('minds stage --name robin --task "test" --from-branch main')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].autonomous is False
+
+    def test_autonomous_with_worktree(self, sandbox: Sandbox):
+        """--autonomous works alongside normal worktree creation."""
+        sandbox.run('minds stage --name robin --task "test" --from-branch main --autonomous')
+        assert (sandbox.ctx.paths.root / "worktrees" / "robin").is_dir()
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].autonomous is True
+        assert sessions[0].has_worktree is True
+
+
+# =============================================================================
+# --no-worktree Flag Tests
+# =============================================================================
+
+
+class TestNoWorktreeFlag:
+    """Test --no-worktree flag behavior."""
+
+    def test_creates_mind_without_worktree(self, sandbox: Sandbox):
+        """--no-worktree creates the mind but no worktree directory."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
+        assert not (sandbox.ctx.paths.root / "worktrees" / "robin").exists()
+
+    def test_session_has_worktree_false(self, sandbox: Sandbox):
+        """Session has_worktree is False with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].has_worktree is False
+
+    def test_session_has_empty_branch(self, sandbox: Sandbox):
+        """Session branch is empty with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].branch == ""
+
+    def test_session_has_empty_base_branch(self, sandbox: Sandbox):
+        """Session base_branch is empty with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].base_branch == ""
+
+    def test_no_worktree_line_in_output(self, sandbox: Sandbox, capsys):
+        """Output does not include Worktree: line with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        output = capsys.readouterr().out
+        assert "Worktree:" not in output
+
+    def test_from_branch_silently_ignored(self, sandbox: Sandbox):
+        """--from-branch is silently ignored with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree --from-branch main')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].branch == ""
+
+    def test_allow_dirty_silently_ignored(self, sandbox: Sandbox):
+        """--allow-dirty is silently ignored with --no-worktree."""
+        sandbox.run('minds stage --name robin --task "test" --no-worktree --allow-dirty')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].has_worktree is False
+
+    def test_no_hv_session_required(self, sandbox: Sandbox):
+        """--no-worktree does not require HV_SESSION for base branch detection."""
+        env = os.environ.copy()
+        env.pop("HV_SESSION", None)
+        with patch.dict("os.environ", env, clear=True):
+            sandbox.run('minds stage --name robin --task "test" --no-worktree')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].has_worktree is False
+
+
+# =============================================================================
+# Combined Flags Tests
+# =============================================================================
+
+
+class TestCombinedFlags:
+    """Test --autonomous and --no-worktree used together."""
+
+    def test_both_flags(self, sandbox: Sandbox):
+        """Both --autonomous and --no-worktree work together."""
+        sandbox.run('minds stage --name robin --task "test" --autonomous --no-worktree')
+        sessions = load_sessions(sandbox.ctx.paths.user.sessions_file)
+        assert sessions[0].autonomous is True
+        assert sessions[0].has_worktree is False
+        assert sessions[0].branch == ""
+        assert (sandbox.ctx.paths.user.minds_dir / "robin").is_dir()
+        assert not (sandbox.ctx.paths.root / "worktrees" / "robin").exists()
 
