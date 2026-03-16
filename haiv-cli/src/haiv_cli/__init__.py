@@ -245,14 +245,7 @@ def _maybe_relaunch_in_project() -> None:
     except Exception:
         return  # Not in a haiv project
 
-    # Skip relaunch if we're already running in this project's venv
-    launched_for = os.environ.get(env.HV_PROJECT_CONTEXT)
-    if launched_for and Path(launched_for).resolve() == haiv_root.resolve():
-        project_venv = haiv_root / ".venv"
-        if project_venv.exists() and Path(sys.prefix).resolve() == project_venv.resolve():
-            return  # Actually in the right venv already
-
-    # Check if haiv-cli is installed in the project's venv
+    # Check if project has a venv with haiv-cli installed
     venv = haiv_root / ".venv"
     if not venv.exists():
         return
@@ -265,10 +258,13 @@ def _maybe_relaunch_in_project() -> None:
     if not hv_script.exists():
         return  # Project venv doesn't have haiv-cli
 
+    # Skip relaunch if we're already running in this project's venv
+    if Path(sys.prefix).resolve() == venv.resolve():
+        return
+
     import subprocess
 
     relaunch_env = os.environ.copy()
-    relaunch_env[env.HV_PROJECT_CONTEXT] = str(haiv_root.resolve())
     relaunch_env.pop("VIRTUAL_ENV", None)
 
     result = subprocess.run(
