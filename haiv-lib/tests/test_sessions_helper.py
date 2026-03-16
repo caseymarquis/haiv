@@ -9,6 +9,7 @@ from unittest.mock import patch
 from haiv.errors import CommandError
 from haiv.helpers.sessions import (
     Session,
+    _session_to_dict,
     build_session_tree,
     create_session,
     get_current_session,
@@ -684,3 +685,112 @@ class TestAsFilename:
         result = s.as_filename()
         unsafe = set('<>:"/\\|?*') | {chr(c) for c in range(32)}
         assert not any(c in unsafe for c in result)
+
+
+class TestAutonomousAndHasWorktreeFields:
+    """Tests for the autonomous and has_worktree session fields."""
+
+    def test_defaults_on_session(self):
+        """Session dataclass has correct defaults."""
+        s = _session("id")
+        assert s.autonomous is False
+        assert s.has_worktree is True
+
+    def test_backward_compat_load_missing_fields(self, tmp_path):
+        """Old TOML without new fields loads with correct defaults."""
+        sessions_file = tmp_path / "sessions.toml"
+        # Write TOML manually without the new fields
+        sessions_file.write_text(
+            '[[sessions]]\n'
+            'id = "old-session"\n'
+            'task = "Legacy task"\n'
+            'started = 2025-01-01T00:00:00Z\n'
+            'mind = "wren"\n'
+            'short_id = 1\n'
+            'status = "started"\n',
+            encoding="utf-8",
+        )
+
+        sessions = load_sessions(sessions_file)
+
+        assert len(sessions) == 1
+        assert sessions[0].autonomous is False
+        assert sessions[0].has_worktree is True
+
+    def test_create_session_with_autonomous(self, tmp_path):
+        """create_session accepts autonomous=True."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        session = create_session(
+            sessions_file, "Auto task", "wren", autonomous=True,
+        )
+
+        assert session.autonomous is True
+
+    def test_create_session_with_no_worktree(self, tmp_path):
+        """create_session accepts has_worktree=False."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        session = create_session(
+            sessions_file, "No worktree task", "wren", has_worktree=False,
+        )
+
+        assert session.has_worktree is False
+
+    def test_round_trip_autonomous_true(self, tmp_path):
+        """autonomous=True survives save/load cycle."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        created = create_session(
+            sessions_file, "Task", "wren", autonomous=True,
+        )
+
+        loaded = load_sessions(sessions_file)
+        session = [s for s in loaded if s.id == created.id][0]
+        assert session.autonomous is True
+
+    def test_round_trip_has_worktree_false(self, tmp_path):
+        """has_worktree=False survives save/load cycle."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        created = create_session(
+            sessions_file, "Task", "wren", has_worktree=False,
+        )
+
+        loaded = load_sessions(sessions_file)
+        session = [s for s in loaded if s.id == created.id][0]
+        assert session.has_worktree is False
+
+    def test_round_trip_defaults(self, tmp_path):
+        """Default values survive save/load cycle."""
+        sessions_file = tmp_path / "sessions.toml"
+
+        created = create_session(sessions_file, "Task", "wren")
+
+        loaded = load_sessions(sessions_file)
+        session = [s for s in loaded if s.id == created.id][0]
+        assert session.autonomous is False
+        assert session.has_worktree is True
+
+    def test_session_to_dict_includes_when_not_none(self):
+        """_session_to_dict includes both fields (they're never None by default)."""
+        s = _session("id")
+        d = _session_to_dict(s)
+        assert "autonomous" in d
+        assert d["autonomous"] is False
+        assert "has_worktree" in d
+        assert d["has_worktree"] is True
+
+    def test_session_to_dict_autonomous_true(self):
+        """_session_to_dict includes autonomous=True."""
+        s = _session("id")
+        s.autonomous = True
+        d = _session_to_dict(s)
+        assert d["autonomous"] is True
+
+    def test_session_to_dict_has_worktree_false(self):
+        """_session_to_dict includes has_worktree=False."""
+        s = _session("id")
+        s.has_worktree = False
+        d = _session_to_dict(s)
+        assert d["has_worktree"] is False

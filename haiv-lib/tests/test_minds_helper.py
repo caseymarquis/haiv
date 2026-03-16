@@ -627,6 +627,18 @@ class TestScaffoldMind:
         assert mind.paths.work.scratchpad_file.is_file()
         assert mind.paths.references_file.is_file()
 
+    def test_passes_autonomous_and_has_worktree_to_template(self, tmp_path, templates):
+        """scaffold_mind passes autonomous and has_worktree to the welcome template."""
+        minds_dir = tmp_path / "minds"
+
+        mind = scaffold_mind(
+            "robin", minds_dir, templates,
+            autonomous=True, has_worktree=False,
+        )
+
+        # Verify the mind was created (template rendered without error)
+        assert mind.paths.work.welcome_file.is_file()
+
     def test_raises_if_mind_exists(self, tmp_path, templates):
         """Raises MindExistsError if mind already exists."""
         minds_dir = tmp_path / "minds"

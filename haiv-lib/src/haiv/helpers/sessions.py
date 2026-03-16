@@ -40,6 +40,8 @@ class Session:
     base_branch: str = ""  # Branch this worktree was created from
     claude_session_id: str = ""  # Current Claude session id
     old_claude_session_ids: list[str] = field(default_factory=list)
+    autonomous: bool = False  # Running without human supervision
+    has_worktree: bool = True  # Whether this session has a worktree
 
     _MAX_FILENAME_LENGTH = 50
 
@@ -93,6 +95,8 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 base_branch=entry.get("base_branch", ""),
                 claude_session_id=entry.get("claude_session_id", ""),
                 old_claude_session_ids=entry.get("old_claude_session_ids", []),
+                autonomous=entry.get("autonomous", False),
+                has_worktree=entry.get("has_worktree", True),
             )
         )
     return sessions
@@ -146,6 +150,10 @@ def _session_to_dict(s: Session) -> dict[str, object]:
         d["claude_session_id"] = s.claude_session_id
     if s.old_claude_session_ids:
         d["old_claude_session_ids"] = s.old_claude_session_ids
+    if s.autonomous is not None:
+        d["autonomous"] = s.autonomous
+    if s.has_worktree is not None:
+        d["has_worktree"] = s.has_worktree
     return d
 
 
@@ -159,6 +167,8 @@ def create_session(
     branch: str = "",
     base_branch: str = "",
     description: str = "",
+    autonomous: bool = False,
+    has_worktree: bool = True,
 ) -> Session:
     """Create and save a new session.
 
@@ -182,6 +192,8 @@ def create_session(
         branch=branch,
         base_branch=base_branch,
         description=description,
+        autonomous=autonomous,
+        has_worktree=has_worktree,
     )
     all_sessions = [session] + existing
     all_sessions = all_sessions[:MAX_SESSIONS]

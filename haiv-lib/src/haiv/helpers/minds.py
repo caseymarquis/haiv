@@ -416,6 +416,8 @@ def scaffold_mind(
     *,
     location: str | None = None,
     skip_existing: bool = False,
+    autonomous: bool = False,
+    has_worktree: bool = True,
 ) -> Mind:
     """Create a new mind folder with proper structure.
 
@@ -454,7 +456,13 @@ def scaffold_mind(
     paths.home.root.mkdir(parents=True, exist_ok=True)
 
     # Write template files
-    templates.write("minds/welcome.md.j2", paths.work.welcome_file, skip_existing=skip_existing, location=location or "")
+    templates.write(
+        "minds/welcome.md.j2", paths.work.welcome_file,
+        skip_existing=skip_existing,
+        location=location or "",
+        autonomous=autonomous,
+        has_worktree=has_worktree,
+    )
     templates.write("minds/references.toml.j2", paths.references_file, skip_existing=skip_existing)
 
     def _write_if_missing(path: Path, content: str) -> None:
