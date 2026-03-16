@@ -61,7 +61,18 @@ def define() -> cmd.Def:
                     "does not see it. Their actual assignment goes in work/welcome.md."
                 ),
             ),
-            cmd.Flag("name", type=str, min_args=0, max_args=1, description="Mind name"),
+            cmd.Flag(
+                "name",
+                type=str,
+                min_args=0,
+                max_args=1,
+                description=(
+                    "Choose a name with personality — this becomes the mind's identity "
+                    "across assignments. Luna, Gandalf, Doug, Ptolemy, Noodle... "
+                    "have fun with it. Avoid purely functional names like fix1 or worker-3. "
+                    "If omitted, an idle mind is reused or a name is auto-generated."
+                ),
+            ),
             cmd.Flag(
                 "from-branch",
                 type=str,
