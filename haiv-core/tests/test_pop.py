@@ -237,6 +237,43 @@ class TestMerge:
         assert "missing" in output.lower()
         assert "already synced" in output.lower()
 
+    def test_errors_when_cwd_inside_worktree(self, sandbox: Sandbox):
+        """Raises error when cwd is inside the worktree being removed."""
+        root = sandbox.ctx.paths.root
+        git = Git(root, quiet=True)
+
+        echo_worktree = root / "worktrees" / "echo"
+        git.run(["worktree", "add", "-b", "echo", str(echo_worktree), "main"])
+
+        session = _create_session_with_branch(sandbox)
+        sandbox.cd(echo_worktree)
+
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
+            with pytest.raises(CommandError, match="inside the worktree"):
+                sandbox.run("pop --merge")
+
+        # Worktree should NOT have been removed
+        assert echo_worktree.exists()
+
+    def test_errors_when_cwd_in_worktree_subdirectory(self, sandbox: Sandbox):
+        """Raises error when cwd is in a subdirectory of the worktree."""
+        root = sandbox.ctx.paths.root
+        git = Git(root, quiet=True)
+
+        echo_worktree = root / "worktrees" / "echo"
+        git.run(["worktree", "add", "-b", "echo", str(echo_worktree), "main"])
+        subdir = echo_worktree / "src"
+        subdir.mkdir()
+
+        session = _create_session_with_branch(sandbox)
+        sandbox.cd(subdir)
+
+        with patch.dict("os.environ", {"HV_SESSION": session.id}):
+            with pytest.raises(CommandError, match="inside the worktree"):
+                sandbox.run("pop --merge")
+
+        assert echo_worktree.exists()
+
     def test_errors_when_session_missing_branch(self, sandbox: Sandbox):
         """Raises error when session has no branch metadata."""
         session = create_session(

@@ -139,6 +139,17 @@ def _do_merge(ctx: cmd.Ctx) -> None:
     else:
         ctx.print(f"'{branch}' has no new commits vs '{base_branch}', skipping merge.")
 
+    # Check if cwd is inside the worktree being removed
+    worktree_path = (ctx.paths.worktrees_dir / branch).resolve()
+    cwd = ctx.paths.called_from.resolve()
+    if cwd == worktree_path or worktree_path in cwd.parents:
+        raise CommandError(
+            f"Your current directory is inside the worktree being removed.\n"
+            f"  cd out first, then retry:\n"
+            f"  cd \"{ctx.paths.root.as_posix()}\"\n"
+            f"  hv pop --merge"
+        )
+
     # Remove the worktree and branch (delete from base so git sees it as merged)
     ctx.git.run(["worktree", "remove", f"worktrees/{branch}"], intent=f"remove worktree for '{branch}'")
     base_git.run(["branch", "-d", branch], intent=f"delete branch '{branch}'")
