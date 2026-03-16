@@ -98,12 +98,18 @@ See `journeys/hv-start-crash-recovery/` for how workspace detection and recovery
 
 Thin subprocess wrapper around `wezterm cli`. Educational by default — prints commands as they run, provides diagnostic prompts on failure. Use `quiet=True` to suppress. Key operations: `list_panes`, `spawn`, `split_pane`, `send_text`, `get_text`, `set_tab_title`, `activate_pane`, `kill_pane`. Also `run_external` for commands outside the CLI context (like `wezterm start`).
 
+## Helper maps
+
+Detailed maps for helper modules live in [helpers/](helpers/):
+
+- [helpers overview](helpers/overview.md) — The helper pattern and what's available
+- [sessions](helpers/sessions.md) — Session dataclass, CRUD, lifecycle
+
 ## Uncharted
 
 Known to exist but not properly explored. Earn a reward, give them a name.
 
-- `helpers/minds.py` — Mind scaffolding and management (partially explored in `journeys/charting-tools-local-examples/007`)
-- `helpers/sessions.py` — Session persistence and lookup (partially explored in `journeys/charting-tools-local-examples/006`)
+- `helpers/minds.py` — Mind scaffolding and management. `scaffold_mind()` creates directory structure and writes templates; `Mind` class with `ensure_structure()` for validation/repair. (Partially explored in `journeys/charting-tools-local-examples/007`)
 - `helpers/commands.py`, `helpers/packages.py`, `helpers/users.py` — Other helper modules
 - `templates.py` — Jinja2 template rendering for `__assets__/`
 - `wrappers/git.py` — Git subprocess wrapper
