@@ -12,6 +12,11 @@ from textual.widgets import Static
 
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, SessionsRaw
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from haiv_tui.store import TuiStore
+
 
 # ---------------------------------------------------------------------------
 # Widget
@@ -29,18 +34,18 @@ class HudWidget(Static):
     }
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, *, store: TuiStore, **kwargs) -> None:
         super().__init__(**kwargs)
+        self._store = store
         self._active_mind: ActiveMindRaw | None = None
         self._sessions: SessionsRaw | None = None
 
     def on_mount(self) -> None:
-        store = self.app.store
-        store.active_mind_changed.connect(self._on_active_mind_changed)
-        store.sessions_changed.connect(self._on_sessions_changed)
-        if store.snapshot is not None:
-            self._active_mind = store.snapshot.active_mind
-            self._sessions = store.snapshot.sessions
+        self._store.active_mind_changed.connect(self._on_active_mind_changed)
+        self._store.sessions_changed.connect(self._on_sessions_changed)
+        if self._store.snapshot is not None:
+            self._active_mind = self._store.snapshot.active_mind
+            self._sessions = self._store.snapshot.sessions
             self._refresh_hud()
 
     def _on_active_mind_changed(self, sender) -> None:

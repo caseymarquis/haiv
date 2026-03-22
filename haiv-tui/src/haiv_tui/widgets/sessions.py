@@ -20,15 +20,67 @@ from textual.containers import Vertical
 from textual.events import Click
 from textual.widgets import Static, Tree
 
+from collections import deque
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from haiv.helpers.open import open_in_editor, open_in_explorer
 from haiv.helpers.tui import helpers
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionEntry, SessionsRaw
+from haiv.helpers.tui.terminal import TerminalManager
 from haiv.helpers.utils.trees import TreeNode, build_tree
+from haiv.paths import Paths
+from haiv.settings import HaivSettings
 from haiv.wrappers.git import BranchStats
+
+if TYPE_CHECKING:
+    from haiv._infrastructure.TuiServer import TuiLocalClient
+    from haiv_tui.store import TuiStore
 
 
 # ---------------------------------------------------------------------------
 # Widget
 # ---------------------------------------------------------------------------
+
+
+class SessionActionBar(Static):
+    """Action bar for the highlighted session — open in explorer or editor."""
+
+    DEFAULT_CSS = """
+    SessionActionBar {
+        height: auto;
+        padding: 0 1;
+    }
+    """
+
+    def __init__(self, *, settings: HaivSettings, errors: deque[str], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._settings = settings
+        self._errors = errors
+        self._view: SessionNodeView | None = None
+
+    def set_session(self, view: SessionNodeView | None) -> None:
+        self._view = view
+        if view and view.worktree_path:
+            self.update(f"[e] Explorer  [v] Editor  —  {view.worktree_path}")
+        else:
+            self.update("")
+
+    def action_open_explorer(self) -> None:
+        path = self._view.worktree_path if self._view else None
+        if path and path.is_dir():
+            try:
+                open_in_explorer(path, self._settings.file_explorer_command)
+            except Exception as e:
+                self._errors.append(f"open_explorer: {e}")
+
+    def action_open_editor(self) -> None:
+        path = self._view.worktree_path if self._view else None
+        if path and path.is_dir():
+            try:
+                open_in_editor(path, self._settings.editor_command)
+            except Exception as e:
+                self._errors.append(f"open_editor: {e}")
 
 
 class SessionPreview(Static):
@@ -63,10 +115,31 @@ class SessionsWidget(Vertical):
         Binding("j", "cursor_down", "Cursor Down", show=False, id="sessions.cursor_down"),
         Binding("k", "cursor_up", "Cursor Up", show=False, id="sessions.cursor_up"),
         Binding("enter", "launch_session", "Launch", id="sessions.launch", priority=True),
+        Binding("e", "open_explorer", "Explorer", show=False, id="sessions.open_explorer"),
+        Binding("v", "open_editor", "Editor", show=False, id="sessions.open_editor"),
     ]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        store: TuiStore,
+        terminal: TerminalManager,
+        tui_client: TuiLocalClient,
+        sessions_file: Path,
+        haiv_root: Path,
+        settings: HaivSettings,
+        errors: deque[str],
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
+        self._store = store
+        self._terminal = terminal
+        self._tui_client = tui_client
+        self._sessions_file = sessions_file
+        self._haiv_root = haiv_root
+        self._paths = Paths(_called_from=None, _pkg_root=None, _haiv_root=haiv_root)
+        self._settings = settings
+        self._errors = errors
         self._sessions: SessionsRaw | None = None
         self._git: GitRaw | None = None
         self._active_mind: ActiveMindRaw | None = None
@@ -78,20 +151,24 @@ class SessionsWidget(Vertical):
         self.query_one(Tree).action_cursor_up()
 
     def compose(self) -> ComposeResult:
+        yield SessionActionBar(
+            settings=self._settings,
+            errors=self._errors,
+            id="session-action-bar",
+        )
         yield Tree[SessionNodeView]("Sessions", id="sessions-tree")
         yield SessionPreview(id="session-preview")
 
     def on_mount(self) -> None:
         tree = self.query_one(Tree)
         tree.root.expand()
-        store = self.app.store
-        store.sessions_changed.connect(self._on_sessions_changed)
-        store.git_changed.connect(self._on_git_changed)
-        store.active_mind_changed.connect(self._on_active_mind_changed)
-        if store.snapshot is not None:
-            self._sessions = store.snapshot.sessions
-            self._git = store.snapshot.git
-            self._active_mind = store.snapshot.active_mind
+        self._store.sessions_changed.connect(self._on_sessions_changed)
+        self._store.git_changed.connect(self._on_git_changed)
+        self._store.active_mind_changed.connect(self._on_active_mind_changed)
+        if self._store.snapshot is not None:
+            self._sessions = self._store.snapshot.sessions
+            self._git = self._store.snapshot.git
+            self._active_mind = self._store.snapshot.active_mind
             self._refresh_tree()
 
     def _on_sessions_changed(self, sender) -> None:
@@ -109,7 +186,7 @@ class SessionsWidget(Vertical):
     def _refresh_tree(self) -> None:
         tree = self.query_one(Tree)
         tree.root.remove_children()
-        views = build_session_tree(self._sessions, self._git, self._active_mind)
+        views = build_session_tree(self._sessions, self._git, self._active_mind, self._paths.worktrees_dir)
 
         def _add_nodes(parent, nodes: list[SessionNodeView]) -> None:
             for view in nodes:
@@ -130,9 +207,11 @@ class SessionsWidget(Vertical):
             self.action_launch_session()
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
-        """Update preview when cursor moves to a new node."""
+        """Update preview and action bar when cursor moves to a new node."""
         preview = self.query_one(SessionPreview)
         preview.render_preview(event.node.data)
+        action_bar = self.query_one(SessionActionBar)
+        action_bar.set_session(event.node.data)
 
     def action_launch_session(self) -> None:
         """Launch the highlighted mind."""
@@ -144,18 +223,22 @@ class SessionsWidget(Vertical):
         if view is None:
             return
 
-        app = self.app
-        if app.terminal is not None and app.paths is not None:
-            try:
-                helpers.mind_launch(
-                    app.terminal,
-                    app.tui_client,
-                    app.paths.user.sessions_file,
-                    view.mind,
-                    app.paths.root,
-                )
-            except Exception as e:
-                app.internal_errors.append(f"mind_launch: {e}")
+        try:
+            helpers.mind_launch(
+                self._terminal,
+                self._tui_client,
+                self._sessions_file,
+                view.mind,
+                self._haiv_root,
+            )
+        except Exception as e:
+            self._errors.append(f"mind_launch: {e}")
+
+    def action_open_explorer(self) -> None:
+        self.query_one(SessionActionBar).action_open_explorer()
+
+    def action_open_editor(self) -> None:
+        self.query_one(SessionActionBar).action_open_editor()
 
     @staticmethod
     def _build_label(view: SessionNodeView) -> Text:
@@ -181,6 +264,7 @@ class SessionNodeView:
     status: str
     git_stats: str
     is_active: bool
+    worktree_path: Path | None = None
     children: list[SessionNodeView] = field(default_factory=list)
 
 
@@ -193,6 +277,7 @@ def build_session_tree(
     sessions: SessionsRaw | None,
     git: GitRaw | None,
     active_mind: ActiveMindRaw | None,
+    worktrees_dir: Path | None = None,
 ) -> list[SessionNodeView]:
     """Assemble a list of session tree nodes from raw data.
 
@@ -211,6 +296,7 @@ def build_session_tree(
     def _to_view(node: TreeNode[SessionEntry]) -> SessionNodeView:
         entry = node.item
         stats = git_branches.get(entry.branch, BranchStats())
+        wt_path = worktrees_dir / entry.branch if worktrees_dir and entry.branch else None
         return SessionNodeView(
             short_id=entry.short_id,
             mind=entry.mind,
@@ -219,6 +305,7 @@ def build_session_tree(
             status=entry.status,
             git_stats=stats.format(),
             is_active=entry.mind == active,
+            worktree_path=wt_path,
             children=[_to_view(c) for c in node.child_nodes],
         )
 

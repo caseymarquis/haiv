@@ -17,6 +17,8 @@ class HaivSettings:
     _wezterm_command: list[str] | None = None
     _tui_command: list[str] | None = None
     _keybindings: dict[str, str] | None = None
+    _file_explorer_command: list[str] | None = None
+    _editor_command: list[str] | None = None
 
     @property
     def default_branch(self) -> str:
@@ -37,3 +39,23 @@ class HaivSettings:
     def keybindings(self) -> dict[str, str]:
         """User keybinding overrides. Maps binding IDs to key strings."""
         return self._keybindings if self._keybindings is not None else {}
+
+    @property
+    def file_explorer_command(self) -> list[str]:
+        """Command to open a directory in the file explorer.
+
+        Falls back to platform default: xdg-open (Linux), open (macOS), explorer (Windows).
+        """
+        if self._file_explorer_command is not None:
+            return self._file_explorer_command
+        import sys
+        if sys.platform == "darwin":
+            return ["open"]
+        elif sys.platform == "win32":
+            return ["explorer"]
+        return ["xdg-open"]
+
+    @property
+    def editor_command(self) -> list[str]:
+        """Command to open a directory in an editor. Falls back to ['code']."""
+        return self._editor_command if self._editor_command is not None else ["code"]

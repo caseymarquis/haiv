@@ -23,9 +23,15 @@ def main():
     project = sys.argv[1] if len(sys.argv) > 1 else Path.cwd().name
 
     while True:
+        from haiv._infrastructure.TuiServer import TuiLocalClient, TuiServer
         from haiv_tui.app import HaivApp
+        from haiv_tui.init import init as init_haiv_deps
 
-        app = HaivApp(project)
+        deps = init_haiv_deps(on_error=lambda msg: sys.stderr.write(f"{msg}\n"))
+        server = TuiServer(project)
+        client = TuiLocalClient(server.submit)
+
+        app = HaivApp(deps=deps, server=server, client=client)
         app.run()
         app.shutdown()
         if (app.return_code or 0) != RESTART_EXIT_CODE:

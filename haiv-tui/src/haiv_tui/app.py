@@ -48,7 +48,7 @@ from haiv.helpers.tui import helpers
 from haiv.helpers.tui.terminal import TUI_PANE_TITLE
 from haiv.helpers.utils.file_watcher import FileWatcher
 from haiv.wrappers.git import Git
-from haiv_tui.init import init as init_haiv_deps
+from haiv_tui.init import HaivDeps
 from haiv_tui.store import TuiStore
 from haiv_tui.widgets.errors import ErrorsWidget
 from haiv_tui.widgets.hud import HudWidget
@@ -88,18 +88,22 @@ class HaivApp(App):
         Binding("shift+tab", "previous_tab", "Previous Tab", priority=True, id="nav.previous_tab"),
     ]
 
-    def __init__(self, project: str) -> None:
+    def __init__(
+        self,
+        *,
+        deps: HaivDeps,
+        server: TuiServer,
+        client: TuiLocalClient,
+    ) -> None:
         super().__init__()
-        self.project = project
         self.internal_errors: deque[str] = deque(maxlen=MAX_INTERNAL_ERRORS)
-        deps = init_haiv_deps(on_error=self.internal_errors.append)
         self.paths = deps.paths
         self.settings = deps.settings
         self.terminal = deps.terminal
         self.git = Git(deps.paths.root, quiet=True) if deps.paths else None
         self.store = TuiStore(error_sink=self.internal_errors.append)
-        self._server = TuiServer(project)
-        self.tui_client = TuiLocalClient(self._server.submit)
+        self._server = server
+        self.tui_client = client
         self._file_watcher: FileWatcher | None = None
 
     def on_mount(self) -> None:
@@ -146,9 +150,18 @@ class HaivApp(App):
         yield Header()
         with TabbedContent(initial="sessions"):
             with TabPane("Sessions", id="sessions"):
-                yield SessionsWidget(id="session-tree")
+                yield SessionsWidget(
+                    store=self.store,
+                    terminal=self.terminal,
+                    tui_client=self.tui_client,
+                    sessions_file=self.paths.user.sessions_file if self.paths else Path("/dev/null"),
+                    haiv_root=self.paths.root if self.paths else Path("/dev/null"),
+                    settings=self.settings,
+                    errors=self.internal_errors,
+                    id="session-tree",
+                )
             with TabPane("Session", id="session"):
-                yield HudWidget(id="hud")
+                yield HudWidget(store=self.store, id="hud")
             with TabPane("Plans", id="plans"):
                 yield self._plans_widget()
         yield ErrorsWidget(id="errors")
