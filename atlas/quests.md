@@ -40,6 +40,19 @@ This is one of the most valuable landmarks you could chart. A mind who understan
 
 This came up when we needed to know whether a `[keybindings]` TOML section would load correctly — the atlas pointed us to the right file but we had to read the code to answer the question.
 
+### Widget Dependency Injection
+**Reward:** Trade Route
+
+TUI widgets (`sessions.py`, `hud.py`) reach through `self.app` to access `store`, `terminal`, `paths`, `tui_client`, and `internal_errors`. Textual's type system doesn't know about `HaivApp`, so `self.app` is `App[Unknown]` — every access is a type error. More importantly, widgets can't be tested without a full `HaivApp` instance.
+
+A proper survey would design:
+- How widgets declare their dependencies explicitly
+- How the app provides those dependencies at mount time
+- Whether a shared base widget or constructor injection or something else fits best
+- How this enables isolated widget testing (construct widget with mock deps)
+
+This came up during the TUI data model redesign — it's the remaining source of all type errors in haiv-tui.
+
 ---
 
 ## Mysteries

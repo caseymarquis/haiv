@@ -84,11 +84,23 @@ See `journeys/the-resolver-system/` for the full story.
 
 ## `helpers/tui/`
 
-The TUI management layer. Three-tier architecture with strict separation:
+The TUI management layer. Responsible for raw data gathering and the command-side TUI API. Display assembly lives in haiv-tui, not here.
 
-- **`tui.py`** — Thin convenience facade. Holds pre-loaded dependencies (WezTerm, paths, client) so command authors can write `ctx.tui.start()`. Every method is a one-line passthrough to `helpers.py`. No logic belongs here.
-- **`helpers.py`** — All real logic as standalone functions with explicit parameters. Independently testable, callable from both commands and the TUI app. Naming convention: `noun_verb` (e.g. `workspace_start`, `mind_launch`, `sessions_refresh`).
-- **`terminal.py`** (`TerminalManager`) — Encapsulates WezTerm specifics: tab naming conventions (`hv({project})`, `hv({project}):mind`, `~mind`), pane splitting, parking minds, workspace lifecycle. Helpers take a TerminalManager but don't leak WezTerm details to their callers.
+```
+helpers/tui/
+├── TuiModel.py      # Raw data sections: SessionsRaw, GitRaw, ActiveMindRaw
+├── TuiClient.py     # Remote IPC client (hv commands)
+├── protocol.py      # ModelClient protocol (unites remote + local clients)
+├── helpers.py       # Domain logic: sessions_refresh, active_mind_set, mind_launch
+├── tui.py           # Thin convenience facade for command authors
+└── terminal.py      # WezTerm abstraction (TerminalManager)
+```
+
+- **`TuiModel.py`** — Defines the raw data model. `TuiModel` is a container of optional sections (plain dataclasses). `None` means "not provided" — the server skips that section on write. Sections represent data sources, not display concerns: `SessionsRaw` (from sessions.ig.toml), `GitRaw` (from git subprocess calls), `ActiveMindRaw` (set by `hv start`).
+- **`protocol.py`** — `ModelClient` protocol with `read()` and `write_raw()`. Unites `TuiClient` (remote IPC) and `TuiLocalClient` (in-process). Used as the type hint in helpers.
+- **`helpers.py`** — All real logic as standalone functions with explicit parameters. `sessions_refresh` gathers sessions and optionally git stats, sends both in a single `write_raw()` call. `active_mind_set` pushes which mind is active. `mind_launch` orchestrates switching/launching minds.
+- **`tui.py`** — Thin convenience facade. Holds pre-loaded dependencies so command authors can write `ctx.tui.mind_launch(mind)`. One-line passthroughs to `helpers.py`.
+- **`terminal.py`** (`TerminalManager`) — Encapsulates WezTerm specifics: tab naming conventions, pane splitting, parking minds, workspace lifecycle.
 
 The TUI app (`haiv-tui`) calls `helpers.py` directly — it does NOT use the `tui.py` facade. This keeps the app decoupled from the command-side dependency bag.
 
@@ -105,6 +117,16 @@ Detailed maps for helper modules live in [helpers/](helpers/):
 - [helpers overview](helpers/overview.md) — The helper pattern and what's available
 - [sessions](helpers/sessions.md) — Session dataclass, CRUD, lifecycle
 
+## `wrappers/git.py`
+
+Thin subprocess wrapper around git. Educational by default — prints commands as they run, provides diagnostic prompts on failure. Use `quiet=True` to suppress.
+
+`Git` class takes a working directory. `at_path()` and `at_worktree(branch)` return new instances for different directories. Key operations: `branch_current`, `commit_count`, `config`, `branch_stats`, `worktree_path_for_branch`.
+
+`BranchStats` dataclass: `ahead`, `behind`, `changed_files` (all ints, default -1). Has a `format()` method producing display strings like `↑2 ↓1 ~3` or `(no branch)`. Used by `GitRaw` in the TUI model.
+
+`branch_stats(branch, base_branch)` is the most expensive operation — 3 subprocess calls per branch (worktree list, rev-list, status --porcelain). Worktree list could be cached across calls as an optimization.
+
 ## Uncharted
 
 Known to exist but not properly explored. Earn a reward, give them a name.
@@ -112,6 +134,5 @@ Known to exist but not properly explored. Earn a reward, give them a name.
 - `helpers/minds.py` — Mind scaffolding and management. `scaffold_mind()` creates directory structure and writes templates; `Mind` class with `ensure_structure()` for validation/repair. (Partially explored in `journeys/charting-tools-local-examples/007`)
 - `helpers/commands.py`, `helpers/packages.py`, `helpers/users.py` — Other helper modules
 - `templates.py` — Jinja2 template rendering for `__assets__/`
-- `wrappers/git.py` — Git subprocess wrapper
 - `settings.py` — Project configuration
 - `errors.py` — Error types
