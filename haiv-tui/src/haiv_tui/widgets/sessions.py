@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.events import Click
 from textual.widgets import Static, Tree
 
@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 from haiv.helpers.open import open_in_editor, open_in_explorer
 from haiv.helpers.tui import helpers
+from haiv_tui.widgets.debounce_button import DebounceButton
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionEntry, SessionsRaw
 from haiv.helpers.tui.terminal import TerminalManager
 from haiv.helpers.utils.trees import TreeNode, build_tree
@@ -43,13 +44,17 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class SessionActionBar(Static):
+class SessionActionBar(Horizontal):
     """Action bar for the highlighted session — open in explorer or editor."""
 
     DEFAULT_CSS = """
     SessionActionBar {
         height: auto;
+        margin-top: 1;
         padding: 0 1;
+    }
+    SessionActionBar DebounceButton {
+        margin: 0 1 0 0;
     }
     """
 
@@ -59,28 +64,27 @@ class SessionActionBar(Static):
         self._errors = errors
         self._view: SessionNodeView | None = None
 
+    def compose(self) -> ComposeResult:
+        yield DebounceButton("Explorer", disabled=True, id="btn-explorer")
+        yield DebounceButton("Editor", disabled=True, id="btn-editor")
+
     def set_session(self, view: SessionNodeView | None) -> None:
         self._view = view
-        if view and view.worktree_path:
-            self.update(f"[e] Explorer  [v] Editor  —  {view.worktree_path}")
-        else:
-            self.update("")
+        has_path = bool(view and view.worktree_path)
+        self.query_one("#btn-explorer", DebounceButton).disabled = not has_path
+        self.query_one("#btn-editor", DebounceButton).disabled = not has_path
 
-    def action_open_explorer(self) -> None:
+    def on_debounce_button_pressed(self, event: DebounceButton.Pressed) -> None:
         path = self._view.worktree_path if self._view else None
-        if path and path.is_dir():
-            try:
+        if not path or not path.is_dir():
+            return
+        try:
+            if event.debounce_button.id == "btn-explorer":
                 open_in_explorer(path, self._settings.file_explorer_command)
-            except Exception as e:
-                self._errors.append(f"open_explorer: {e}")
-
-    def action_open_editor(self) -> None:
-        path = self._view.worktree_path if self._view else None
-        if path and path.is_dir():
-            try:
+            elif event.debounce_button.id == "btn-editor":
                 open_in_editor(path, self._settings.editor_command)
-            except Exception as e:
-                self._errors.append(f"open_editor: {e}")
+        except Exception as e:
+            self._errors.append(f"{event.debounce_button.id}: {e}")
 
 
 class SessionPreview(Static):
@@ -115,8 +119,6 @@ class SessionsWidget(Vertical):
         Binding("j", "cursor_down", "Cursor Down", show=False, id="sessions.cursor_down"),
         Binding("k", "cursor_up", "Cursor Up", show=False, id="sessions.cursor_up"),
         Binding("enter", "launch_session", "Launch", id="sessions.launch", priority=True),
-        Binding("e", "open_explorer", "Explorer", show=False, id="sessions.open_explorer"),
-        Binding("v", "open_editor", "Editor", show=False, id="sessions.open_editor"),
     ]
 
     def __init__(
@@ -151,12 +153,12 @@ class SessionsWidget(Vertical):
         self.query_one(Tree).action_cursor_up()
 
     def compose(self) -> ComposeResult:
+        yield Tree[SessionNodeView]("Sessions", id="sessions-tree")
         yield SessionActionBar(
             settings=self._settings,
             errors=self._errors,
             id="session-action-bar",
         )
-        yield Tree[SessionNodeView]("Sessions", id="sessions-tree")
         yield SessionPreview(id="session-preview")
 
     def on_mount(self) -> None:
@@ -233,12 +235,6 @@ class SessionsWidget(Vertical):
             )
         except Exception as e:
             self._errors.append(f"mind_launch: {e}")
-
-    def action_open_explorer(self) -> None:
-        self.query_one(SessionActionBar).action_open_explorer()
-
-    def action_open_editor(self) -> None:
-        self.query_one(SessionActionBar).action_open_editor()
 
     @staticmethod
     def _build_label(view: SessionNodeView) -> Text:

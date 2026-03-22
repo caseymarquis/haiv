@@ -15,6 +15,7 @@ from haiv.helpers.tui.TuiModel import (
 )
 from haiv.wrappers.git import BranchStats
 from haiv.settings import HaivSettings
+from haiv_tui.widgets.debounce_button import DebounceButton
 from haiv_tui.widgets.sessions import SessionActionBar, SessionNodeView, SessionsWidget, build_session_tree
 
 from harness import WidgetTestApp, make_entry
@@ -137,10 +138,20 @@ class TestBuildSessionTree:
 
 
 class TestSessionActionBar:
-    """SessionActionBar displays worktree path and delegates open actions."""
+    """SessionActionBar has clickable Explorer/Editor buttons."""
 
     @pytest.mark.asyncio
-    async def test_set_session_shows_path(self, tmp_path):
+    async def test_buttons_disabled_initially(self):
+        errors = deque(maxlen=5)
+        bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
+        app = WidgetTestApp(bar)
+
+        async with app.run_test() as pilot:
+            assert bar.query_one("#btn-explorer", DebounceButton).disabled is True
+            assert bar.query_one("#btn-editor", DebounceButton).disabled is True
+
+    @pytest.mark.asyncio
+    async def test_set_session_enables_buttons(self, tmp_path):
         errors = deque(maxlen=5)
         bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
         app = WidgetTestApp(bar)
@@ -153,10 +164,11 @@ class TestSessionActionBar:
             )
             bar.set_session(view)
             await pilot.pause()
-            assert "feature-x" in str(bar.content)
+            assert bar.query_one("#btn-explorer", DebounceButton).disabled is False
+            assert bar.query_one("#btn-editor", DebounceButton).disabled is False
 
     @pytest.mark.asyncio
-    async def test_set_session_clears_on_none(self):
+    async def test_set_session_disables_on_none(self):
         errors = deque(maxlen=5)
         bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
         app = WidgetTestApp(bar)
@@ -164,27 +176,11 @@ class TestSessionActionBar:
         async with app.run_test() as pilot:
             bar.set_session(None)
             await pilot.pause()
-            assert str(bar.content) == ""
+            assert bar.query_one("#btn-explorer", DebounceButton).disabled is True
+            assert bar.query_one("#btn-editor", DebounceButton).disabled is True
 
     @pytest.mark.asyncio
-    async def test_open_explorer_error_captured(self):
-        errors = deque(maxlen=5)
-        bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
-        app = WidgetTestApp(bar)
-
-        async with app.run_test() as pilot:
-            # Path doesn't exist on disk, so is_dir() is False — no error, just no-op
-            view = SessionNodeView(
-                short_id=1, mind="wren", task="test", description="",
-                status="started", git_stats="", is_active=False,
-                worktree_path=Path("/nonexistent/path"),
-            )
-            bar.set_session(view)
-            bar.action_open_explorer()
-            assert len(errors) == 0  # no-op because path doesn't exist
-
-    @pytest.mark.asyncio
-    async def test_open_explorer_calls_subprocess(self, tmp_path):
+    async def test_explorer_button_calls_subprocess(self, tmp_path):
         errors = deque(maxlen=5)
         wt = tmp_path / "worktrees" / "feature-x"
         wt.mkdir(parents=True)
@@ -202,11 +198,13 @@ class TestSessionActionBar:
                 worktree_path=wt,
             )
             bar.set_session(view)
-            bar.action_open_explorer()
+            await pilot.pause()
+            await pilot.click("#btn-explorer #inner")
+            await pilot.pause()
             assert len(errors) == 0
 
     @pytest.mark.asyncio
-    async def test_open_editor_calls_subprocess(self, tmp_path):
+    async def test_editor_button_calls_subprocess(self, tmp_path):
         errors = deque(maxlen=5)
         wt = tmp_path / "worktrees" / "feature-x"
         wt.mkdir(parents=True)
@@ -224,7 +222,9 @@ class TestSessionActionBar:
                 worktree_path=wt,
             )
             bar.set_session(view)
-            bar.action_open_editor()
+            await pilot.pause()
+            await pilot.click("#btn-editor #inner")
+            await pilot.pause()
             assert len(errors) == 0
 
 
