@@ -1,6 +1,6 @@
 """Tests for TuiClient (remote IPC) and TuiLocalClient (in-process).
 
-Both clients share the same read/write interface. These tests verify
+Both clients share the same read/write_raw interface. These tests verify
 behavior through a running TuiServer — they're integration tests that
 exercise the full request path.
 """
@@ -13,8 +13,7 @@ pytestmark = pytest.mark.xdist_group("tui_server")
 
 from haiv._infrastructure.TuiServer import TuiLocalClient, TuiServer
 from haiv.helpers.tui.TuiClient import TuiClient
-from haiv.helpers.tui.TuiClient import ConcurrencyError
-from haiv.helpers.tui.TuiModel import HudSection, TuiModel
+from haiv.helpers.tui.TuiModel import SessionsRaw, SessionEntry, TuiModel
 
 
 @pytest.fixture
@@ -48,31 +47,31 @@ class TestRemoteClientRead:
         model = remote_client.read()
         assert isinstance(model, TuiModel)
         with pytest.raises(AttributeError):
-            model.hud.role = "COO"
+            model.sessions.entries = []
 
     def test_read_reflects_current_state(self, remote_client):
-        """read() reflects writes that have already been applied."""
-        remote_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
+        """read() reflects write_raw that has already been applied."""
+        remote_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
         model = remote_client.read()
-        assert model.hud.role == "COO"
+        assert len(model.sessions.entries) == 1
+        assert model.sessions.entries[0].mind == "wren"
 
 
-class TestRemoteClientWrite:
-    """TuiClient.write() over IPC."""
+class TestRemoteClientWriteRaw:
+    """TuiClient.write_raw() over IPC."""
 
-    def test_write_applies_mutation(self, remote_client):
-        """write() applies the mutator's changes."""
-        remote_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
+    def test_write_raw_applies_section(self, remote_client):
+        """write_raw() replaces the provided section."""
+        remote_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
         model = remote_client.read()
-        assert model.hud.role == "COO"
+        assert model.sessions.entries[0].mind == "wren"
 
-    def test_write_partial_update(self, remote_client):
-        """write() only touches fields the mutator sets."""
-        remote_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
-        remote_client.write(lambda m: setattr(m.hud, 'summary', 'Working'))
+    def test_write_raw_independent_sections(self, remote_client):
+        """write_raw() only touches provided sections."""
+        remote_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
+        remote_client.write_raw(git=None)  # no-op for git
         model = remote_client.read()
-        assert model.hud.role == "COO"
-        assert model.hud.summary == "Working"
+        assert len(model.sessions.entries) == 1
 
 
 class TestRemoteClientConnectionError:
@@ -84,11 +83,11 @@ class TestRemoteClientConnectionError:
         with pytest.raises(ConnectionError):
             client.read()
 
-    def test_write_raises_on_no_server(self, tmp_path):
-        """write() raises ConnectionError when no server is running."""
+    def test_write_raw_raises_on_no_server(self, tmp_path):
+        """write_raw() raises ConnectionError when no server is running."""
         client = TuiClient(f"nonexistent-{tmp_path.name}")
         with pytest.raises(ConnectionError):
-            client.write(lambda m: setattr(m.hud, 'role', 'COO'))
+            client.write_raw(sessions=SessionsRaw(entries=[]))
 
 
 class TestLocalClientRead:
@@ -99,28 +98,27 @@ class TestLocalClientRead:
         model = local_client.read()
         assert isinstance(model, TuiModel)
         with pytest.raises(AttributeError):
-            model.hud.role = "COO"
+            model.sessions.entries = []
 
     def test_read_reflects_current_state(self, local_client):
-        """read() reflects writes that have already been applied."""
-        local_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
+        """read() reflects write_raw that has already been applied."""
+        local_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
         model = local_client.read()
-        assert model.hud.role == "COO"
+        assert model.sessions.entries[0].mind == "wren"
 
 
-class TestLocalClientWrite:
-    """TuiLocalClient.write() via in-process queue."""
+class TestLocalClientWriteRaw:
+    """TuiLocalClient.write_raw() via in-process queue."""
 
-    def test_write_applies_mutation(self, local_client):
-        """write() applies the mutator's changes."""
-        local_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
+    def test_write_raw_applies_section(self, local_client):
+        """write_raw() replaces the provided section."""
+        local_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
         model = local_client.read()
-        assert model.hud.role == "COO"
+        assert model.sessions.entries[0].mind == "wren"
 
-    def test_write_partial_update(self, local_client):
-        """write() only touches fields the mutator sets."""
-        local_client.write(lambda m: setattr(m.hud, 'role', 'COO'))
-        local_client.write(lambda m: setattr(m.hud, 'summary', 'Working'))
+    def test_write_raw_independent_sections(self, local_client):
+        """write_raw() only touches provided sections."""
+        local_client.write_raw(sessions=SessionsRaw(entries=[SessionEntry(mind="wren")]))
+        local_client.write_raw(git=None)
         model = local_client.read()
-        assert model.hud.role == "COO"
-        assert model.hud.summary == "Working"
+        assert len(model.sessions.entries) == 1

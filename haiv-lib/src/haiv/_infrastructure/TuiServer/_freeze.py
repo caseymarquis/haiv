@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-from typing import TYPE_CHECKING, TypeVar
-
-from haiv.helpers.tui._base import TuiModelSection
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from haiv.helpers.tui.TuiModel import TuiModel
@@ -24,10 +22,8 @@ if TYPE_CHECKING:
 # original mutable class. Built once per section type, reused thereafter.
 _frozen_variants: dict[type, type] = {}
 
-_TSection = TypeVar("_TSection", bound=TuiModelSection)
 
-
-def _freeze_section(section: _TSection) -> _TSection:
+def _freeze_section(section):
     """Create a frozen (immutable) copy of a section instance.
 
     Dynamically generates a frozen dataclass with the same fields as
@@ -63,5 +59,5 @@ def freeze_model(model: TuiModel) -> TuiModel:
     frozen_sections = {}
     for f in dataclasses.fields(model):
         section = getattr(model, f.name)
-        frozen_sections[f.name] = _freeze_section(section)
+        frozen_sections[f.name] = _freeze_section(section) if section is not None else None
     return type(model)(**frozen_sections)

@@ -7,7 +7,7 @@ import pytest
 
 from haiv.helpers.sessions import create_session, Session
 from haiv.helpers.tui.helpers import mind_launch, sessions_refresh
-from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import SessionsRaw, GitRaw, TuiModel
 from haiv.wrappers.git import BranchStats, Git
 
 
@@ -25,12 +25,9 @@ def _mock_client():
     return MagicMock()
 
 
-def _capture_entries(client: MagicMock) -> list:
-    """Apply the mutator passed to client.write() and return the session entries."""
-    model = TuiModel()
-    mutator = client.write.call_args[0][0]
-    mutator(model)
-    return model.sessions.entries
+def _capture_write_raw(client: MagicMock) -> dict:
+    """Return the kwargs passed to the most recent write_raw() call."""
+    return client.write_raw.call_args[1]
 
 
 class TestMindLaunchNoExistingPane:
@@ -135,7 +132,7 @@ class TestMindLaunchNoExistingPane:
 
         mind_launch(terminal, client, sessions_file, "wren", tmp_path)
 
-        client.write.assert_called()
+        client.write_raw.assert_called()
 
 
 class TestMindLaunchParkedPane:
@@ -165,7 +162,7 @@ class TestMindLaunchParkedPane:
 
         mind_launch(terminal, client, sessions_file, "wren", tmp_path)
 
-        client.write.assert_called()
+        client.write_raw.assert_called()
 
 
 class TestMindLaunchActiveMind:
@@ -195,29 +192,29 @@ class TestMindLaunchActiveMind:
 
         mind_launch(terminal, client, sessions_file, "wren", tmp_path)
 
-        client.write.assert_called()
+        client.write_raw.assert_called()
 
 
 class TestSessionsRefreshWithoutGit:
-    """sessions_refresh without a Git instance — stats stay at defaults."""
+    """sessions_refresh without a Git instance — no git section."""
 
-    def test_entries_have_default_stats(self, tmp_path):
-        """Without git, entries have -1 for all stats fields."""
+    def test_entries_loaded_without_git(self, tmp_path):
+        """Without git, sessions are loaded and git section is absent."""
         sessions_file = tmp_path / "sessions.toml"
         create_session(sessions_file, "task", "wren", branch="feature")
         client = _mock_client()
 
         sessions_refresh(client, sessions_file)
 
-        entries = _capture_entries(client)
-        assert len(entries) == 1
-        assert entries[0].ahead == -1
-        assert entries[0].behind == -1
-        assert entries[0].changed_files == -1
+        kwargs = _capture_write_raw(client)
+        assert len(kwargs["sessions"].entries) == 1
+        assert kwargs["sessions"].entries[0].mind == "wren"
+        assert kwargs["sessions"].entries[0].branch == "feature"
+        assert kwargs.get("git") is None
 
 
 class TestSessionsRefreshWithGit:
-    """sessions_refresh with a Git instance — stats are populated."""
+    """sessions_refresh with a Git instance — git section populated."""
 
     @pytest.fixture
     def git_repo(self, tmp_path):
@@ -232,11 +229,10 @@ class TestSessionsRefreshWithGit:
         git.run(["commit", "-m", "Initial commit"])
         return git
 
-    def test_populates_stats_for_session_with_branch(self, tmp_path, git_repo):
-        """Entries with a branch get stats from git."""
+    def test_populates_git_stats_for_branch(self, tmp_path, git_repo):
+        """Branches with worktrees get stats in the git section."""
         worktree_path = git_repo.path / "worktrees" / "feature"
         git_repo.run(["worktree", "add", "-b", "feature", str(worktree_path)])
-        # Make the feature branch dirty
         (worktree_path / "new.txt").write_text("hello\n")
 
         sessions_file = tmp_path / "sessions.toml"
@@ -245,22 +241,23 @@ class TestSessionsRefreshWithGit:
 
         sessions_refresh(client, sessions_file, git=git_repo)
 
-        entries = _capture_entries(client)
-        assert entries[0].ahead == 0
-        assert entries[0].behind == 0
-        assert entries[0].changed_files == 1
+        kwargs = _capture_write_raw(client)
+        git_raw = kwargs["git"]
+        assert "feature" in git_raw.branches
+        assert git_raw.branches["feature"].ahead == 0
+        assert git_raw.branches["feature"].behind == 0
+        assert git_raw.branches["feature"].changed_files == 1
 
-    def test_defaults_when_session_has_no_branch(self, tmp_path, git_repo):
-        """Entries without a branch keep default -1 stats."""
+    def test_no_git_stats_when_session_has_no_branch(self, tmp_path, git_repo):
+        """Sessions without a branch don't appear in git section."""
         sessions_file = tmp_path / "sessions.toml"
         create_session(sessions_file, "task", "wren")
         client = _mock_client()
 
         sessions_refresh(client, sessions_file, git=git_repo)
 
-        entries = _capture_entries(client)
-        assert entries[0].ahead == -1
-        assert entries[0].changed_files == -1
+        kwargs = _capture_write_raw(client)
+        assert kwargs.get("git") is None
 
     def test_survives_git_error(self, tmp_path, git_repo):
         """A broken branch doesn't prevent other entries from loading."""
@@ -274,9 +271,8 @@ class TestSessionsRefreshWithGit:
 
         sessions_refresh(client, sessions_file, git=git_repo)
 
-        entries = _capture_entries(client)
-        assert len(entries) == 2
-        # One should have real stats, one should have defaults
-        by_mind = {e.mind: e for e in entries}
-        assert by_mind["wren"].ahead == 0
-        assert by_mind["spark"].ahead == -1
+        kwargs = _capture_write_raw(client)
+        assert len(kwargs["sessions"].entries) == 2
+        git_raw = kwargs["git"]
+        assert "good" in git_raw.branches
+        assert "nonexistent" not in git_raw.branches

@@ -1,13 +1,8 @@
 """Section-level change dispatcher for TUI state.
 
-TuiStore holds the last frozen TuiModel snapshot and, on each update,
-compares per-section versions against the last seen values. Changed
-sections fire a blinker signal so widgets can subscribe to exactly the
-sections they care about.
-
-Version-based diffing (comparing a single int per section) is both
-cheaper and race-free compared to value equality — versions are
-authoritative from the model thread.
+TuiStore holds the last frozen TuiModel snapshot and fires per-section
+blinker signals when the server reports a section as dirty. Widgets
+subscribe to the sections they care about.
 
 Signals are auto-discovered from dataclasses.fields(TuiModel), so
 adding a new section to TuiModel automatically creates a signal here
@@ -33,12 +28,12 @@ def _section_signals() -> dict[str, blinker.Signal]:
 
 
 class TuiStore:
-    """Diffing store that fires per-section blinker signals on change.
+    """Dirty-driven store that fires per-section blinker signals.
 
     Usage:
         store = TuiStore()
-        store.hud_changed.connect(my_widget.on_hud_changed)
-        store.update(frozen_model)  # fires hud_changed if version differs
+        store.sessions_changed.connect(my_widget.on_sessions_changed)
+        store.update(frozen_model, dirty={"sessions"})
 
     Subscriber errors are caught and routed to the error_sink callback
     (typically app.internal_errors.append) to avoid crashing the poll loop.
@@ -46,29 +41,27 @@ class TuiStore:
 
     def __init__(self, error_sink: Callable[[str], None] | None = None) -> None:
         self._snapshot: TuiModel | None = None
-        self._versions: dict[str, int] = {}
         self._signals = _section_signals()
         self._error_sink = error_sink
-        # Expose signals as attributes (e.g. store.hud_changed)
+        # Expose signals as attributes (e.g. store.sessions_changed)
         for name, signal in self._signals.items():
             setattr(self, name, signal)
 
-    def update(self, model: TuiModel) -> None:
-        """Compare section versions against last seen, fire signals for changes."""
+    def update(self, model: TuiModel, dirty: frozenset[str]) -> None:
+        """Store the snapshot and fire signals for dirty sections."""
         self._snapshot = model
 
-        for f in dataclasses.fields(TuiModel):
-            section = getattr(model, f.name)
-            version = section._version
-            last_version = self._versions.get(f.name)
-
-            if last_version is None or last_version != version:
-                self._versions[f.name] = version
-                try:
-                    self._signals[f"{f.name}_changed"].send(section)
-                except Exception as e:
-                    if self._error_sink is not None:
-                        self._error_sink(f"{f.name}_changed: {e}")
+        for name in dirty:
+            signal_name = f"{name}_changed"
+            signal = self._signals.get(signal_name)
+            if signal is None:
+                continue
+            section = getattr(model, name, None)
+            try:
+                signal.send(section)
+            except Exception as e:
+                if self._error_sink is not None:
+                    self._error_sink(f"{signal_name}: {e}")
 
     @property
     def snapshot(self) -> TuiModel | None:

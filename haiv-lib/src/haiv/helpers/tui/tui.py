@@ -19,7 +19,6 @@ a dependency but should not leak WezTerm details to their own callers.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 
 from haiv.helpers.sessions import Session
@@ -65,10 +64,6 @@ class Tui:
     def read(self) -> TuiModel:
         """Read the current TUI state."""
         return self._require_client().read()
-
-    def write(self, mutator: Callable[[TuiModel], None]) -> None:
-        """Apply a mutation to the TUI state."""
-        self._require_client().write(mutator)
 
     def sessions_refresh(self) -> None:
         """Read sessions from disk and push into the TUI model."""

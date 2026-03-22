@@ -3,9 +3,15 @@
 Full-screen tab content. The tree shows sessions nested by delegation
 hierarchy. Highlighting a node updates the preview area below. The launch
 action starts the highlighted mind.
+
+Architecture:
+    DTOs define what the widget needs. Assembly functions build DTOs from
+    raw data. The widget renders DTOs. Assembly is testable without Textual.
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -15,9 +21,14 @@ from textual.events import Click
 from textual.widgets import Static, Tree
 
 from haiv.helpers.tui import helpers
-from haiv.helpers.tui.TuiModel import SessionEntry
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionEntry, SessionsRaw
 from haiv.helpers.utils.trees import TreeNode, build_tree
 from haiv.wrappers.git import BranchStats
+
+
+# ---------------------------------------------------------------------------
+# Widget
+# ---------------------------------------------------------------------------
 
 
 class SessionPreview(Static):
@@ -32,16 +43,16 @@ class SessionPreview(Static):
     }
     """
 
-    def render_preview(self, entry: SessionEntry | None) -> None:
-        if entry is None:
+    def render_preview(self, view: SessionNodeView | None) -> None:
+        if view is None:
             self.update("")
             return
         lines = [
-            f"{entry.mind}: {entry.task}",
-            f"Status: {entry.status or 'none'} | Session: {entry.short_id}",
+            f"{view.mind}: {view.task}",
+            f"Status: {view.status or 'none'} | Session: {view.short_id}",
         ]
-        if entry.description:
-            lines += ["", entry.description]
+        if view.description:
+            lines += ["", view.description]
         self.update("\n".join(lines))
 
 
@@ -54,6 +65,12 @@ class SessionsWidget(Vertical):
         Binding("enter", "launch_session", "Launch", id="sessions.launch", priority=True),
     ]
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._sessions: SessionsRaw | None = None
+        self._git: GitRaw | None = None
+        self._active_mind: ActiveMindRaw | None = None
+
     def action_cursor_down(self) -> None:
         self.query_one(Tree).action_cursor_down()
 
@@ -61,7 +78,7 @@ class SessionsWidget(Vertical):
         self.query_one(Tree).action_cursor_up()
 
     def compose(self) -> ComposeResult:
-        yield Tree[SessionEntry]("Sessions", id="sessions-tree")
+        yield Tree[SessionNodeView]("Sessions", id="sessions-tree")
         yield SessionPreview(id="session-preview")
 
     def on_mount(self) -> None:
@@ -69,54 +86,43 @@ class SessionsWidget(Vertical):
         tree.root.expand()
         store = self.app.store
         store.sessions_changed.connect(self._on_sessions_changed)
+        store.git_changed.connect(self._on_git_changed)
+        store.active_mind_changed.connect(self._on_active_mind_changed)
         if store.snapshot is not None:
-            self._render_sessions(store.snapshot.sessions)
+            self._sessions = store.snapshot.sessions
+            self._git = store.snapshot.git
+            self._active_mind = store.snapshot.active_mind
+            self._refresh_tree()
 
     def _on_sessions_changed(self, sender) -> None:
-        """Called by blinker when the sessions section changes."""
-        self._render_sessions(sender)
+        self._sessions = sender
+        self._refresh_tree()
 
-    def _get_active_mind(self) -> str | None:
-        """Get the active mind name from the terminal, or None."""
-        terminal = self.app.terminal
-        if terminal is not None:
-            return terminal.get_active_mind_name()
-        return None
+    def _on_git_changed(self, sender) -> None:
+        self._git = sender
+        self._refresh_tree()
 
-    def _render_sessions(self, sessions) -> None:
+    def _on_active_mind_changed(self, sender) -> None:
+        self._active_mind = sender
+        self._refresh_tree()
+
+    def _refresh_tree(self) -> None:
         tree = self.query_one(Tree)
         tree.root.remove_children()
-        entries = sessions.entries
-        by_id = {e.id: e for e in entries}
-        pairs = [(e, by_id.get(e.parent_id) if e.parent_id else None) for e in entries]
-        roots = build_tree(pairs)
-        active_mind = self._get_active_mind()
+        views = build_session_tree(self._sessions, self._git, self._active_mind)
 
-        def _build_label(entry: SessionEntry) -> Text:
-            """Build a Rich Text label with git stats and active mind styling."""
-            is_active = entry.mind == active_mind
-
-            base = f"[{entry.short_id}] {entry.mind}: {entry.task}"
-
-            stats = BranchStats(entry.ahead, entry.behind, entry.changed_files)
-            suffix = f"  {stats.format()}"
-
-            style = "bold on dark_green" if is_active else ""
-            return Text(f"{base}{suffix}", style=style)
-
-        def _add_nodes(parent_tree_node, session_nodes: list[TreeNode[SessionEntry]]) -> None:
-            for node in session_nodes:
-                entry = node.item
-                label = _build_label(entry)
-                if node.child_nodes:
-                    branch = parent_tree_node.add(label, data=entry)
+        def _add_nodes(parent, nodes: list[SessionNodeView]) -> None:
+            for view in nodes:
+                label = self._build_label(view)
+                if view.children:
+                    branch = parent.add(label, data=view)
                     branch.expand()
                     branch.allow_expand = False
-                    _add_nodes(branch, node.child_nodes)
+                    _add_nodes(branch, view.children)
                 else:
-                    parent_tree_node.add_leaf(label, data=entry)
+                    parent.add_leaf(label, data=view)
 
-        _add_nodes(tree.root, roots)
+        _add_nodes(tree.root, views)
 
     def on_click(self, event: Click) -> None:
         """Double-click launches the highlighted mind."""
@@ -134,8 +140,8 @@ class SessionsWidget(Vertical):
         node = tree.cursor_node
         if node is None:
             return
-        entry: SessionEntry | None = node.data
-        if entry is None:
+        view: SessionNodeView | None = node.data
+        if view is None:
             return
 
         app = self.app
@@ -145,8 +151,75 @@ class SessionsWidget(Vertical):
                     app.terminal,
                     app.tui_client,
                     app.paths.user.sessions_file,
-                    entry.mind,
+                    view.mind,
                     app.paths.root,
                 )
             except Exception as e:
                 app.internal_errors.append(f"mind_launch: {e}")
+
+    @staticmethod
+    def _build_label(view: SessionNodeView) -> Text:
+        base = f"[{view.short_id}] {view.mind}: {view.task}"
+        suffix = f"  {view.git_stats}"
+        style = "bold on dark_green" if view.is_active else ""
+        return Text(f"{base}{suffix}", style=style)
+
+
+# ---------------------------------------------------------------------------
+# DTOs
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SessionNodeView:
+    """What the tree needs to render one session node."""
+
+    short_id: int
+    mind: str
+    task: str
+    description: str
+    status: str
+    git_stats: str
+    is_active: bool
+    children: list[SessionNodeView] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Assembly
+# ---------------------------------------------------------------------------
+
+
+def build_session_tree(
+    sessions: SessionsRaw | None,
+    git: GitRaw | None,
+    active_mind: ActiveMindRaw | None,
+) -> list[SessionNodeView]:
+    """Assemble a list of session tree nodes from raw data.
+
+    Pure function — raw data in, DTOs out. Testable without Textual.
+    """
+    if sessions is None:
+        return []
+
+    entries = sessions.entries
+    by_id = {e.id: e for e in entries}
+    pairs = [(e, by_id.get(e.parent_id) if e.parent_id else None) for e in entries]
+    roots = build_tree(pairs)
+    active = active_mind.mind if active_mind else None
+    git_branches = git.branches if git else {}
+
+    def _to_view(node: TreeNode[SessionEntry]) -> SessionNodeView:
+        entry = node.item
+        stats = git_branches.get(entry.branch, BranchStats())
+        return SessionNodeView(
+            short_id=entry.short_id,
+            mind=entry.mind,
+            task=entry.task,
+            description=entry.description,
+            status=entry.status,
+            git_stats=stats.format(),
+            is_active=entry.mind == active,
+            children=[_to_view(c) for c in node.child_nodes],
+        )
+
+    return [_to_view(r) for r in roots]

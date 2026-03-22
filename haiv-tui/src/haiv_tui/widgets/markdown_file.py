@@ -15,6 +15,7 @@ from textual.message import Message
 from textual.widgets import MarkdownViewer
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
 
 
 class MarkdownFileWidget(MarkdownViewer):
@@ -56,7 +57,7 @@ class MarkdownFileWidget(MarkdownViewer):
         self.file_path = file_path.resolve()
         content = self._read_file()
         super().__init__(content, show_table_of_contents=False, **kwargs)
-        self._observer: Observer | None = None
+        self._observer: BaseObserver | None = None
 
     def on_mount(self) -> None:
         if not self.file_path.parent.exists():

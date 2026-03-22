@@ -52,11 +52,9 @@ import copy
 import dataclasses
 import os
 import queue
-import random
 import threading
 from multiprocessing.connection import Client, Listener
 from ._TuiIpc import (
-    ConcurrencyError,
     ReadRequest,
     Request,
     WriteRequest,
@@ -85,11 +83,15 @@ class TuiServer:
         # Double-underscore for name mangling — discourages accidental
         # access from outside TuiServer.
         self.__model = model or TuiModel()
+        # Section names that have been written since the last drain.
+        # Populated by _apply_write() on the model thread, drained by
+        # the TUI poll loop via drain_dirty(). Both operations are
+        # atomic via Atom.
+        self._dirty: Atom[set[str]] = Atom(set())
         self._queue: queue.Queue[tuple[Request, concurrent.futures.Future]] = queue.Queue()
         self._stop_event = threading.Event()
         self._ipc_listener: TuiIpcListener | None = None
         self.__model_thread: threading.Thread | None = None
-        self._write_counter_atom: Atom[int] = Atom(0)
 
     def start(self) -> None:
         """Bind the IPC socket and start both threads.
@@ -133,9 +135,20 @@ class TuiServer:
         except (OSError, FileNotFoundError):
             pass
 
-    def get_write_counter(self) -> int:
-        """Number of writes applied. Use to skip reads when unchanged."""
-        return self._write_counter_atom.value
+    def drain_dirty(self) -> frozenset[str]:
+        """Atomically return and clear the dirty section names.
+
+        Called by the TUI poll loop to find out which sections changed
+        since the last poll. Each change is reported exactly once.
+        """
+        drained: list[frozenset[str]] = []
+
+        def swap(s: set[str]) -> set[str]:
+            drained.append(frozenset(s))
+            return set()
+
+        self._dirty.modify(swap)
+        return drained[0] if drained else frozenset()
 
     def submit(self, request: Request) -> concurrent.futures.Future:
         """Submit a request to the model thread's message queue.
@@ -196,8 +209,6 @@ class TuiServer:
 
             try:
                 if isinstance(request, ReadRequest):
-                    # Return a mutable deep copy. The caller freezes it
-                    # for display or mutates it for a write-back.
                     result = copy.deepcopy(self.__model)
                     future.set_result(result)
                 elif isinstance(request, WriteRequest):
@@ -209,27 +220,14 @@ class TuiServer:
     def _apply_write(self, incoming: TuiModel) -> None:
         """Apply a client write to the authoritative model.
 
-        Per section: if incoming version matches, apply non-None fields
-        and rotate version. If mismatch, raise ConcurrencyError.
+        Only sections that are not None on the incoming model are replaced.
+        Replaced sections are marked dirty so the TUI poll loop knows
+        to fire signals. Sections the caller didn't provide are left
+        untouched.
         """
-        self._write_counter_atom.modify(lambda n: n + 1)
         for f in dataclasses.fields(TuiModel):
             inc_section = getattr(incoming, f.name)
-            cur_section = getattr(self.__model, f.name)
-
-            if inc_section._version != cur_section._version:
-                raise ConcurrencyError(
-                    f"Version mismatch on section '{f.name}': "
-                    f"expected {cur_section._version}, got {inc_section._version}"
-                )
-
-            # Apply non-None fields (skip _version)
-            for sf in dataclasses.fields(inc_section):
-                if sf.name == "_version":
-                    continue
-                value = getattr(inc_section, sf.name)
-                if value is not None:
-                    setattr(cur_section, sf.name, value)
-
-            # Rotate version to a new random value
-            cur_section._version = random.randint(1, 2**63)
+            if inc_section is None:
+                continue
+            setattr(self.__model, f.name, inc_section)
+            self._dirty.modify(lambda s: s | {f.name})

@@ -1,17 +1,25 @@
-"""HUD widget — displays identity and session info.
+"""HUD widget — displays info about the active mind.
 
-Subscribes to the store's hud_changed signal and re-renders whenever
-the HudSection changes.
+Subscribes to active_mind_changed and sessions_changed signals.
+Widget renders HudView DTOs assembled from raw data.
 """
 
 from __future__ import annotations
 
-from textual.app import ComposeResult
+from dataclasses import dataclass
+
 from textual.widgets import Static
+
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, SessionsRaw
+
+
+# ---------------------------------------------------------------------------
+# Widget
+# ---------------------------------------------------------------------------
 
 
 class HudWidget(Static):
-    """Head-up display showing role, worktree, summary, and session."""
+    """Head-up display showing active mind details."""
 
     DEFAULT_CSS = """
     HudWidget {
@@ -21,21 +29,77 @@ class HudWidget(Static):
     }
     """
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._active_mind: ActiveMindRaw | None = None
+        self._sessions: SessionsRaw | None = None
+
     def on_mount(self) -> None:
         store = self.app.store
-        store.hud_changed.connect(self._on_hud_changed)
-        # Render from current snapshot if available
+        store.active_mind_changed.connect(self._on_active_mind_changed)
+        store.sessions_changed.connect(self._on_sessions_changed)
         if store.snapshot is not None:
-            self._render_hud(store.snapshot.hud)
+            self._active_mind = store.snapshot.active_mind
+            self._sessions = store.snapshot.sessions
+            self._refresh_hud()
 
-    def _on_hud_changed(self, sender) -> None:
-        """Called by blinker when the hud section changes."""
-        self._render_hud(sender)
+    def _on_active_mind_changed(self, sender) -> None:
+        self._active_mind = sender
+        self._refresh_hud()
 
-    def _render_hud(self, hud) -> None:
+    def _on_sessions_changed(self, sender) -> None:
+        self._sessions = sender
+        self._refresh_hud()
+
+    def _refresh_hud(self) -> None:
+        view = build_hud_view(self._active_mind, self._sessions)
         self.update(
-            f"Role: {hud.role or '—'}\n"
-            f"Worktree: {hud.worktree or '—'}\n"
-            f"Summary: {hud.summary or '—'}\n"
-            f"Session: {hud.session or '—'}"
+            f"Worktree: {view.worktree}\n"
+            f"Summary: {view.summary}\n"
+            f"Session: {view.session_display}"
         )
+
+
+# ---------------------------------------------------------------------------
+# DTO
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class HudView:
+    """What the HUD widget needs to render."""
+
+    worktree: str
+    summary: str
+    session_display: str
+
+
+# ---------------------------------------------------------------------------
+# Assembly
+# ---------------------------------------------------------------------------
+
+
+def build_hud_view(
+    active_mind: ActiveMindRaw | None,
+    sessions: SessionsRaw | None,
+) -> HudView:
+    """Assemble HUD display from raw data.
+
+    Pure function — raw data in, DTO out. Testable without Textual.
+    """
+    mind_name = active_mind.mind if active_mind else ""
+    if not mind_name:
+        return HudView(worktree="—", summary="—", session_display="—")
+
+    session = None
+    if sessions:
+        for entry in sessions.entries:
+            if entry.mind == mind_name:
+                session = entry
+                break
+
+    return HudView(
+        worktree=session.branch or "—" if session else "—",
+        summary=session.task or "—" if session else "—",
+        session_display=f"{mind_name} [{session.short_id}]" if session else mind_name,
+    )

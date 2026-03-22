@@ -60,9 +60,13 @@ class HaivDeps:
 
 def init(on_error: Callable[[str], None]) -> HaivDeps:
     """Resolve all haiv dependencies in one shot."""
+    import io
     import sys
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
+    # CPython wraps stdout/stderr in TextIOWrapper which supports reconfigure.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if isinstance(sys.stderr, io.TextIOWrapper):
+        sys.stderr.reconfigure(encoding="utf-8")
 
     paths = resolve_paths(on_error)
     settings = load_settings(paths, on_error) if paths else HaivSettings()

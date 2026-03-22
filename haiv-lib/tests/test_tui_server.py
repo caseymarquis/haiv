@@ -8,13 +8,12 @@ from typing import cast
 import pytest
 
 from haiv._infrastructure.TuiServer import (
-    ConcurrencyError,
     ReadRequest,
     TuiServer,
     WriteRequest,
     pipe_address,
 )
-from haiv.helpers.tui.TuiModel import HudSection, TuiModel
+from haiv.helpers.tui.TuiModel import SessionsRaw, SessionEntry, TuiModel
 
 
 @pytest.fixture
@@ -92,72 +91,59 @@ class TestServerReadWrite:
         model1 = future1.result(timeout=1)
         future2 = server.submit(ReadRequest())
         model2 = future2.result(timeout=1)
-        model1.hud.role = "changed"
-        assert model2.hud.role is None
+        model1.sessions.entries.append(SessionEntry(mind="wren"))
+        assert len(model2.sessions.entries) == 0
 
-    def test_write_applies_non_none_fields(self, server):
-        """Writing a section with non-None fields updates the model."""
-        # Read, mutate, write
-        future = server.submit(ReadRequest())
-        model = future.result(timeout=1)
-        model.hud.role = "COO"
-        future = server.submit(WriteRequest(model=model))
-        future.result(timeout=1)
-
-        # Verify
-        future = server.submit(ReadRequest())
-        updated = future.result(timeout=1)
-        assert updated.hud.role == "COO"
-
-    def test_write_ignores_none_fields(self, server):
-        """None fields in a write are not applied (partial update)."""
-        # Set role first
-        future = server.submit(ReadRequest())
-        model = future.result(timeout=1)
-        model.hud.role = "COO"
-        future = server.submit(WriteRequest(model=model))
-        future.result(timeout=1)
-
-        # Write only summary, leave role as-is on the copy
-        future = server.submit(ReadRequest())
-        model = future.result(timeout=1)
-        model.hud.summary = "Working"
-        future = server.submit(WriteRequest(model=model))
-        future.result(timeout=1)
-
-        # Both should be present
-        future = server.submit(ReadRequest())
-        updated = future.result(timeout=1)
-        assert updated.hud.role == "COO"
-        assert updated.hud.summary == "Working"
-
-    def test_write_rotates_version(self, server):
-        """A successful write changes the section's version."""
-        future = server.submit(ReadRequest())
-        model = future.result(timeout=1)
-        original_version = model.hud._version
-
-        model.hud.role = "COO"
+    def test_write_replaces_provided_section(self, server):
+        """Writing a section replaces it on the model."""
+        entry = SessionEntry(mind="wren", task="test")
+        model = TuiModel(sessions=SessionsRaw(entries=[entry]))
         future = server.submit(WriteRequest(model=model))
         future.result(timeout=1)
 
         future = server.submit(ReadRequest())
         updated = future.result(timeout=1)
-        assert updated.hud._version != original_version
+        assert len(updated.sessions.entries) == 1
+        assert updated.sessions.entries[0].mind == "wren"
 
-    def test_write_with_stale_version_raises(self, server):
-        """Writing with a mismatched version raises ConcurrencyError."""
-        # Do a write to advance the version
-        future = server.submit(ReadRequest())
-        model = future.result(timeout=1)
-        model.hud.role = "COO"
+    def test_write_skips_none_sections(self, server):
+        """None sections are left untouched."""
+        # Write sessions
+        entry = SessionEntry(mind="wren", task="test")
+        model = TuiModel(sessions=SessionsRaw(entries=[entry]), git=None)
         future = server.submit(WriteRequest(model=model))
         future.result(timeout=1)
 
-        # Create a model with version 0 (stale)
-        stale_model = TuiModel(hud=HudSection(role="CTO", _version=0))
-        future = server.submit(WriteRequest(model=stale_model))
-        with pytest.raises(ConcurrencyError):
-            future.result(timeout=1)
+        # Write only git (sessions=None), sessions should survive
+        model2 = TuiModel(sessions=None, git=None, active_mind=None)
+        future = server.submit(WriteRequest(model=model2))
+        future.result(timeout=1)
+
+        future = server.submit(ReadRequest())
+        updated = future.result(timeout=1)
+        assert len(updated.sessions.entries) == 1
+        assert updated.sessions.entries[0].mind == "wren"
+
+    def test_write_marks_dirty(self, server):
+        """Writing a section marks it dirty."""
+        entry = SessionEntry(mind="wren")
+        model = TuiModel(sessions=SessionsRaw(entries=[entry]))
+        future = server.submit(WriteRequest(model=model))
+        future.result(timeout=1)
+
+        dirty = server.drain_dirty()
+        assert "sessions" in dirty
+
+    def test_drain_dirty_clears(self, server):
+        """drain_dirty returns and clears the dirty set."""
+        entry = SessionEntry(mind="wren")
+        model = TuiModel(sessions=SessionsRaw(entries=[entry]))
+        future = server.submit(WriteRequest(model=model))
+        future.result(timeout=1)
+
+        dirty1 = server.drain_dirty()
+        dirty2 = server.drain_dirty()
+        assert "sessions" in dirty1
+        assert len(dirty2) == 0
 
 

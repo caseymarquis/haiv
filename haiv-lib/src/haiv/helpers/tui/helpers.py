@@ -27,8 +27,8 @@ from haiv.helpers.sessions import (
     load_sessions,
     resolve_session,
 )
-from haiv.helpers.tui._base import ModelClient
-from haiv.helpers.tui.TuiModel import SessionEntry, TuiModel
+from haiv.helpers.tui.protocol import ModelClient
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionEntry, SessionsRaw
 from haiv.wrappers.git import BranchStats, Git
 
 if TYPE_CHECKING:
@@ -46,41 +46,47 @@ def sessions_refresh(
 ) -> None:
     """Read sessions from disk and push them into the TUI model.
 
+    Loads sessions and pushes them as raw data. If a Git instance is
+    provided, branch stats are gathered and pushed separately.
+
     Args:
         client: A TuiClient or TuiLocalClient.
         sessions_file: Path to the sessions.ig.toml file.
-        git: Optional Git instance for computing branch stats. When
-            provided, each entry gets ahead/behind/changed_files populated.
+        git: Optional Git instance for computing branch stats.
     """
+    # -- Gather --
     sessions = load_sessions(sessions_file)
-    entries = []
-    for s in sessions:
-        stats = BranchStats()
-        if git is not None and s.branch:
-            try:
-                stats = git.branch_stats(s.branch, s.base_branch)
-            except Exception:
-                pass
-        entries.append(
-            SessionEntry(
-                id=s.id, mind=s.mind, task=s.task,
-                short_id=s.short_id, status=s.status,
-                description=s.description, parent_id=s.parent_id,
-                ahead=stats.ahead, behind=stats.behind,
-                changed_files=stats.changed_files,
-            )
+    entries = [
+        SessionEntry(
+            id=s.id, mind=s.mind, task=s.task,
+            short_id=s.short_id, status=s.status,
+            description=s.description, parent_id=s.parent_id,
+            branch=s.branch, base_branch=s.base_branch,
         )
-    client.write(lambda m: _set_entries(m, entries))
+        for s in sessions
+    ]
+    git_branches: dict[str, BranchStats] = {}
+    if git is not None:
+        for s in sessions:
+            if s.branch:
+                try:
+                    git_branches[s.branch] = git.branch_stats(s.branch, s.base_branch)
+                except Exception:
+                    pass
+
+    # -- Send --
+    git_raw = GitRaw(branches=git_branches) if git_branches else None
+    client.write_raw(sessions=SessionsRaw(entries=entries), git=git_raw)
 
 
-def errors_append(client: ModelClient, message: str) -> None:
-    """Append an error message to the TUI error display.
+def active_mind_set(client: ModelClient, mind_name: str) -> None:
+    """Push the active mind into the TUI model.
 
     Args:
         client: A TuiClient or TuiLocalClient.
-        message: The error message to display.
+        mind_name: Name of the mind now active in the hud.
     """
-    client.write(lambda m: m.errors.messages.append(message))
+    client.write_raw(active_mind=ActiveMindRaw(mind=mind_name))
 
 
 # -- Workspace operations --
@@ -138,6 +144,7 @@ def mind_launch(
                 f"To relaunch here: hv start {mind_name} --here"
             )
             sessions_refresh(client, sessions_file, git=git)
+            active_mind_set(client, mind_name)
             return session
 
     # Parked pane exists — switch to it
@@ -146,12 +153,14 @@ def mind_launch(
         if session is not None:
             terminal.switch_to_mind(mind_name)
             sessions_refresh(client, sessions_file, git=git)
+            active_mind_set(client, mind_name)
             return session
 
     # Need to launch a new pane — resolve or create session
     session = resolve_session(sessions_file, mind_name, task=task, parent_id=parent_id)
 
     sessions_refresh(client, sessions_file, git=git)
+    active_mind_set(client, mind_name)
 
     # Build claude command and launch
     claude_cmd = build_claude_command(
@@ -261,9 +270,3 @@ def build_env(mind_name: str, session_id: str, haiv_root: Path) -> dict[str, str
     }
 
 
-# -- Internal helpers --
-
-
-def _set_entries(model: TuiModel, entries: list[SessionEntry]) -> None:
-    """Mutator for sessions_refresh — separated for picklability."""
-    model.sessions.entries = entries

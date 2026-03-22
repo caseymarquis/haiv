@@ -1,18 +1,24 @@
 """TUI state model.
 
-TuiModel is the shared state contract between haiv commands (clients) and the
-running TUI (server). It is a frozen container of section instances, each
-representing a distinct area of TUI state.
+TuiModel holds raw data gathered from external sources. Each section
+represents one data source. The TUI reads frozen snapshots; gatherers
+push updates via write_raw().
 
-Callers never manipulate versions directly — the TuiClient.write() mutator
-pattern handles that. read() returns a deep-frozen snapshot.
+Sections are raw data — no display logic, no TUI-specific assembly.
+The TUI assembles display concerns from raw sections at render time.
+
+Publishing (future):
+    The TUI will publish derived state (e.g. active mind) for consumption
+    by hv commands. Remote clients push raw data in; the TUI decides what
+    to publish out.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Protocol, runtime_checkable
 
-from haiv.helpers.tui._base import TuiModelSection
+from haiv.wrappers.git import BranchStats
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +28,7 @@ from haiv.helpers.tui._base import TuiModelSection
 
 @dataclass
 class SessionEntry:
-    """A session displayed in the TUI."""
+    """A session as loaded from sessions.ig.toml."""
 
     id: str = ""
     mind: str = ""
@@ -31,38 +37,37 @@ class SessionEntry:
     status: str = "started"  # staged / started
     description: str = ""
     parent_id: str = ""
-    ahead: int = -1
-    behind: int = -1
-    changed_files: int = -1
+    branch: str = ""
+    base_branch: str = ""
 
 
 # ---------------------------------------------------------------------------
-# Concrete sections
+# Raw sections — one per data source
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class HudSection(TuiModelSection):
-    """Head-up display: identity and session info."""
-
-    role: str | None = None
-    worktree: str | None = None
-    summary: str | None = None
-    session: str | None = None
-
-
-@dataclass
-class SessionsSection(TuiModelSection):
-    """Active sessions for the sidebar tree."""
+class SessionsRaw:
+    """Sessions loaded from sessions.ig.toml."""
 
     entries: list[SessionEntry] = field(default_factory=list)
 
 
 @dataclass
-class ErrorsSection(TuiModelSection):
-    """Errors to display in the TUI."""
+class GitRaw:
+    """Git branch stats, keyed by branch name."""
 
-    messages: list[str] = field(default_factory=list)
+    branches: dict[str, BranchStats] = field(default_factory=dict)
+
+
+@dataclass
+class ActiveMindRaw:
+    """Which mind is currently active in the HUD pane.
+
+    Gathered from WezTerm terminal state.
+    """
+
+    mind: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -70,16 +75,16 @@ class ErrorsSection(TuiModelSection):
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
+@dataclass
 class TuiModel:
-    """Container of TUI state sections.
+    """Container of raw data sections.
 
-    Frozen at the top level — sections are stable slots. Mutators modify
-    section fields, not the section references themselves.
+    Every field is a raw section or None.
+    None means "not provided" — the server skips that section on write.
 
-    Every field on TuiModel must be a TuiModelSection subclass.
+    TuiModel() initializes the authoritative model (all sections present).
     """
 
-    hud: HudSection = field(default_factory=HudSection)
-    sessions: SessionsSection = field(default_factory=SessionsSection)
-    errors: ErrorsSection = field(default_factory=ErrorsSection)
+    sessions: SessionsRaw | None = field(default_factory=SessionsRaw)
+    git: GitRaw | None = field(default_factory=GitRaw)
+    active_mind: ActiveMindRaw | None = field(default_factory=ActiveMindRaw)

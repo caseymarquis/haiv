@@ -16,7 +16,6 @@ from multiprocessing.connection import Client, Listener
 from typing import Callable
 
 from ._TuiIpc import (
-    ConcurrencyError,
     ErrorResponse,
     OkResponse,
     Request,
@@ -96,8 +95,6 @@ class TuiIpcListener:
                 try:
                     result = future.result(timeout=5)
                     response: Response = OkResponse(result=result)
-                except ConcurrencyError as e:
-                    response = ErrorResponse(kind="concurrency", message=str(e))
                 except Exception as e:
                     response = ErrorResponse(kind="internal", message=str(e))
 

@@ -1,8 +1,8 @@
 """TUI local client.
 
 In-process client used by the Textual UI to access TUI state. Provides
-the same read/write interface as TuiClient, but communicates with the
-server via its message queue instead of IPC.
+the same read/write_raw interface as TuiClient, but communicates with
+the server via its message queue instead of IPC.
 
 This exists to enforce separation — Textual code should never access the
 server's mutable model directly. TuiLocalClient only holds a reference
@@ -10,12 +10,11 @@ to the server's submit callable, not the server itself.
 
 Calls are synchronous. The server's model thread operations are pure
 in-memory (microseconds), so blocking on future.result() is safe and
-doesn't stall Textual's event loop. If the model thread ever gains slow
-operations, callers can upgrade to asyncio.wrap_future at that point.
+doesn't stall Textual's event loop.
 
 Usage (inside a Textual widget):
     state = self.app.tui_client.read()
-    self.app.tui_client.write(lambda m: setattr(m.hud, 'summary', 'Working'))
+    self.app.tui_client.write_raw(sessions=SessionsRaw(entries=[...]))
 """
 
 from __future__ import annotations
@@ -25,7 +24,7 @@ from typing import Callable
 
 from ._freeze import freeze_model
 from ._TuiIpc import ReadRequest, Request, WriteRequest
-from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionsRaw, TuiModel
 
 
 class TuiLocalClient:
@@ -42,28 +41,24 @@ class TuiLocalClient:
         """Read the current TUI state.
 
         Submits a read request to the server's queue, blocks on the
-        future, returns a deep-frozen snapshot. Never raises.
+        future, returns a deep-frozen snapshot.
         """
         future = self._submit(ReadRequest())
         model = future.result()
         return freeze_model(model)
 
-    def write(self, mutator: Callable[[TuiModel], None]) -> None:
-        """Apply a mutation to the TUI state.
+    def write_raw(
+        self,
+        *,
+        sessions: SessionsRaw | None = None,
+        git: GitRaw | None = None,
+        active_mind: ActiveMindRaw | None = None,
+    ) -> None:
+        """Push raw data into the TUI model.
 
-        Reads a mutable copy from the server, applies the mutator,
-        then sends the modified model back for version-checked merge.
-
-        Raises:
-            ConcurrencyError: Version mismatch — another writer got there first.
+        Only the sections you provide are replaced on the server.
+        Sections you omit are left untouched.
         """
-        # Read mutable copy
-        future = self._submit(ReadRequest())
-        model = future.result()
-
-        # Apply mutator to the mutable copy
-        mutator(model)
-
-        # Write back for version-checked merge
+        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind)
         future = self._submit(WriteRequest(model=model))
-        future.result()  # raises ConcurrencyError on version mismatch
+        future.result()

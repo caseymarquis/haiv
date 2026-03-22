@@ -100,7 +100,6 @@ class HaivApp(App):
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = TuiServer(project)
         self.tui_client = TuiLocalClient(self._server.submit)
-        self._last_write_counter = -1
         self._file_watcher: FileWatcher | None = None
 
     def on_mount(self) -> None:
@@ -123,28 +122,23 @@ class HaivApp(App):
         self.set_interval(POLL_INTERVAL, self._poll_model)
 
     def _poll_model(self) -> None:
-        """Read model snapshot and push through store for dispatch."""
-        current_counter = self._server.get_write_counter()
-        if current_counter == self._last_write_counter:
+        """Drain dirty sections and push through store for dispatch."""
+        dirty = self._server.drain_dirty()
+        if not dirty:
             return
-        self._last_write_counter = current_counter
 
         try:
             snapshot = self.tui_client.read()
-            self.store.update(snapshot)
+            self.store.update(snapshot, dirty)
         except Exception as e:
             self.internal_errors.append(f"poll: {e}")
 
         self._update_errors()
 
     def _update_errors(self) -> None:
-        """Collect errors from all sources and push to the errors widget."""
-        messages = []
-        if self.store.snapshot is not None:
-            messages.extend(self.store.snapshot.errors.messages)
-        messages.extend(self.internal_errors)
+        """Push internal errors to the errors widget."""
         try:
-            self.query_one(ErrorsWidget).render_errors(messages)
+            self.query_one(ErrorsWidget).render_errors(list(self.internal_errors))
         except Exception:
             pass
 

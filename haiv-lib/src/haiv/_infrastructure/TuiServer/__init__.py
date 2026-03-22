@@ -6,10 +6,8 @@ with underscore.
 """
 
 from haiv._infrastructure.TuiServer._freeze import freeze_model
-from haiv.helpers.tui._base import TuiModelSection
 from haiv._infrastructure.TuiServer._TuiIpc import (
     RESTART_EXIT_CODE,
-    ConcurrencyError,
     ErrorResponse,
     OkResponse,
     ReadRequest,
@@ -23,9 +21,7 @@ from haiv._infrastructure.TuiServer._TuiServer import TuiServer
 
 __all__ = [
     "RESTART_EXIT_CODE",
-    "TuiModelSection",
     "freeze_model",
-    "ConcurrencyError",
     "ErrorResponse",
     "OkResponse",
     "ReadRequest",

@@ -1,27 +1,22 @@
 """TUI IPC client.
 
-Used by haiv commands to read and write TUI state. Communicates with the
-running TUI server over a Unix domain socket (or Windows named pipe)
+Used by haiv commands to read and write_raw TUI state. Communicates with
+the running TUI server over a Unix domain socket (or Windows named pipe)
 via multiprocessing.connection.
 
 Each method opens a short-lived connection — no persistent sessions.
 
 Usage:
     client = TuiClient(project="my-project")
-    state = client.read()          # frozen snapshot, never throws*
-    client.write(lambda m: setattr(m.hud, 'role', 'COO'))  # mutator pattern
-
-* read() only raises on connection failure.
-  write() raises ConcurrencyError on version mismatch.
+    state = client.read()
+    client.write_raw(sessions=SessionsRaw(entries=[...]))
 """
 
 from __future__ import annotations
 
 from multiprocessing.connection import Client
-from typing import Callable
 
 from haiv._infrastructure.TuiServer import (
-    ConcurrencyError,
     ErrorResponse,
     OkResponse,
     ReadRequest,
@@ -30,11 +25,9 @@ from haiv._infrastructure.TuiServer import (
     freeze_model,
     pipe_address,
 )
-from haiv.helpers.tui.TuiModel import TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionsRaw, TuiModel
 
-# Re-export so callers can import ConcurrencyError from TuiClient
-# without reaching into infrastructure.
-__all__ = ["TuiClient", "ConcurrencyError"]
+__all__ = ["TuiClient"]
 
 
 class TuiClient:
@@ -59,36 +52,28 @@ class TuiClient:
             return freeze_model(response.result)
         raise ConnectionError(f"Server error: {response}")
 
-    def write(self, mutator: Callable[[TuiModel], None]) -> None:
-        """Apply a mutation to the TUI state.
+    def write_raw(
+        self,
+        *,
+        sessions: SessionsRaw | None = None,
+        git: GitRaw | None = None,
+        active_mind: ActiveMindRaw | None = None,
+    ) -> None:
+        """Push raw data into the TUI model.
 
-        Internally performs a read-modify-write cycle:
-        1. Sends a read request to the server, receives mutable model.
-        2. Calls mutator(model) — the caller modifies sections in place.
-        3. Sends the modified model back with the original version(s).
-        4. Server validates versions and applies or rejects.
+        Only the sections you provide are replaced on the server.
+        Sections you omit are left untouched.
 
         Raises:
-            ConcurrencyError: Version mismatch — another writer got there first.
             ConnectionError: Cannot reach the TUI server.
         """
-        # Read mutable copy
-        read_response: Response = self._request(ReadRequest())
-        if not isinstance(read_response, OkResponse) or read_response.result is None:
-            raise ConnectionError(f"Server error: {read_response}")
-        model = read_response.result
+        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind)
 
-        # Apply mutator to the mutable copy
-        mutator(model)
-
-        # Send modified model back for version-checked merge
         write_response: Response = self._request(WriteRequest(model=model))
 
         if isinstance(write_response, OkResponse):
             return
         if isinstance(write_response, ErrorResponse):
-            if write_response.kind == "concurrency":
-                raise ConcurrencyError(write_response.message)
             raise ConnectionError(f"Server error: {write_response.message}")
 
     def _request(self, request: ReadRequest | WriteRequest) -> Response:
