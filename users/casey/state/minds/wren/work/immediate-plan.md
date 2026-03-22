@@ -4,11 +4,11 @@
 
 ---
 
-## Current Focus: TUI Data Model Redesigned, Widget DI Next
+## Current Focus: Widget DI Done, TUI Growing Features
 
-Major TUI architecture overhaul completed with Casey. The TUI data model now separates raw data gathering from display assembly. Git branch flakiness is structurally fixed — git and session data live in independent sections that can't clobber each other. See `scratchpad.md` for full design notes.
+Widget dependency injection completed with Casey. All widgets declare deps as keyword-only constructor params. HaivApp takes deps/server/client via constructor; main() holds the factory for hot-reload. Full test harness with per-widget test files — 44 TUI tests, 1021 total.
 
-**Immediate next:** Widget dependency injection — widgets currently reach through `self.app` for store/terminal/paths. Should declare dependencies explicitly for type safety and testability. This is also the remaining source of type errors in haiv-tui.
+First feature on the new foundation: SessionActionBar with `[e]` explorer and `[v]` editor keybindings for the highlighted session's worktree. New settings `file_explorer_command` and `editor_command` in haiv-lib.
 
 Run `hv sessions` to see current active work.
 
@@ -16,7 +16,7 @@ Run `hv sessions` to see current active work.
 
 ## Active Initiatives
 
-- **TUI widget dependency injection** — widgets need explicit deps instead of reaching through `self.app`. Fixes remaining type errors, enables isolated widget testing.
+- **TUI feature buildout** — now that DI and testing are solid, build out TUI capabilities. Action bar is first; more session actions to come.
 - **Relay infrastructure** — unbuilt. Required for haiv to manage external projects (e.g., dnd at `/home/casey/code/dnd/`). The problem: `hv` always runs in haiv-cli's venv, but project/user commands need the project's own venv and dependencies.
 
 ---
@@ -37,6 +37,7 @@ Run `hv sessions` to see current active work.
 
 ## Recently Completed
 
+- **Widget DI + test harness + action bar** — widgets take deps as keyword-only constructor params (no more `self.app`). HaivApp takes deps/server/client via constructor; main() factory for hot-reload. Shared test harness (`WidgetTestApp`), per-widget test files merging assembly + widget tests. SessionActionBar with `[e]` explorer and `[v]` editor keybindings. New `helpers/open.py` in haiv-lib. New settings: `file_explorer_command` (platform-default), `editor_command` (defaults to `code`). pytest-asyncio added to dev deps. 44 TUI tests, 1021 total.
 - **TUI data model redesign** — separated raw data (sessions, git, active mind) from display assembly. New `write_raw()` API, dirty-set change tracking, DTOs co-located with widgets, 17 new TUI assembly tests. Git branch flakiness structurally fixed. haiv-tui added to test-all.sh and type-all.sh. (994 tests total, all green)
 - **PyPI name claim** — haiv, haiv-lib, haiv-core, haiv-cli, haiv-tui all published at 0.1.0, tagged v0.1.0
 - **haiv → haiv-lib rename** — package renamed, folder renamed, imports unchanged
@@ -76,8 +77,9 @@ Raw data sources → TuiModel (per-source sections) → TuiServer (dirty trackin
 - **write_raw()** — callers pass section kwargs. Server replaces non-None sections, marks dirty. No concurrency errors.
 - **TuiServer** — `Atom<set[str>>` dirty tracking. `drain_dirty()` for atomic poll-loop consumption.
 - **TuiStore** — fires blinker signals for dirty sections. Widgets subscribe.
-- **Widgets** — hold latest raw sections, call pure assembly functions (raw→DTO), render DTOs.
-- **DTOs + assembly** — co-located at bottom of each widget file. Testable without Textual.
+- **Widgets** — receive deps via keyword-only constructor params. Hold latest raw sections, call pure assembly functions (raw→DTO), render DTOs. Subscribe to store signals in `on_mount()`.
+- **DTOs + assembly** — co-located at bottom of each widget file. Testable without Textual. Assembly computes full paths (e.g. `worktree_path`) so widgets stay UI-only.
+- **HaivApp** — takes `HaivDeps`, `TuiServer`, `TuiLocalClient` via constructor. `main()` holds the factory, re-creates on restart for hot-reload.
 
 ### Command Side
 ```
@@ -106,7 +108,9 @@ TUI app:      helpers.mind_launch(term, ...)   # app passes deps directly
 | `haiv-tui/src/haiv_tui/widgets/sessions.py` | Sessions tree + DTOs + assembly |
 | `haiv-tui/src/haiv_tui/widgets/hud.py` | HUD widget + DTOs + assembly |
 | `haiv-lib/src/haiv/helpers/sessions.py` | Session model, CRUD |
+| `haiv-lib/src/haiv/helpers/open.py` | Open dirs in explorer/editor (cross-platform) |
 | `haiv-lib/src/haiv/haiv_hooks.py` | Hook public API |
+| `haiv-tui/tests/harness.py` | Shared test harness: WidgetTestApp, mock factories |
 
 ---
 

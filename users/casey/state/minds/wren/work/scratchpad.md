@@ -44,11 +44,24 @@ Completed with Casey. Major architectural changes:
 - DTOs and assembly functions co-located in each widget file (widget at top, DTO/assembly below)
 - `HudSection` and `ErrorsSection` removed from the model — HUD assembles from raw sessions + active mind
 
-**TODO:** Widget dependency injection — widgets currently reach through `self.app` for store/terminal/paths/client. Should declare dependencies explicitly for type safety and testability. This is the remaining source of type errors in haiv-tui.
+**DONE:** Widget dependency injection — all widgets take deps as keyword-only constructor params. HaivApp takes `HaivDeps`/`TuiServer`/`TuiLocalClient` via constructor. `main()` factory re-creates deps on restart for hot-reload. Full test harness with per-widget test files. 44 TUI tests.
 
 **TODO:** Type-safe signal subscriptions — use reflection on `TuiModel` fields to generate signal names rather than raw strings. Considered during redesign, deferred.
 
 **TODO:** Publishing mechanism — TUI will publish derived state (e.g. active mind) for consumption by `hv` commands. Remote clients push raw data in; the TUI decides what to publish out. Design sketch: single function on the Textual thread that polls assembled data and publishes cheaply.
+
+### Widget DI + Action Bar (2026-03-22)
+
+Completed with Casey. Key decisions:
+
+- **All keyword-only** — every widget dep is keyword-only. Casey's convention: clear to the caller, scales better.
+- **No Optional deps** — production deps are required, tests provide fakes. Don't shape production code for tests.
+- **HaivApp constructor injection** — takes `HaivDeps`, `TuiServer`, `TuiLocalClient`. `main()` holds the factory, calls it fresh each restart cycle.
+- **Assembly computes full paths** — `build_session_tree` takes `worktrees_dir`, computes `worktree_path` in the DTO. Widgets stay UI-only.
+- **Paths from haiv_root** — construct `Paths(_called_from=None, _pkg_root=None, _haiv_root=haiv_root)` locally rather than requiring a fully-configured `Paths` object. Keeps the dep signature honest about what's actually needed.
+- **Test harness** — `WidgetTestApp` mounts a single widget in a bare `App`. Per-widget test files merge assembly + widget tests. `conftest.py` imports from `harness.py`.
+- **Textual `Static.content`** — use `widget.content` property to assert on displayed text in tests.
+- **`pytest-asyncio`** — added to dev deps for async widget tests.
 
 ## Things to Remember
 

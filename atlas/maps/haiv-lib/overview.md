@@ -29,6 +29,7 @@ haiv/
 │   ├── commands.py
 │   ├── packages.py
 │   ├── users.py
+│   ├── open.py           # Open dirs in explorer/editor (cross-platform)
 │   └── tui/
 └── wrappers/
     ├── git.py
@@ -132,7 +133,8 @@ Thin subprocess wrapper around git. Educational by default — prints commands a
 Known to exist but not properly explored. Earn a reward, give them a name.
 
 - `helpers/minds.py` — Mind scaffolding and management. `scaffold_mind()` creates directory structure and writes templates; `Mind` class with `ensure_structure()` for validation/repair. (Partially explored in `journeys/charting-tools-local-examples/007`)
+- `helpers/open.py` — `open_in_explorer(path, command)` and `open_in_editor(path, command)`. Thin `subprocess.Popen` wrappers, detached from parent process. Used by the TUI action bar.
 - `helpers/commands.py`, `helpers/packages.py`, `helpers/users.py` — Other helper modules
 - `templates.py` — Jinja2 template rendering for `__assets__/`
-- `settings.py` — Project configuration
+- `settings.py` — `HaivSettings` dataclass with private fields and public properties with defaults. Settings auto-load from `haiv.toml` by field name convention (`_foo` → toml key `foo`). Includes: `default_branch`, `wezterm_command`, `tui_command`, `keybindings`, `file_explorer_command` (platform-default), `editor_command` (defaults to `code`). Merges project + user settings (user wins).
 - `errors.py` — Error types
