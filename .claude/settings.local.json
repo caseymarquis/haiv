@@ -9,7 +9,9 @@
       "Bash(uv run:*)",
       "Bash(hv pop:*)",
       "Bash(hv help:*)",
-      "Bash(hv minds:*)"
+      "Bash(hv minds:*)",
+      "Bash(hv sessions:*)",
+      "Bash(bash test-all.sh)"
     ]
   }
 }
