@@ -1,3 +1,6 @@
+# Ignored state (*.ig.* convention)
+*.ig.*
+
 # Python
 __pycache__/
 *.py[cod]
