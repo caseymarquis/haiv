@@ -29,6 +29,65 @@ Claude Code hooks fully cover status detection — 6 lifecycle events map to our
 - Research deliverables go in `temp-aar/`, not `work/` (survives pop)
 - `scaffold_mind` with `skip_existing` handles reused minds non-destructively
 
+### TUI data model redesign (2026-03-22)
+
+Completed with Casey. Major architectural changes:
+
+**Architecture:** Three-layer data flow — raw data (gathered from external sources) → assembly (pure functions, raw→DTO) → widget rendering (DTOs only). Each layer has clear ownership.
+
+**Key decisions made:**
+- `TuiModel` holds only raw data sections (`SessionsRaw`, `GitRaw`, `ActiveMindRaw`), not display concerns
+- `write_raw()` replaces the old mutator-based `write()` — callers pass section kwargs, server replaces non-None sections wholesale
+- No version checking on writes — dirty set tracks what changed, drained atomically by the poll loop
+- `TuiModelSection` base class eliminated — sections are plain dataclasses, versioning is server-internal via `Atom<set[str]>`
+- `ConcurrencyError` removed entirely — independent writers can never conflict
+- DTOs and assembly functions co-located in each widget file (widget at top, DTO/assembly below)
+- `HudSection` and `ErrorsSection` removed from the model — HUD assembles from raw sessions + active mind
+
+**DONE:** Widget dependency injection — all widgets take deps as keyword-only constructor params. HaivApp takes `HaivDeps`/`TuiServer`/`TuiLocalClient` via constructor. `main()` factory re-creates deps on restart for hot-reload. Full test harness with per-widget test files. 44 TUI tests.
+
+**TODO:** Type-safe signal subscriptions — use reflection on `TuiModel` fields to generate signal names rather than raw strings. Considered during redesign, deferred.
+
+**TODO:** Publishing mechanism — TUI will publish derived state (e.g. active mind) for consumption by `hv` commands. Remote clients push raw data in; the TUI decides what to publish out. Design sketch: single function on the Textual thread that polls assembled data and publishes cheaply.
+
+### Action Bar → Clickable Buttons + Hot Reload Investigation (2026-03-23)
+
+Session with Casey. Key work:
+
+**Action bar refactor:**
+- `Static` text → `DebounceButton` widgets (clickable, with debounce)
+- Moved action bar from above tree to between tree and preview
+- Removed `e`/`v` keybindings — buttons handle interaction now
+- `DebounceButton` extends `Widget` (not `Vertical`) — Textual containers caused CSS resolution crashes in tests
+- Cannot shadow Textual's `disabled` reactive with a property — use `watch_disabled()` instead
+
+**Hot reload investigation:**
+- Ctrl+R has been broken. No crash, no error — app silently exits.
+- Moved reload loop to `_runner.py` (outside module flush blast radius, stdlib-only imports)
+- Added crash log (`last-crash.log`) and exit log (`last-exit.log`) to `~/.cache/haiv/`
+- Neither log fires — suspect entry point still points to old `haiv_tui:main` (needs `uv sync`)
+- `RESTART_EXIT_CODE` is 75 (not 99 as I initially wrote — caught by grep)
+- `_reload_packages` now skips `haiv_tui._runner` to preserve itself
+- Test `test_app_mounts_after_reload` passes but uses `run_test()` not real terminal
+
+**Textual learnings:**
+- `pilot.click("#selector")` works for clicking buttons in tests
+- `Button.press()` is programmatic but message may not bubble to parent `on_button_pressed` — use `pilot.click` instead
+- `Widget.compose()` children aren't queryable until after mount — need `await pilot.pause()` first for some widgets
+
+### Widget DI + Action Bar (2026-03-22)
+
+Completed with Casey. Key decisions:
+
+- **All keyword-only** — every widget dep is keyword-only. Casey's convention: clear to the caller, scales better.
+- **No Optional deps** — production deps are required, tests provide fakes. Don't shape production code for tests.
+- **HaivApp constructor injection** — takes `HaivDeps`, `TuiServer`, `TuiLocalClient`. `main()` holds the factory, calls it fresh each restart cycle.
+- **Assembly computes full paths** — `build_session_tree` takes `worktrees_dir`, computes `worktree_path` in the DTO. Widgets stay UI-only.
+- **Paths from haiv_root** — construct `Paths(_called_from=None, _pkg_root=None, _haiv_root=haiv_root)` locally rather than requiring a fully-configured `Paths` object. Keeps the dep signature honest about what's actually needed.
+- **Test harness** — `WidgetTestApp` mounts a single widget in a bare `App`. Per-widget test files merge assembly + widget tests. `conftest.py` imports from `harness.py`.
+- **Textual `Static.content`** — use `widget.content` property to assert on displayed text in tests.
+- **`pytest-asyncio`** — added to dev deps for async widget tests.
+
 ## Things to Remember
 
 - Use `hv sessions` for live state, not notes

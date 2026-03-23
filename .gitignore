@@ -39,6 +39,9 @@ htmlcov/
 *.swp
 *.swo
 
+# haiv convention: *.ig.* files are local-only
+*.ig.*
+
 # OS
 .DS_Store
 Thumbs.db
