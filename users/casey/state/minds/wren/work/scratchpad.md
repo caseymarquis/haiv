@@ -50,6 +50,31 @@ Completed with Casey. Major architectural changes:
 
 **TODO:** Publishing mechanism — TUI will publish derived state (e.g. active mind) for consumption by `hv` commands. Remote clients push raw data in; the TUI decides what to publish out. Design sketch: single function on the Textual thread that polls assembled data and publishes cheaply.
 
+### Action Bar → Clickable Buttons + Hot Reload Investigation (2026-03-23)
+
+Session with Casey. Key work:
+
+**Action bar refactor:**
+- `Static` text → `DebounceButton` widgets (clickable, with debounce)
+- Moved action bar from above tree to between tree and preview
+- Removed `e`/`v` keybindings — buttons handle interaction now
+- `DebounceButton` extends `Widget` (not `Vertical`) — Textual containers caused CSS resolution crashes in tests
+- Cannot shadow Textual's `disabled` reactive with a property — use `watch_disabled()` instead
+
+**Hot reload investigation:**
+- Ctrl+R has been broken. No crash, no error — app silently exits.
+- Moved reload loop to `_runner.py` (outside module flush blast radius, stdlib-only imports)
+- Added crash log (`last-crash.log`) and exit log (`last-exit.log`) to `~/.cache/haiv/`
+- Neither log fires — suspect entry point still points to old `haiv_tui:main` (needs `uv sync`)
+- `RESTART_EXIT_CODE` is 75 (not 99 as I initially wrote — caught by grep)
+- `_reload_packages` now skips `haiv_tui._runner` to preserve itself
+- Test `test_app_mounts_after_reload` passes but uses `run_test()` not real terminal
+
+**Textual learnings:**
+- `pilot.click("#selector")` works for clicking buttons in tests
+- `Button.press()` is programmatic but message may not bubble to parent `on_button_pressed` — use `pilot.click` instead
+- `Widget.compose()` children aren't queryable until after mount — need `await pilot.pause()` first for some widgets
+
 ### Widget DI + Action Bar (2026-03-22)
 
 Completed with Casey. Key decisions:
