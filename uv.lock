@@ -142,7 +142,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ty" }]
+dev = [
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "ty" },
+]
 
 [[package]]
 name = "iniconfig"
