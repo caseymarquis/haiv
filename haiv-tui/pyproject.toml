@@ -28,7 +28,7 @@ dependencies = [
 haiv-lib = { workspace = true }
 
 [project.scripts]
-haiv-tui = "haiv_tui:main"
+haiv-tui = "haiv_tui._runner:main"
 
 [project.urls]
 Homepage = "https://github.com/caseymarquis/haiv"
