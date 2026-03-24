@@ -70,6 +70,24 @@ class ActiveMindRaw:
     mind: str = ""
 
 
+@dataclass
+class RecentFileEntry:
+    """A recently modified file with optional diff stats."""
+
+    path: str = ""  # relative to worktrees dir
+    worktree: str = ""  # branch/worktree name
+    mtime: float = 0.0
+    additions: int = 0
+    deletions: int = 0
+
+
+@dataclass
+class RecentFilesRaw:
+    """Recently modified files across all worktrees."""
+
+    files: list[RecentFileEntry] = field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Top-level model
 # ---------------------------------------------------------------------------
@@ -88,3 +106,4 @@ class TuiModel:
     sessions: SessionsRaw | None = field(default_factory=SessionsRaw)
     git: GitRaw | None = field(default_factory=GitRaw)
     active_mind: ActiveMindRaw | None = field(default_factory=ActiveMindRaw)
+    recent_files: RecentFilesRaw | None = field(default_factory=RecentFilesRaw)

@@ -12,10 +12,9 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Static
-
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, SessionsRaw
 from haiv.settings import HaivSettings
+from haiv_tui.widgets.recent_files import RecentFilesWidget
 from haiv_tui.widgets.sessions import SessionActionBar
 
 from typing import TYPE_CHECKING
@@ -38,7 +37,7 @@ class HudWidget(Horizontal):
     }
     HudWidget #hud-action-bar {
         width: auto;
-        height: auto;
+        height: 1fr;
         padding: 1 1 0 1;
         border-right: solid $surface-lighten-2;
     }
@@ -46,9 +45,6 @@ class HudWidget(Horizontal):
         width: 1fr;
         height: 1fr;
         padding: 1 1 0 1;
-    }
-    HudWidget #hud-info {
-        height: auto;
     }
     """
 
@@ -76,7 +72,7 @@ class HudWidget(Horizontal):
             id="hud-action-bar",
         )
         with Vertical(id="hud-content"):
-            yield Static("—", id="hud-info")
+            yield RecentFilesWidget(store=self._store, id="recent-files")
 
     def on_mount(self) -> None:
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
@@ -96,9 +92,7 @@ class HudWidget(Horizontal):
 
     def _refresh(self) -> None:
         view = build_hud_view(self._active_mind, self._sessions, self._worktrees_dir)
-        self.query_one("#hud-info", Static).update(
-            f"{view.session_display}  ·  {view.summary}"
-        )
+        self.app.title = f"{view.session_display}  ·  {view.summary}"
         self.query_one(SessionActionBar).set_path(view.worktree_path)
 
 

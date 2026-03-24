@@ -121,7 +121,7 @@ class TestHudWidget:
             pass
 
     @pytest.mark.asyncio
-    async def test_renders_active_mind(self, store):
+    async def test_sets_app_title_on_active_mind(self, store):
         widget = _make_hud(store)
         app = WidgetTestApp(widget)
 
@@ -136,11 +136,10 @@ class TestHudWidget:
             )
             await pilot.pause()
 
-            info = str(widget.query_one("#hud-info").content)
-            assert "wren" in info
+            assert "wren" in app.title
 
     @pytest.mark.asyncio
-    async def test_shows_dashes_when_no_active_mind(self, store):
+    async def test_app_title_dashes_when_no_active_mind(self, store):
         widget = _make_hud(store)
         app = WidgetTestApp(widget)
 
@@ -148,5 +147,4 @@ class TestHudWidget:
             store.update(TuiModel(), frozenset({"active_mind"}))
             await pilot.pause()
 
-            info = str(widget.query_one("#hud-info").content)
-            assert "—" in info
+            assert "—" in app.title

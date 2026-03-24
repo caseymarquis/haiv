@@ -67,10 +67,11 @@ class HaivApp(App):
     Screen {
         overflow: hidden;
     }
-    #top-panel {
+    #session-panel {
         height: 13fr;
+        border-bottom: solid $surface-lighten-2;
     }
-    #bottom-panel {
+    #tabs-panel {
         height: 7fr;
     }
     TabbedContent {
@@ -117,7 +118,7 @@ class HaivApp(App):
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = server
         self.tui_client = client
-        self._file_watcher: FileWatcher | None = None
+        self._bg_workers: _Workers | None = None
 
     def on_mount(self) -> None:
         """Start the TUI server and load initial state."""
@@ -136,7 +137,8 @@ class HaivApp(App):
                 mind = self.terminal.get_active_mind_name()
                 if mind:
                     helpers.active_mind_set(self.tui_client, mind)
-            self._start_file_watcher()
+            self._bg_workers = _Workers(self.paths, self.tui_client, self.git)
+            self._bg_workers.start()
 
         # Immediate first read, then start polling
         self._poll_model()
@@ -165,7 +167,7 @@ class HaivApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Vertical(id="top-panel"):
+        with Vertical(id="session-panel"):
             yield HudWidget(
                 store=self.store,
                 worktrees_dir=self.paths.worktrees_dir if self.paths else None,
@@ -173,7 +175,7 @@ class HaivApp(App):
                 errors=self.internal_errors,
                 id="hud",
             )
-        with Vertical(id="bottom-panel"):
+        with Vertical(id="tabs-panel"):
             with TabbedContent(initial="sessions"):
                 with TabPane("Sessions", id="sessions"):
                     yield SessionsWidget(
@@ -218,21 +220,51 @@ class HaivApp(App):
         self.exit(return_code=RESTART_EXIT_CODE)
 
     def shutdown(self) -> None:
-        """Stop the TUI server and file watcher. Called after app.run() returns."""
+        """Stop the TUI server and workers. Called after app.run() returns."""
         self._server.stop()
-        if self._file_watcher is not None:
-            self._file_watcher.stop()
+        if self._bg_workers is not None:
+            self._bg_workers.stop()
 
-    def _start_file_watcher(self) -> None:
-        """Watch sessions file for external changes and refresh the TUI."""
-        sessions_file = self.paths.user.sessions_file
+
+# ---------------------------------------------------------------------------
+# Background workers
+# ---------------------------------------------------------------------------
+
+
+class _Workers:
+    """Background threads that gather data and push it into the TUI model."""
+
+    def __init__(self, paths, client: TuiLocalClient, git: Git | None) -> None:
+        self._paths = paths
+        self._client = client
+        self._git = git
+        self._file_watcher: FileWatcher | None = None
+        self._recent_files: RecentFilesWorker | None = None
+
+    def start(self) -> None:
+        from haiv_tui.recent_files_worker import RecentFilesWorker
+
+        # Watch sessions file for external edits
+        sessions_file = self._paths.user.sessions_file
         sessions_file.parent.mkdir(parents=True, exist_ok=True)
 
-        def _refresh_sessions_on_worker_thread(changed_paths: list[Path]) -> None:
-            helpers.sessions_refresh(self.tui_client, sessions_file, git=self.git)
+        def _refresh_sessions(changed_paths: list[Path]) -> None:
+            helpers.sessions_refresh(self._client, sessions_file, git=self._git)
 
         self._file_watcher = (
-            FileWatcher(_refresh_sessions_on_worker_thread)
+            FileWatcher(_refresh_sessions)
             .watch_file(sessions_file)
             .start()
         )
+
+        # Recent files gatherer
+        self._recent_files = RecentFilesWorker(
+            client=self._client,
+            worktrees_dir=self._paths.worktrees_dir,
+        ).start()
+
+    def stop(self) -> None:
+        if self._file_watcher is not None:
+            self._file_watcher.stop()
+        if self._recent_files is not None:
+            self._recent_files.stop()
