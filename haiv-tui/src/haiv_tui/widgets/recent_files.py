@@ -234,9 +234,9 @@ def shortest_unique_names(paths: list[str]) -> list[str]:
     Given ["src/haiv/helpers/tui/helpers.py", "src/haiv/helpers/utils/helpers.py", "app.py"],
     returns ["tui/helpers.py", "utils/helpers.py", "app.py"].
     """
-    from pathlib import PurePosixPath
+    from pathlib import PurePath
 
-    parts_list = [PurePosixPath(p).parts for p in paths]
+    parts_list = [PurePath(p).parts for p in paths]
     result = []
     for i, parts in enumerate(parts_list):
         # Start with just the filename, extend until unique
