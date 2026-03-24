@@ -116,8 +116,10 @@ class _BridgeHandler(FileSystemEventHandler):
         self._mh = mh
         self._file_filter = file_filter
 
+    _WRITE_EVENTS = {"created", "modified", "moved", "deleted"}
+
     def on_any_event(self, event: FileSystemEvent) -> None:
-        if event.is_directory:
+        if event.is_directory or event.event_type not in self._WRITE_EVENTS:
             return
         src = event.src_path
         if not isinstance(src, str):

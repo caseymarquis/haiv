@@ -56,7 +56,7 @@ def _tracked_files_by_mtime(directory: Path) -> list[tuple[Path, float]]:
     """List git-tracked files with their mtime. Respects .gitignore."""
     try:
         result = subprocess.run(
-            ["git", "ls-files"],
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
             cwd=directory,
             capture_output=True,
             text=True,

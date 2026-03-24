@@ -72,7 +72,13 @@ class HudWidget(Horizontal):
             id="hud-action-bar",
         )
         with Vertical(id="hud-content"):
-            yield RecentFilesWidget(store=self._store, id="recent-files")
+            yield RecentFilesWidget(
+                store=self._store,
+                worktrees_dir=self._worktrees_dir,
+                settings=self._settings,
+                errors=self._errors,
+                id="recent-files",
+            )
 
     def on_mount(self) -> None:
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
