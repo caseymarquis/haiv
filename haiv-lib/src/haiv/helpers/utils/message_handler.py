@@ -75,7 +75,7 @@ class MessageHandler(Generic[TMessage]):
             return
 
         self._stop_event.set()
-        self._thread.join()
+        self._thread.join(timeout=2.0)
         self._thread = None
 
         # Flush anything left in the queue

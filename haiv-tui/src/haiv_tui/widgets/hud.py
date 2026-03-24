@@ -1,16 +1,22 @@
-"""HUD widget — displays info about the active mind.
+"""HUD widget — always-visible panel for the active mind's session.
 
+Shows mind name, task, branch, and action bar for the active worktree.
 Subscribes to active_mind_changed and sessions_changed signals.
-Widget renders HudView DTOs assembled from raw data.
 """
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
+from pathlib import Path
 
+from textual.app import ComposeResult
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, SessionsRaw
+from haiv.settings import HaivSettings
+from haiv_tui.widgets.sessions import SessionActionBar
 
 from typing import TYPE_CHECKING
 
@@ -23,22 +29,54 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class HudWidget(Static):
-    """Head-up display showing active mind details."""
+class HudWidget(Horizontal):
+    """Head-up display for the active mind — always visible."""
 
     DEFAULT_CSS = """
     HudWidget {
-        height: 5;
-        border: solid yellow;
-        padding: 0 1;
+        height: 1fr;
+    }
+    HudWidget #hud-action-bar {
+        width: auto;
+        height: auto;
+        padding: 1 1 0 1;
+        border-right: solid $surface-lighten-2;
+    }
+    HudWidget #hud-content {
+        width: 1fr;
+        height: 1fr;
+        padding: 1 1 0 1;
+    }
+    HudWidget #hud-info {
+        height: auto;
     }
     """
 
-    def __init__(self, *, store: TuiStore, **kwargs) -> None:
+    def __init__(
+        self,
+        *,
+        store: TuiStore,
+        worktrees_dir: Path | None,
+        settings: HaivSettings,
+        errors: deque[str],
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self._store = store
+        self._worktrees_dir = worktrees_dir
+        self._settings = settings
+        self._errors = errors
         self._active_mind: ActiveMindRaw | None = None
         self._sessions: SessionsRaw | None = None
+
+    def compose(self) -> ComposeResult:
+        yield SessionActionBar(
+            settings=self._settings,
+            errors=self._errors,
+            id="hud-action-bar",
+        )
+        with Vertical(id="hud-content"):
+            yield Static("—", id="hud-info")
 
     def on_mount(self) -> None:
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
@@ -46,23 +84,22 @@ class HudWidget(Static):
         if self._store.snapshot is not None:
             self._active_mind = self._store.snapshot.active_mind
             self._sessions = self._store.snapshot.sessions
-            self._refresh_hud()
+            self._refresh()
 
     def _on_active_mind_changed(self, sender) -> None:
         self._active_mind = sender
-        self._refresh_hud()
+        self._refresh()
 
     def _on_sessions_changed(self, sender) -> None:
         self._sessions = sender
-        self._refresh_hud()
+        self._refresh()
 
-    def _refresh_hud(self) -> None:
-        view = build_hud_view(self._active_mind, self._sessions)
-        self.update(
-            f"Worktree: {view.worktree}\n"
-            f"Summary: {view.summary}\n"
-            f"Session: {view.session_display}"
+    def _refresh(self) -> None:
+        view = build_hud_view(self._active_mind, self._sessions, self._worktrees_dir)
+        self.query_one("#hud-info", Static).update(
+            f"{view.session_display}  ·  {view.summary}"
         )
+        self.query_one(SessionActionBar).set_path(view.worktree_path)
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +114,7 @@ class HudView:
     worktree: str
     summary: str
     session_display: str
+    worktree_path: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +125,7 @@ class HudView:
 def build_hud_view(
     active_mind: ActiveMindRaw | None,
     sessions: SessionsRaw | None,
+    worktrees_dir: Path | None = None,
 ) -> HudView:
     """Assemble HUD display from raw data.
 
@@ -103,8 +142,12 @@ def build_hud_view(
                 session = entry
                 break
 
+    branch = session.branch if session else None
+    wt_path = worktrees_dir / branch if worktrees_dir and branch else None
+
     return HudView(
-        worktree=session.branch or "—" if session else "—",
+        worktree=branch or "—",
         summary=session.task or "—" if session else "—",
         session_display=f"{mind_name} [{session.short_id}]" if session else mind_name,
+        worktree_path=wt_path,
     )

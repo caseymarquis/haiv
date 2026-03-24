@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Vertical
 from textual.events import Click
 from textual.widgets import Static, Tree
 
@@ -44,17 +44,19 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-class SessionActionBar(Horizontal):
-    """Action bar for the highlighted session — open in explorer or editor."""
+class SessionActionBar(Vertical):
+    """Action bar — open worktree in explorer or editor."""
 
     DEFAULT_CSS = """
     SessionActionBar {
+        width: auto;
         height: auto;
-        margin-top: 1;
-        padding: 0 1;
     }
     SessionActionBar DebounceButton {
-        margin: 0 1 0 0;
+        margin: 0 0 1 0;
+    }
+    SessionActionBar DebounceButton Button {
+        min-width: 12;
     }
     """
 
@@ -62,20 +64,20 @@ class SessionActionBar(Horizontal):
         super().__init__(**kwargs)
         self._settings = settings
         self._errors = errors
-        self._view: SessionNodeView | None = None
+        self._path: Path | None = None
 
     def compose(self) -> ComposeResult:
         yield DebounceButton("Explorer", disabled=True, id="btn-explorer")
         yield DebounceButton("Editor", disabled=True, id="btn-editor")
 
-    def set_session(self, view: SessionNodeView | None) -> None:
-        self._view = view
-        has_path = bool(view and view.worktree_path)
+    def set_path(self, path: Path | None) -> None:
+        self._path = path
+        has_path = bool(path)
         self.query_one("#btn-explorer", DebounceButton).disabled = not has_path
         self.query_one("#btn-editor", DebounceButton).disabled = not has_path
 
     def on_debounce_button_pressed(self, event: DebounceButton.Pressed) -> None:
-        path = self._view.worktree_path if self._view else None
+        path = self._path
         if not path or not path.is_dir():
             return
         try:
@@ -154,11 +156,6 @@ class SessionsWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Tree[SessionNodeView]("Sessions", id="sessions-tree")
-        yield SessionActionBar(
-            settings=self._settings,
-            errors=self._errors,
-            id="session-action-bar",
-        )
         yield SessionPreview(id="session-preview")
 
     def on_mount(self) -> None:
@@ -209,11 +206,9 @@ class SessionsWidget(Vertical):
             self.action_launch_session()
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
-        """Update preview and action bar when cursor moves to a new node."""
+        """Update preview when cursor moves to a new node."""
         preview = self.query_one(SessionPreview)
         preview.render_preview(event.node.data)
-        action_bar = self.query_one(SessionActionBar)
-        action_bar.set_session(event.node.data)
 
     def action_launch_session(self) -> None:
         """Launch the highlighted mind."""

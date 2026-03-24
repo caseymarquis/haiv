@@ -40,14 +40,16 @@ def main():
 
         app = HaivApp(deps=deps, server=server, client=client)
         app.run()
-        app.shutdown()
 
-        # --- Restart or exit ---
+        # Check return code BEFORE shutdown — shutdown blocks on thread join.
+        # os.execv replaces the process so cleanup is unnecessary on restart.
         rc = app.return_code
         if (rc or 0) == RESTART_EXIT_CODE:
             hv_tui = shutil.which("hv-tui")
             os.execv(hv_tui, [hv_tui, project])
-        elif rc:
+
+        app.shutdown()
+        if rc:
             _write_log(EXIT_LOG, f"return_code={rc!r}\n")
     except Exception:
         _write_log(CRASH_LOG, traceback.format_exc())

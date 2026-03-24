@@ -41,6 +41,7 @@ from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Vertical
 from textual.widgets import Header, Footer, TabbedContent, TabPane, Tabs
 
 from haiv._infrastructure.TuiServer import RESTART_EXIT_CODE, TuiLocalClient, TuiServer
@@ -63,11 +64,23 @@ class HaivApp(App):
     """haiv terminal UI."""
 
     CSS = """
+    Screen {
+        overflow: hidden;
+    }
+    #top-panel {
+        height: 13fr;
+    }
+    #bottom-panel {
+        height: 7fr;
+    }
     TabbedContent {
         height: 1fr;
     }
     TabbedContent Tabs {
         dock: bottom;
+    }
+    ErrorsWidget {
+        height: auto;
     }
     """
 
@@ -119,6 +132,10 @@ class HaivApp(App):
 
         if self.paths is not None:
             helpers.sessions_refresh(self.tui_client, self.paths.user.sessions_file, git=self.git)
+            if self.terminal is not None:
+                mind = self.terminal.get_active_mind_name()
+                if mind:
+                    helpers.active_mind_set(self.tui_client, mind)
             self._start_file_watcher()
 
         # Immediate first read, then start polling
@@ -148,22 +165,29 @@ class HaivApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with TabbedContent(initial="sessions"):
-            with TabPane("Sessions", id="sessions"):
-                yield SessionsWidget(
-                    store=self.store,
-                    terminal=self.terminal,
-                    tui_client=self.tui_client,
-                    sessions_file=self.paths.user.sessions_file if self.paths else Path("/dev/null"),
-                    haiv_root=self.paths.root if self.paths else Path("/dev/null"),
-                    settings=self.settings,
-                    errors=self.internal_errors,
-                    id="session-tree",
-                )
-            with TabPane("Session", id="session"):
-                yield HudWidget(store=self.store, id="hud")
-            with TabPane("Plans", id="plans"):
-                yield self._plans_widget()
+        with Vertical(id="top-panel"):
+            yield HudWidget(
+                store=self.store,
+                worktrees_dir=self.paths.worktrees_dir if self.paths else None,
+                settings=self.settings,
+                errors=self.internal_errors,
+                id="hud",
+            )
+        with Vertical(id="bottom-panel"):
+            with TabbedContent(initial="sessions"):
+                with TabPane("Sessions", id="sessions"):
+                    yield SessionsWidget(
+                        store=self.store,
+                        terminal=self.terminal,
+                        tui_client=self.tui_client,
+                        sessions_file=self.paths.user.sessions_file if self.paths else Path("/dev/null"),
+                        haiv_root=self.paths.root if self.paths else Path("/dev/null"),
+                        settings=self.settings,
+                        errors=self.internal_errors,
+                        id="session-tree",
+                    )
+                with TabPane("Plans", id="plans"):
+                    yield self._plans_widget()
         yield ErrorsWidget(id="errors")
         yield Footer()
 

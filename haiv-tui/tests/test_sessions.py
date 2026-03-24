@@ -151,30 +151,25 @@ class TestSessionActionBar:
             assert bar.query_one("#btn-editor", DebounceButton).disabled is True
 
     @pytest.mark.asyncio
-    async def test_set_session_enables_buttons(self, tmp_path):
+    async def test_set_path_enables_buttons(self, tmp_path):
         errors = deque(maxlen=5)
         bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
         app = WidgetTestApp(bar)
 
         async with app.run_test() as pilot:
-            view = SessionNodeView(
-                short_id=1, mind="wren", task="test", description="",
-                status="started", git_stats="", is_active=False,
-                worktree_path=tmp_path / "worktrees" / "feature-x",
-            )
-            bar.set_session(view)
+            bar.set_path(tmp_path / "worktrees" / "feature-x")
             await pilot.pause()
             assert bar.query_one("#btn-explorer", DebounceButton).disabled is False
             assert bar.query_one("#btn-editor", DebounceButton).disabled is False
 
     @pytest.mark.asyncio
-    async def test_set_session_disables_on_none(self):
+    async def test_set_path_disables_on_none(self):
         errors = deque(maxlen=5)
         bar = SessionActionBar(settings=HaivSettings(), errors=errors, id="bar")
         app = WidgetTestApp(bar)
 
         async with app.run_test() as pilot:
-            bar.set_session(None)
+            bar.set_path(None)
             await pilot.pause()
             assert bar.query_one("#btn-explorer", DebounceButton).disabled is True
             assert bar.query_one("#btn-editor", DebounceButton).disabled is True
@@ -192,12 +187,7 @@ class TestSessionActionBar:
         app = WidgetTestApp(bar)
 
         async with app.run_test() as pilot:
-            view = SessionNodeView(
-                short_id=1, mind="wren", task="test", description="",
-                status="started", git_stats="", is_active=False,
-                worktree_path=wt,
-            )
-            bar.set_session(view)
+            bar.set_path(wt)
             await pilot.pause()
             await pilot.click("#btn-explorer #inner")
             await pilot.pause()
@@ -216,12 +206,7 @@ class TestSessionActionBar:
         app = WidgetTestApp(bar)
 
         async with app.run_test() as pilot:
-            view = SessionNodeView(
-                short_id=1, mind="wren", task="test", description="",
-                status="started", git_stats="", is_active=False,
-                worktree_path=wt,
-            )
-            bar.set_session(view)
+            bar.set_path(wt)
             await pilot.pause()
             await pilot.click("#btn-editor #inner")
             await pilot.pause()
