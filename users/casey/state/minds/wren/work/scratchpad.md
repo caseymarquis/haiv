@@ -6,6 +6,28 @@ Rough thinking, debugging notes, half-formed ideas.
 
 ## Current Session Notes
 
+### Big TUI session (2026-03-23)
+
+Massive session with Casey. Highlights:
+
+**Action bar → clickable buttons → layout redesign → recent files** — all in one session. The TUI went from a basic tabbed layout to a split panel with always-visible session info, recent files with live updates, and file opening.
+
+**Hot reload saga:** In-process module flush never worked because Textual caches class state globally (LRU caches on `_css_bases`, `__init_subclass__` registries). Research confirmed maintainer says "not a goal." Solution: `os.execv("hv-tui")` — process replacement. Dead simple, always works. The `_runner.py` file is outside the blast radius and should never change.
+
+**The `_render` trap:** Named a method `_render` on a `Vertical` subclass. Textual's `Widget._render()` returns a `Visual`; ours returned `None`. Crash deep in Textual internals with no obvious connection to our code. Found via bisection with isolated test copies — Casey's debugging approach (copy, don't wipe) was the right call.
+
+**Watchdog fires on reads:** VS Code's git extension opens `.git` every ~1s. Watchdog's `on_any_event` fires for `opened`/`closed_no_write`. Our gatherer ran `git ls-files` which also touched `.git`. Feedback loop. Fix: filter to write event types only in `_BridgeHandler`.
+
+**The `_Workers` name collision:** Textual widgets have a `workers` attribute (`WorkerManager`). We named our class `_Workers` which shadowed it on the app. Renamed to `_bg_workers`.
+
+**`OptionList.ALLOW_SELECT`:** Defaults to `False`. Enter doesn't fire `OptionSelected` without it. Need to subclass with `ALLOW_SELECT = True`.
+
+**Casey's process preferences:**
+- Use isolated test copies for debugging, don't modify production files during bisection
+- Don't wipe files and rebuild — remove pieces from a copy until it passes
+- Tests first for debugging, not guessing
+- Keep it simple — `os.execv` over module reload, filesystem query over complex caching
+
 ### Session close-out design (2026-02-12)
 
 Key decisions made with Casey:
