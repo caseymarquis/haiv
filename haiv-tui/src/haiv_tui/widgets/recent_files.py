@@ -51,6 +51,11 @@ class RecentFilesWidget(Vertical):
         height: 1fr;
         padding: 0 1;
     }
+    RecentFilesWidget #recent-files-path {
+        height: auto;
+        padding: 0 1;
+        color: $text-muted;
+    }
     """
 
     BINDINGS = [
@@ -80,6 +85,7 @@ class RecentFilesWidget(Vertical):
     def compose(self) -> ComposeResult:
         yield Static("Recently Edited Files", id="recent-files-header")
         yield OptionList(id="recent-files-list")
+        yield Static("", id="recent-files-path")
 
     def on_mount(self) -> None:
         self._store.recent_files_changed.connect(self._on_recent_files_changed)
@@ -138,15 +144,15 @@ class RecentFilesWidget(Vertical):
             option_list.highlighted = min(prev_highlighted, option_list.option_count - 1)
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
-        """Show full path in header when highlighted."""
-        header = self.query_one("#recent-files-header", Static)
+        """Show full path at bottom when highlighted."""
+        path_display = self.query_one("#recent-files-path", Static)
         if event.option.id:
             parts = event.option.id.split("\t", 1)
             if len(parts) == 2 and self._worktrees_dir:
                 full = self._worktrees_dir / parts[0] / parts[1]
-                header.update(str(full))
+                path_display.update(str(full))
                 return
-        header.update("Recently Edited Files")
+        path_display.update("")
 
     def on_click(self, event: Click) -> None:
         """Double-click opens the highlighted file."""
