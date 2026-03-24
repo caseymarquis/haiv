@@ -6,15 +6,19 @@ The terminal UI. A Textual app that runs in the left pane of the hud tab, provid
 
 ```
 haiv_tui/
-├── __init__.py       # Entry point: main() loop with hot-reload + dep factory
-├── app.py            # HaivApp — takes deps/server/client via constructor
-├── init.py           # HaivDeps dataclass + init() factory
-├── store.py          # TuiStore — dirty-driven signal dispatch
+├── __init__.py          # Re-exports main from _runner
+├── _runner.py           # Entry point: single run + os.execv restart
+├── app.py               # HaivApp — takes deps/server/client via constructor
+├── init.py              # HaivDeps dataclass + init() factory
+├── recent_files_worker.py  # Background thread: file watcher + gatherer
+├── store.py             # TuiStore — dirty-driven signal dispatch
 └── widgets/
-    ├── errors.py     # Error display (plain list[str], no assembly)
-    ├── hud.py        # HUD: widget + HudView DTO + assembly
-    ├── markdown_file.py  # File viewer with watchdog auto-refresh
-    └── sessions.py   # Sessions tree + action bar + DTOs + assembly
+    ├── debounce_button.py   # Reusable button with cooldown after press
+    ├── errors.py            # Error display (plain list[str], no assembly)
+    ├── hud.py               # HUD: always-visible session panel + action bar
+    ├── markdown_file.py     # File viewer with watchdog auto-refresh
+    ├── recent_files.py      # Recent files list + age coloring + diff stats
+    └── sessions.py          # Sessions tree + action bar + DTOs + assembly
 ```
 
 ---
@@ -29,9 +33,9 @@ Raw data (haiv-lib) → TuiModel sections → TuiServer (dirty tracking)
 
 **Key principle:** Raw data gathering (haiv-lib) is separate from display assembly (haiv-tui). The model holds only raw sections (`SessionsRaw`, `GitRaw`, `ActiveMindRaw`). Widgets own their own DTOs and assembly logic — co-located at the bottom of each widget file. Assembly functions are pure (raw in, DTO out) and testable without Textual.
 
-## `__init__.py` — Entry point
+## `_runner.py` — Entry point
 
-A `while True` loop that creates and runs the app. On `Ctrl+R`, the app exits with `RESTART_EXIT_CODE`, the loop flushes all `haiv` and `haiv_tui` modules from `sys.modules`, and reimports everything — live code reload without restarting the process. The loop holds the dependency factory: each iteration calls `init()` to get fresh `HaivDeps`, creates a `TuiServer` and `TuiLocalClient`, and passes all three to `HaivApp`.
+Single-run entry point. Creates deps, server, client, runs the app. On `Ctrl+R`, the app exits with `RESTART_EXIT_CODE` and the runner calls `os.execv("hv-tui")` to replace the process entirely — no module flushing, no stale Textual class caches. Crash tracebacks go to `~/.cache/haiv/last-crash.log`. The runner checks the return code *before* calling `app.shutdown()` because shutdown can block on thread joins.
 
 ## `app.py` — HaivApp
 
@@ -42,7 +46,7 @@ Textual `App` subclass. Takes `HaivDeps`, `TuiServer`, and `TuiLocalClient` as k
 
 The poll loop calls `server.drain_dirty()` to atomically get changed section names, reads a frozen snapshot, and passes both to `store.update()`. The store fires blinker signals only for dirty sections.
 
-Layout: `Header`, `TabbedContent` (Sessions, Session, Plans), `ErrorsWidget`, `Footer`. Tab/Shift+Tab cycles tabs.
+Layout: `Header`, session panel (65% — HUD with action bar + recent files), tabs panel (35% — Sessions, Plans), `ErrorsWidget`, `Footer`. `Screen { overflow: hidden }` prevents outer scroll. Tab/Shift+Tab cycles tabs. Active mind detected from WezTerm tab title on mount and displayed in the header.
 
 ## `init.py` — Dependency Factory
 
@@ -64,6 +68,19 @@ Contains three child widgets:
 ## `widgets/hud.py` — HUD
 
 Takes `store` as keyword-only constructor dep. Subscribes to `active_mind_changed` and `sessions_changed`. Calls `build_hud_view()` to assemble a `HudView` DTO showing the active mind's worktree, task summary, and session identifier.
+
+## **CRITICAL: Do Not Override Textual Internal Methods**
+
+**Never name a method `_render` on a Textual widget.** Textual's `Widget` base class uses `_render()` internally to produce visual output. Overriding it with a method that returns `None` causes `AttributeError: 'NoneType' object has no attribute 'render_strips'` — a crash that is extremely difficult to diagnose because:
+
+- The error points to Textual internals, not your code
+- The method is never explicitly called by you
+- Tests of identical inline widget classes pass (because Textual resolves the MRO differently)
+- The crash only manifests when the widget is imported from a separate module
+
+**Safe alternatives:** `_refresh_content`, `_rebuild`, `_update_display` — anything that doesn't collide with Textual's private API. In general, avoid `_render`, `_compose`, `_layout`, and other `_`-prefixed names that Textual might use internally.
+
+---
 
 ## Dependency Injection
 
