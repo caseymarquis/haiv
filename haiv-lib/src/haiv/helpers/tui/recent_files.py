@@ -13,6 +13,16 @@ from pathlib import Path
 from haiv.helpers.tui.TuiModel import FileStatus, RecentFileEntry, RecentFilesRaw
 
 
+def file_sort_key(e: RecentFileEntry) -> tuple[str, str, str]:
+    """Sort key: worktree, then leaf filename, then full path as tiebreaker.
+
+    Case-insensitive, underscores ignored. Uses forward-slash split only —
+    paths must be git's forward-slash format (not Windows backslashes).
+    """
+    leaf = e.path.rsplit("/", 1)[-1].lower().replace("_", "")
+    return (e.worktree.lower(), leaf, e.path.lower())
+
+
 def gather_recent_files(
     worktrees_dir: Path,
     *,
@@ -72,13 +82,9 @@ def gather_recent_files(
             else:
                 modified.append(entry)
 
-    def _sort_key(e: RecentFileEntry) -> tuple[str, str, str]:
-        leaf = e.path.rsplit("/", 1)[-1].lower().replace("_", "")
-        return (e.worktree.lower(), leaf, e.path.lower())
-
-    modified.sort(key=_sort_key)
-    deleted.sort(key=_sort_key)
-    conflicted.sort(key=_sort_key)
+    modified.sort(key=file_sort_key)
+    deleted.sort(key=file_sort_key)
+    conflicted.sort(key=file_sort_key)
 
     return RecentFilesRaw(
         modified=modified[:max_files],

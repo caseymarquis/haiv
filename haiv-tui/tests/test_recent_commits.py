@@ -2,8 +2,9 @@
 
 import time
 
-from haiv.helpers.tui.TuiModel import CommitEntry, CommitFileEntry, RecentCommitsRaw
+from haiv.helpers.tui.TuiModel import CommitEntry, CommitFileEntry, RecentCommitsRaw, RecentFileEntry
 from haiv.helpers.tui.recent_commits import parse_git_log_numstat
+from haiv.helpers.tui.recent_files import file_sort_key
 from haiv_tui.widgets.recent_files import build_commit_views, shortest_unique_names
 
 
@@ -203,22 +204,88 @@ class TestParseGitLogNumstat:
 
 class TestFileSort:
 
-    def test_case_insensitive_sort(self):
-        """Uppercase and lowercase should sort together."""
-        paths = ["Zebra.py", "alpha.py", "Beta.py"]
-        result = shortest_unique_names(paths)
-        # shortest_unique_names doesn't sort — it preserves input order.
-        # The sort happens in the gatherer/assembly. This test is for
-        # documenting that shortest_unique_names preserves order.
-        assert result == ["Zebra.py", "alpha.py", "Beta.py"]
+    def _entry(self, path: str, worktree: str = "main") -> RecentFileEntry:
+        return RecentFileEntry(path=path, worktree=worktree)
 
-    def test_underscore_insensitive_sort(self):
-        """Underscores should be ignored in sort order.
+    def test_sorts_by_leaf_not_directory(self):
+        """app.py in tests/ sorts next to app.py in src/, not after all src/ files."""
+        entries = [
+            self._entry("src/zebra.py"),
+            self._entry("tests/app.py"),
+            self._entry("src/app.py"),
+        ]
+        entries.sort(key=file_sort_key)
+        assert [e.path for e in entries] == [
+            "src/app.py",
+            "tests/app.py",
+            "src/zebra.py",
+        ]
 
-        _private.py should sort near 'p', not before everything else.
+    def test_case_insensitive(self):
+        entries = [
+            self._entry("src/Zebra.py"),
+            self._entry("src/alpha.py"),
+            self._entry("src/Beta.py"),
+        ]
+        entries.sort(key=file_sort_key)
+        assert [e.path for e in entries] == [
+            "src/alpha.py",
+            "src/Beta.py",
+            "src/Zebra.py",
+        ]
+
+    def test_underscore_ignored(self):
+        """_private.py sorts near 'p', not before everything."""
+        entries = [
+            self._entry("_private.py"),
+            self._entry("alpha.py"),
+            self._entry("zebra.py"),
+        ]
+        entries.sort(key=file_sort_key)
+        assert [e.path for e in entries] == [
+            "alpha.py",
+            "_private.py",
+            "zebra.py",
+        ]
+
+    def test_forward_slash_paths(self):
+        """Git's forward-slash paths: leaf is extracted correctly."""
+        entries = [
+            self._entry("deeply/nested/dir/beta.py"),
+            self._entry("alpha.py"),
+        ]
+        entries.sort(key=file_sort_key)
+        assert [e.path for e in entries] == [
+            "alpha.py",
+            "deeply/nested/dir/beta.py",
+        ]
+
+    def test_backslash_paths_no_leaf_extraction(self):
+        """Backslash paths don't split — whole path becomes the leaf.
+
+        This is expected: git always gives forward slashes. If backslash
+        paths sneak in, they sort as opaque strings rather than crashing.
         """
-        # This tests the sort key, not shortest_unique_names.
-        # The sort key should produce: alpha, _beta, gamma (treating _ as nothing)
-        items = ["_beta.py", "alpha.py", "gamma.py"]
-        sorted_items = sorted(items, key=lambda s: s.lower().replace("_", ""))
-        assert sorted_items == ["alpha.py", "_beta.py", "gamma.py"]
+        entries = [
+            self._entry("src\\zebra.py"),
+            self._entry("src\\alpha.py"),
+        ]
+        entries.sort(key=file_sort_key)
+        # Sorted as opaque strings (no leaf extraction)
+        assert [e.path for e in entries] == [
+            "src\\alpha.py",
+            "src\\zebra.py",
+        ]
+
+    def test_mixed_worktrees_sort_separately(self):
+        entries = [
+            self._entry("zebra.py", worktree="main"),
+            self._entry("alpha.py", worktree="feature"),
+            self._entry("alpha.py", worktree="main"),
+        ]
+        entries.sort(key=file_sort_key)
+        assert [(e.worktree, e.path) for e in entries] == [
+            ("feature", "alpha.py"),
+            ("main", "alpha.py"),
+            ("main", "zebra.py"),
+        ]
