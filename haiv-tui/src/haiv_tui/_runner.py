@@ -45,6 +45,11 @@ def main():
         # os.execv replaces the process so cleanup is unnecessary on restart.
         rc = app.return_code
         if (rc or 0) == RESTART_EXIT_CODE:
+            if sys.platform == "win32":
+                # os.execv on Windows spawns a detached process instead of
+                # replacing the current one, breaking the terminal context.
+                # Exit cleanly and let the user restart manually for now.
+                return
             hv_tui = shutil.which("hv-tui")
             os.execv(hv_tui, [hv_tui, project])
 
