@@ -55,8 +55,10 @@ import queue
 import threading
 from multiprocessing.connection import Client, Listener
 from ._TuiIpc import (
+    CommandRequest,
     ReadRequest,
     Request,
+    TuiCommand,
     WriteRequest,
     pipe_address,
 )
@@ -88,6 +90,7 @@ class TuiServer:
         # the TUI poll loop via drain_dirty(). Both operations are
         # atomic via Atom.
         self._dirty: Atom[set[str]] = Atom(set())
+        self._commands: Atom[list[TuiCommand]] = Atom([])
         self._queue: queue.Queue[tuple[Request, concurrent.futures.Future]] = queue.Queue()
         self._stop_event = threading.Event()
         self._ipc_listener: TuiIpcListener | None = None
@@ -149,6 +152,22 @@ class TuiServer:
 
         self._dirty.modify(swap)
         return drained[0] if drained else frozenset()
+
+    def drain_commands(self) -> list[TuiCommand]:
+        """Atomically return and clear the command buffer.
+
+        Called by the TUI poll loop independently of drain_dirty().
+        Commands are passed to the CommandDispatcher, not through
+        the store/signal system.
+        """
+        drained: list[list[TuiCommand]] = []
+
+        def swap(cmds: list[TuiCommand]) -> list[TuiCommand]:
+            drained.append(cmds)
+            return []
+
+        self._commands.modify(swap)
+        return drained[0] if drained else []
 
     def submit(self, request: Request) -> concurrent.futures.Future:
         """Submit a request to the model thread's message queue.
@@ -213,6 +232,9 @@ class TuiServer:
                     future.set_result(result)
                 elif isinstance(request, WriteRequest):
                     self._apply_write(request.model)
+                    future.set_result(None)
+                elif isinstance(request, CommandRequest):
+                    self._commands.modify(lambda cmds: cmds + [request.command])
                     future.set_result(None)
             except Exception as e:
                 future.set_exception(e)

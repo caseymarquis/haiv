@@ -8,7 +8,10 @@ from typing import cast
 import pytest
 
 from haiv._infrastructure.TuiServer import (
+    CommandRequest,
     ReadRequest,
+    TuiCommand,
+    TuiCommandType,
     TuiServer,
     WriteRequest,
     pipe_address,
@@ -145,5 +148,59 @@ class TestServerReadWrite:
         dirty2 = server.drain_dirty()
         assert "sessions" in dirty1
         assert len(dirty2) == 0
+
+
+class TestServerCommands:
+    """Command queue operations via submit()."""
+
+    def test_command_buffers_and_drains(self, server):
+        """A submitted command appears in drain_commands()."""
+        cmd = TuiCommand(type=TuiCommandType.RESTART, payload=None)
+        future = server.submit(CommandRequest(command=cmd))
+        future.result(timeout=1)
+
+        commands = server.drain_commands()
+        assert len(commands) == 1
+        assert commands[0].type == TuiCommandType.RESTART
+
+    def test_drain_commands_clears(self, server):
+        """drain_commands returns and clears the buffer."""
+        cmd = TuiCommand(type=TuiCommandType.BOUNCE, payload=None)
+        future = server.submit(CommandRequest(command=cmd))
+        future.result(timeout=1)
+
+        commands1 = server.drain_commands()
+        commands2 = server.drain_commands()
+        assert len(commands1) == 1
+        assert len(commands2) == 0
+
+    def test_multiple_commands_drain_in_order(self, server):
+        """Multiple commands drain in submission order."""
+        cmd1 = TuiCommand(type=TuiCommandType.RESTART, payload=None)
+        cmd2 = TuiCommand(type=TuiCommandType.BOUNCE, payload=None)
+        server.submit(CommandRequest(command=cmd1)).result(timeout=1)
+        server.submit(CommandRequest(command=cmd2)).result(timeout=1)
+
+        commands = server.drain_commands()
+        assert len(commands) == 2
+        assert commands[0].type == TuiCommandType.RESTART
+        assert commands[1].type == TuiCommandType.BOUNCE
+
+    def test_commands_independent_of_dirty(self, server):
+        """Commands don't appear in drain_dirty, data doesn't appear in drain_commands."""
+        # Submit a command and a write
+        cmd = TuiCommand(type=TuiCommandType.RESTART, payload=None)
+        server.submit(CommandRequest(command=cmd)).result(timeout=1)
+
+        entry = SessionEntry(mind="wren")
+        model = TuiModel(sessions=SessionsRaw(entries=[entry]))
+        server.submit(WriteRequest(model=model)).result(timeout=1)
+
+        # Each drain returns only its own kind
+        dirty = server.drain_dirty()
+        commands = server.drain_commands()
+        assert "sessions" in dirty
+        assert len(commands) == 1
+        assert commands[0].type == TuiCommandType.RESTART
 
 

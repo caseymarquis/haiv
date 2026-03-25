@@ -23,7 +23,7 @@ import concurrent.futures
 from typing import Callable
 
 from ._freeze import freeze_model
-from ._TuiIpc import ReadRequest, Request, WriteRequest
+from ._TuiIpc import CommandRequest, ReadRequest, Request, TuiCommand, WriteRequest
 from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentCommitsRaw, RecentFilesRaw, SessionsRaw, TuiModel
 
 
@@ -63,4 +63,13 @@ class TuiLocalClient:
         """
         model = TuiModel(sessions=sessions, git=git, active_mind=active_mind, recent_files=recent_files, recent_commits=recent_commits)
         future = self._submit(WriteRequest(model=model))
+        future.result()
+
+    def send_command(self, command: TuiCommand) -> None:
+        """Send a UI control command to the TUI.
+
+        Submits a command request to the server's queue. The TUI
+        poll loop drains commands independently of model updates.
+        """
+        future = self._submit(CommandRequest(command=command))
         future.result()
