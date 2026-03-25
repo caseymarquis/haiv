@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Vertical, VerticalScroll
 from textual.events import Click
 from textual.widgets import Static, Tree
 
@@ -89,21 +89,25 @@ class SessionActionBar(Vertical):
             self._errors.append(f"{event.debounce_button.id}: {e}")
 
 
-class SessionPreview(Static):
+class SessionPreview(VerticalScroll):
     """Preview area showing details of the highlighted session."""
 
     DEFAULT_CSS = """
     SessionPreview {
         height: auto;
-        max-height: 8;
+        max-height: 5;
         padding: 0 1;
         border-top: solid $surface-lighten-2;
     }
     """
 
+    def compose(self) -> ComposeResult:
+        yield Static("", id="session-preview-content")
+
     def render_preview(self, view: SessionNodeView | None) -> None:
+        content = self.query_one("#session-preview-content", Static)
         if view is None:
-            self.update("")
+            content.update("")
             return
         lines = [
             f"{view.mind}: {view.task}",
@@ -111,7 +115,7 @@ class SessionPreview(Static):
         ]
         if view.description:
             lines += ["", view.description]
-        self.update("\n".join(lines))
+        content.update("\n".join(lines))
 
 
 class SessionsWidget(Vertical):
