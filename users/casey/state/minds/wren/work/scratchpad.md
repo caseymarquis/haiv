@@ -6,6 +6,24 @@ Rough thinking, debugging notes, half-formed ideas.
 
 ## Current Session Notes
 
+### Activity tree + command queue (2026-03-24)
+
+Session with Casey. Six commits on main, one on hq. Luna delivered command queue in parallel.
+
+**Activity tree redesign:** Replaced flat OptionList with categorized Tree. Three file categories (conflicted hidden when empty, recently modified, deleted) + recent commits (collapsed by default). Gatherer rewritten from "scan all files by mtime" to `git status --porcelain` — only shows files with pending changes. `FileStatus` enum. Age display ("just now", "3m", "1h 2m"). Alphabetical sort case-insensitive, underscore-ignored.
+
+**Recent commits:** New `RecentCommitsRaw` model section. Single `git log --numstat --format="%x00..."` call — the two-call approach (metadata + numstat separately) broke because `--format=""` doesn't produce blank lines between commits. Null-byte delimiter in format string is reliable. `parse_git_log_numstat` extracted for direct testing. Merge commits with no files handled correctly.
+
+**Windows bugs:** Two path issues. (1) `PurePosixPath` can't split backslash paths — `shortest_unique_names` returned full paths on Windows. Fixed by keeping git's forward-slash strings untouched through the pipeline. (2) File-not-found on open — same root cause, `str(path.relative_to())` introduces backslashes on Windows.
+
+**Command queue (Luna):** Typed `TuiCommand` envelope alongside existing `write_raw`. `send_command()` on both local and IPC clients. `CommandDispatcher` with injected handlers. Drains independently of model updates in poll loop.
+
+**Bounce/restart commands:** `hv tui bounce` and `hv tui restart` — thin shells calling `ctx.tui.bounce()` / `ctx.tui.restart()`. Bounce filters by `session.bounce` field. Tested restart live — works.
+
+**Session serialization cleanup:** `_session_to_dict` was a mess of conditional writes. Casey's principle: explicit writes, forgiving reads. Always write all fields. Tolerate missing on read. Applied to all fields.
+
+**Wild idea (not built):** Give minds commands that surface different TUI info based on what workflow is active. Contextual information surfacing. Worth revisiting.
+
 ### Big TUI session (2026-03-23)
 
 Massive session with Casey. Highlights:
