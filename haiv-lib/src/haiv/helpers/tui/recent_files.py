@@ -72,9 +72,12 @@ def gather_recent_files(
             else:
                 modified.append(entry)
 
-    modified.sort(key=lambda e: (e.worktree, e.path))
-    deleted.sort(key=lambda e: (e.worktree, e.path))
-    conflicted.sort(key=lambda e: (e.worktree, e.path))
+    def _sort_key(e: RecentFileEntry) -> tuple[str, str]:
+        return (e.worktree.lower(), e.path.lower().replace("_", ""))
+
+    modified.sort(key=_sort_key)
+    deleted.sort(key=_sort_key)
+    conflicted.sort(key=_sort_key)
 
     return RecentFilesRaw(
         modified=modified[:max_files],
