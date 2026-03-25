@@ -10,5 +10,4 @@ def define() -> cmd.Def:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    # TODO: ctx.tui.send_command(TuiCommand.BOUNCE) — waiting on command queue from Luna
-    ctx.print("Not yet wired — waiting on TUI command queue.")
+    ctx.tui.bounce()

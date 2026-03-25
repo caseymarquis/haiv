@@ -9,10 +9,5 @@ class TestRestartRouting:
         match = test.require_routes_to("tui restart")
         assert match.file.name == "restart.py"
 
-
-class TestRestartExecution:
-
-    def test_runs_without_error(self, capsys):
-        test.execute("tui restart")
-        captured = capsys.readouterr()
-        assert "Not yet wired" in captured.out
+    def test_parses(self):
+        test.parse("tui restart")

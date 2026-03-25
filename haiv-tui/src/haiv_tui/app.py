@@ -238,8 +238,10 @@ class HaivApp(App):
             if not snapshot.sessions or not snapshot.sessions.entries:
                 return
 
-            # TODO: filter to entries where session.bounce is True
-            entries = sorted(snapshot.sessions.entries, key=lambda e: e.mind)
+            entries = sorted(
+                [e for e in snapshot.sessions.entries if e.bounce],
+                key=lambda e: e.mind,
+            )
             if not entries:
                 return
 
