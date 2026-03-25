@@ -21,6 +21,7 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
+from textual.events import Click
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode
 
@@ -74,7 +75,7 @@ class RecentFilesWidget(Vertical):
     BINDINGS = [
         Binding("j", "cursor_down", "Down", show=False),
         Binding("k", "cursor_up", "Up", show=False),
-        Binding("enter", "open_highlighted", "Open", show=False),
+        Binding("enter", "open_highlighted", "Open", show=False, priority=True),
     ]
 
     def __init__(
@@ -217,16 +218,20 @@ class RecentFilesWidget(Vertical):
         else:
             path_display.update("")
 
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        """Open the file on Enter/double-click."""
-        if isinstance(event.node.data, FileNodeData):
-            self._open_file(event.node.data)
+    def on_click(self, event: Click) -> None:
+        """Double-click opens the highlighted file."""
+        if event.chain >= 2:
+            self.action_open_highlighted()
 
-    def _open_file(self, data: FileNodeData) -> None:
+    def _open_file(self, data: FileNodeData, node=None) -> None:
         if not self._worktrees_dir:
             return
         full_path = self._worktrees_dir / data.worktree / data.path
         if full_path.is_file():
+            if node is not None:
+                original_label = node.label
+                node.set_label(Text("Opening...", style="bold yellow"))
+                self.set_timer(2, lambda: node.set_label(original_label))
             try:
                 open_in_editor(full_path, self._settings.editor_command)
             except Exception as e:
@@ -236,7 +241,7 @@ class RecentFilesWidget(Vertical):
         tree = self.query_one("#recent-files-tree", Tree)
         node = tree.cursor_node
         if node is not None and isinstance(node.data, FileNodeData):
-            self._open_file(node.data)
+            self._open_file(node.data, node)
 
     def action_cursor_down(self) -> None:
         self.query_one(Tree).action_cursor_down()
