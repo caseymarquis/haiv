@@ -1,8 +1,13 @@
-"""Recent files widget — shows recently modified files with diff stats.
+"""Pending changes widget — tree view of modified, deleted, and conflicted files.
 
 Subscribes to recent_files_changed signal. Files are colored on a gradient
 from bright green (just modified) to faded gray (older edits). Double-click
 or Enter opens the file in the configured editor.
+
+Tree categories:
+  - Conflicted (hidden when empty)
+  - Recently Modified
+  - Deleted
 """
 
 from __future__ import annotations
@@ -15,12 +20,17 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
-from textual.events import Click
-from textual.widgets import OptionList, Static
-from textual.widgets.option_list import Option
+from textual.widgets import Static, Tree
+from textual.widgets.tree import TreeNode
 
 from haiv.helpers.open import open_in_editor
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, RecentFilesRaw, SessionsRaw
+from haiv.helpers.tui.TuiModel import (
+    ActiveMindRaw,
+    FileStatus,
+    RecentFileEntry,
+    RecentFilesRaw,
+    SessionsRaw,
+)
 from haiv.settings import HaivSettings
 
 from typing import TYPE_CHECKING
@@ -37,7 +47,7 @@ if TYPE_CHECKING:
 
 
 class RecentFilesWidget(Vertical):
-    """Displays recently modified files with age-based coloring and diff stats."""
+    """Tree view of pending file changes across worktrees."""
 
     DEFAULT_CSS = """
     RecentFilesWidget {
@@ -47,7 +57,7 @@ class RecentFilesWidget(Vertical):
         height: auto;
         padding: 0 1;
     }
-    RecentFilesWidget #recent-files-list {
+    RecentFilesWidget #recent-files-tree {
         height: 1fr;
         padding: 0 1;
     }
@@ -83,11 +93,15 @@ class RecentFilesWidget(Vertical):
         self._sessions: SessionsRaw | None = None
 
     def compose(self) -> ComposeResult:
-        yield Static("Recently Edited Files", id="recent-files-header")
-        yield OptionList(id="recent-files-list")
+        yield Static("Pending Changes", id="recent-files-header")
+        yield Tree("", id="recent-files-tree")
         yield Static("", id="recent-files-path")
 
     def on_mount(self) -> None:
+        tree = self.query_one("#recent-files-tree", Tree)
+        tree.show_root = False
+        tree.guide_depth = 2
+
         self._store.recent_files_changed.connect(self._on_recent_files_changed)
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
         self._store.sessions_changed.connect(self._on_sessions_changed)
@@ -120,81 +134,94 @@ class RecentFilesWidget(Vertical):
         return None
 
     def _refresh_content(self) -> None:
-        option_list = self.query_one("#recent-files-list", OptionList)
-        prev_highlighted = option_list.highlighted
-        option_list.clear_options()
+        tree = self.query_one("#recent-files-tree", Tree)
+        tree.clear()
 
-        if not self._recent_files or not self._recent_files.files:
+        if not self._recent_files:
             return
 
         worktree = self._active_worktree()
-        views = build_recent_files_view(self._recent_files, worktree=worktree)
+        views = build_file_tree_views(self._recent_files, worktree=worktree)
 
-        for v in views:
-            line = Text()
-            line.append(v.diff_display, style=v.diff_style)
-            line.append(" ")
-            line.append(v.display_path, style=v.age_style)
-            if not worktree:
-                line.append(f"  ({v.worktree})", style="dim")
-            # id encodes worktree:path for resolution on selection
-            option_list.add_option(Option(line, id=f"{v.worktree}\t{v.full_path}"))
+        for category in views:
+            if not category.entries:
+                continue
+            cat_label = Text(f"{category.label} ({len(category.entries)})", style="bold")
+            cat_node = tree.root.add(cat_label)
 
-        if prev_highlighted is not None and option_list.option_count > 0:
-            option_list.highlighted = min(prev_highlighted, option_list.option_count - 1)
+            for v in category.entries:
+                line = Text()
+                line.append(v.diff_display, style=v.diff_style)
+                line.append(" ")
+                line.append(v.display_path, style=v.age_style)
+                if not worktree:
+                    line.append(f"  ({v.worktree})", style="dim")
+                if v.age_display:
+                    line.append(f"  {v.age_display}", style="dim italic")
+                cat_node.add_leaf(
+                    line,
+                    data=FileNodeData(worktree=v.worktree, path=v.full_path),
+                )
 
-    def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
+            cat_node.expand()
+
+    def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Show full path at bottom when highlighted."""
         path_display = self.query_one("#recent-files-path", Static)
-        if event.option.id:
-            parts = event.option.id.split("\t", 1)
-            if len(parts) == 2 and self._worktrees_dir:
-                full = self._worktrees_dir / parts[0] / parts[1]
-                path_display.update(str(full))
-                return
-        path_display.update("")
+        if isinstance(event.node.data, FileNodeData) and self._worktrees_dir:
+            full = self._worktrees_dir / event.node.data.worktree / event.node.data.path
+            path_display.update(str(full))
+        else:
+            path_display.update("")
 
-    def on_click(self, event: Click) -> None:
-        """Double-click opens the highlighted file."""
-        if event.chain >= 2:
-            self.action_open_highlighted()
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        """Open the file on Enter/double-click."""
+        if isinstance(event.node.data, FileNodeData):
+            self._open_file(event.node.data)
 
-    def action_open_highlighted(self) -> None:
-        """Open the currently highlighted file in the editor."""
-        option_list = self.query_one("#recent-files-list", OptionList)
-        highlighted = option_list.highlighted
-        if highlighted is not None:
-            option = option_list.get_option_at_index(highlighted)
-            self._open_file(option.id)
-
-    def _open_file(self, option_id: str | None) -> None:
-        if not option_id or not self._worktrees_dir:
+    def _open_file(self, data: FileNodeData) -> None:
+        if not self._worktrees_dir:
             return
-        parts = option_id.split("\t", 1)
-        if len(parts) != 2:
-            return
-        wt, rel_path = parts
-        full_path = self._worktrees_dir / wt / rel_path
+        full_path = self._worktrees_dir / data.worktree / data.path
         if full_path.is_file():
             try:
                 open_in_editor(full_path, self._settings.editor_command)
             except Exception as e:
                 self._errors.append(f"open_file: {e}")
 
+    def action_open_highlighted(self) -> None:
+        tree = self.query_one("#recent-files-tree", Tree)
+        node = tree.cursor_node
+        if node is not None and isinstance(node.data, FileNodeData):
+            self._open_file(node.data)
+
     def action_cursor_down(self) -> None:
-        self.query_one(OptionList).action_cursor_down()
+        self.query_one(Tree).action_cursor_down()
 
     def action_cursor_up(self) -> None:
-        self.query_one(OptionList).action_cursor_up()
+        self.query_one(Tree).action_cursor_up()
 
 
 # ---------------------------------------------------------------------------
-# DTO
+# Node data
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FileNodeData:
+    """Attached to tree leaf nodes for file identification."""
+
+    worktree: str
+    path: str
+
+
+# ---------------------------------------------------------------------------
+# DTOs
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class RecentFileView:
+class FileView:
     """What the widget needs to render one file entry."""
 
     display_path: str
@@ -203,6 +230,15 @@ class RecentFileView:
     diff_display: str
     diff_style: str
     age_style: str
+    age_display: str
+
+
+@dataclass
+class CategoryView:
+    """A category (group) of file entries."""
+
+    label: str
+    entries: list[FileView]
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +257,8 @@ _AGE_DEFAULT = "#555555"   # older: dim gray
 
 
 def _age_color(mtime: float, now: float) -> str:
+    if mtime == 0.0:
+        return _AGE_DEFAULT
     age = now - mtime
     for threshold, color in _AGE_STOPS:
         if age < threshold:
@@ -228,15 +266,37 @@ def _age_color(mtime: float, now: float) -> str:
     return _AGE_DEFAULT
 
 
+def format_age(seconds: float) -> str:
+    """Format seconds into a human-readable relative time.
+
+    Returns "just now", "3m", "1h 3m", "2d", etc.
+    """
+    if seconds < 60:
+        return "just now"
+    minutes = int(seconds / 60)
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    remaining_min = minutes % 60
+    if hours < 24:
+        if remaining_min:
+            return f"{hours}h {remaining_min}m"
+        return f"{hours}h"
+    days = hours // 24
+    return f"{days}d"
+
+
 def shortest_unique_names(paths: list[str]) -> list[str]:
     """Compute the shortest unique suffix for each path.
 
     Given ["src/haiv/helpers/tui/helpers.py", "src/haiv/helpers/utils/helpers.py", "app.py"],
     returns ["tui/helpers.py", "utils/helpers.py", "app.py"].
-    """
-    from pathlib import PurePath
 
-    parts_list = [PurePath(p).parts for p in paths]
+    Expects forward-slash paths (as produced by git).
+    """
+    from pathlib import PurePosixPath
+
+    parts_list = [PurePosixPath(p).parts for p in paths]
     result = []
     for i, parts in enumerate(parts_list):
         # Start with just the filename, extend until unique
@@ -259,18 +319,13 @@ def shortest_unique_names(paths: list[str]) -> list[str]:
     return result
 
 
-def build_recent_files_view(raw: RecentFilesRaw, *, worktree: str | None = None) -> list[RecentFileView]:
-    """Assemble display views from raw recent files data.
+def _build_views(entries: list[RecentFileEntry], now: float, worktree_filter: str | None) -> list[FileView]:
+    """Build FileViews from a list of entries. Alphabetical, with shortest unique names."""
+    filtered = [e for e in entries if not worktree_filter or e.worktree == worktree_filter]
+    if not filtered:
+        return []
 
-    Args:
-        raw: The raw file data.
-        worktree: If set, only show files from this worktree.
-
-    Pure function — raw data in, DTOs out. Testable without Textual.
-    """
-    filtered = [e for e in raw.files if not worktree or e.worktree == worktree]
     short_names = shortest_unique_names([e.path for e in filtered])
-    now = time.time()
     views = []
     for entry, short_name in zip(filtered, short_names):
         if entry.additions or entry.deletions:
@@ -280,12 +335,44 @@ def build_recent_files_view(raw: RecentFilesRaw, *, worktree: str | None = None)
             diff_display = "     "
             diff_style = ""
 
-        views.append(RecentFileView(
+        age_seconds = (now - entry.mtime) if entry.mtime > 0 else 0
+        age_display = format_age(age_seconds) if entry.mtime > 0 else ""
+
+        views.append(FileView(
             display_path=short_name,
             full_path=entry.path,
             worktree=entry.worktree,
             diff_display=f"{diff_display:>10}",
             diff_style=diff_style,
             age_style=_age_color(entry.mtime, now),
+            age_display=age_display,
         ))
     return views
+
+
+def build_file_tree_views(
+    raw: RecentFilesRaw,
+    *,
+    worktree: str | None = None,
+) -> list[CategoryView]:
+    """Assemble category views from raw file data.
+
+    Pure function — raw data in, DTOs out. Testable without Textual.
+    Returns categories in display order. Empty categories are included
+    so the widget can decide whether to hide them.
+    """
+    now = time.time()
+    return [
+        CategoryView(
+            label="Conflicted",
+            entries=_build_views(raw.conflicted, now, worktree),
+        ),
+        CategoryView(
+            label="Recently Modified",
+            entries=_build_views(raw.modified, now, worktree),
+        ),
+        CategoryView(
+            label="Deleted",
+            entries=_build_views(raw.deleted, now, worktree),
+        ),
+    ]

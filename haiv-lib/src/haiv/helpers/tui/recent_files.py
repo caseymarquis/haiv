@@ -1,8 +1,8 @@
-"""Gather recently modified files across all worktrees with git diff stats.
+"""Gather pending file changes across all worktrees.
 
-Called from a file watcher callback (worker thread). Scans the filesystem
-for recently modified files, runs git diff --numstat for each affected
-worktree, and pushes results into the TUI model.
+Called from a file watcher callback (worker thread). Uses git status to find
+files with uncommitted changes, git diff for stats, and classifies them as
+modified, deleted, or conflicted.
 """
 
 from __future__ import annotations
@@ -10,54 +10,88 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from haiv.helpers.tui.TuiModel import RecentFileEntry, RecentFilesRaw
+from haiv.helpers.tui.TuiModel import FileStatus, RecentFileEntry, RecentFilesRaw
 
 
 def gather_recent_files(
     worktrees_dir: Path,
     *,
-    max_files: int = 30,
+    max_files: int = 50,
 ) -> RecentFilesRaw:
-    """Scan worktrees for recently modified files with git diff stats.
+    """Scan worktrees for files with pending changes.
 
-    Returns files sorted by mtime descending (newest first), capped at max_files.
+    Returns files classified into modified, deleted, and conflicted lists.
+    Modified files are sorted alphabetically. Deleted and conflicted are
+    sorted alphabetically.
     """
     if not worktrees_dir.is_dir():
         return RecentFilesRaw()
 
-    entries: list[RecentFileEntry] = []
-    diff_cache: dict[str, dict[str, tuple[int, int]]] = {}
+    modified: list[RecentFileEntry] = []
+    deleted: list[RecentFileEntry] = []
+    conflicted: list[RecentFileEntry] = []
 
     for wt_dir in worktrees_dir.iterdir():
         if not wt_dir.is_dir() or wt_dir.name.startswith("."):
             continue
         worktree = wt_dir.name
 
-        for path, mtime in _tracked_files_by_mtime(wt_dir):
-            rel = str(path.relative_to(wt_dir))
+        status_entries = _git_status(wt_dir)
+        if not status_entries:
+            continue
 
-            if worktree not in diff_cache:
-                diff_cache[worktree] = _git_diff_numstat(wt_dir)
+        diff_stats = _git_diff_numstat(wt_dir)
 
-            stats = diff_cache[worktree].get(rel, (0, 0))
-            entries.append(RecentFileEntry(
-                path=rel,
+        for path, file_status in status_entries:
+            stats = diff_stats.get(path, (0, 0))
+            mtime = 0.0
+
+            if file_status != FileStatus.DELETED:
+                try:
+                    mtime = (wt_dir / path).stat().st_mtime
+                except OSError:
+                    pass
+
+            if file_status == FileStatus.MODIFIED and stats == (0, 0):
+                # Untracked file — count lines as additions
+                stats = (_count_lines(wt_dir / path), 0)
+
+            entry = RecentFileEntry(
+                path=path,
                 worktree=worktree,
                 mtime=mtime,
                 additions=stats[0],
                 deletions=stats[1],
-            ))
+                status=file_status,
+            )
 
-    entries.sort(key=lambda e: e.mtime, reverse=True)
-    return RecentFilesRaw(files=entries[:max_files])
+            if file_status == FileStatus.CONFLICTED:
+                conflicted.append(entry)
+            elif file_status == FileStatus.DELETED:
+                deleted.append(entry)
+            else:
+                modified.append(entry)
+
+    modified.sort(key=lambda e: (e.worktree, e.path))
+    deleted.sort(key=lambda e: (e.worktree, e.path))
+    conflicted.sort(key=lambda e: (e.worktree, e.path))
+
+    return RecentFilesRaw(
+        modified=modified[:max_files],
+        deleted=deleted[:max_files],
+        conflicted=conflicted[:max_files],
+    )
 
 
-def _tracked_files_by_mtime(directory: Path) -> list[tuple[Path, float]]:
-    """List git-tracked files with their mtime. Respects .gitignore."""
+def _git_status(worktree: Path) -> list[tuple[str, FileStatus]]:
+    """Parse git status --porcelain to get changed files with status.
+
+    Returns (path, FileStatus) tuples. Paths are git's forward-slash format.
+    """
     try:
         result = subprocess.run(
-            ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
-            cwd=directory,
+            ["git", "status", "--porcelain"],
+            cwd=worktree,
             capture_output=True,
             text=True,
             timeout=5,
@@ -67,36 +101,68 @@ def _tracked_files_by_mtime(directory: Path) -> list[tuple[Path, float]]:
     except (subprocess.TimeoutExpired, OSError):
         return []
 
-    results = []
-    for rel in result.stdout.strip().splitlines():
-        path = directory / rel
-        try:
-            results.append((path, path.stat().st_mtime))
-        except OSError:
+    entries: list[tuple[str, FileStatus]] = []
+    for line in result.stdout.splitlines():
+        if len(line) < 4:
             continue
-    return results
+
+        xy = line[:2]
+        path = line[3:]
+
+        # Renames: "R  old -> new" — take the new path
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+
+        if "U" in xy or (xy[0] == "D" and xy[1] == "D") or (xy[0] == "A" and xy[1] == "A"):
+            entries.append((path, FileStatus.CONFLICTED))
+        elif xy[1] == "D" or (xy[0] == "D" and xy[1] == " "):
+            entries.append((path, FileStatus.DELETED))
+        else:
+            entries.append((path, FileStatus.MODIFIED))
+
+    return entries
 
 
 def _git_diff_numstat(worktree: Path) -> dict[str, tuple[int, int]]:
-    """Run git diff --numstat in a worktree, return {file: (additions, deletions)}."""
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--numstat"],
-            cwd=worktree,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            return {}
+    """Run git diff HEAD --numstat in a worktree.
 
-        stats: dict[str, tuple[int, int]] = {}
-        for line in result.stdout.strip().splitlines():
-            parts = line.split("\t", 2)
-            if len(parts) == 3:
-                adds = int(parts[0]) if parts[0] != "-" else 0
-                dels = int(parts[1]) if parts[1] != "-" else 0
-                stats[parts[2]] = (adds, dels)
-        return stats
-    except (subprocess.TimeoutExpired, OSError, ValueError):
-        return {}
+    Returns {path: (additions, deletions)} covering both staged and unstaged
+    changes. Falls back to unstaged-only diff if HEAD doesn't exist.
+    """
+    for cmd in (
+        ["git", "diff", "HEAD", "--numstat"],
+        ["git", "diff", "--numstat"],
+    ):
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=worktree,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode != 0:
+                continue
+
+            stats: dict[str, tuple[int, int]] = {}
+            for line in result.stdout.strip().splitlines():
+                parts = line.split("\t", 2)
+                if len(parts) == 3:
+                    adds = int(parts[0]) if parts[0] != "-" else 0
+                    dels = int(parts[1]) if parts[1] != "-" else 0
+                    stats[parts[2]] = (adds, dels)
+            return stats
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            continue
+    return {}
+
+
+def _count_lines(path: Path) -> int:
+    """Count lines in a file. Returns 0 for large or unreadable files."""
+    try:
+        size = path.stat().st_size
+        if size > 1_000_000 or size == 0:
+            return 0
+        return len(path.read_bytes().split(b"\n"))
+    except OSError:
+        return 0

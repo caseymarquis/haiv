@@ -1,6 +1,13 @@
 """Recent files — assembly tests."""
 
-from haiv_tui.widgets.recent_files import shortest_unique_names
+import time
+
+from haiv.helpers.tui.TuiModel import FileStatus, RecentFileEntry, RecentFilesRaw
+from haiv_tui.widgets.recent_files import (
+    build_file_tree_views,
+    format_age,
+    shortest_unique_names,
+)
 
 
 class TestShortestUniqueNames:
@@ -46,6 +53,27 @@ class TestShortestUniqueNames:
         result = shortest_unique_names(paths)
         assert result == ["haiv_tui/app.py", "haiv/app.py", "store.py"]
 
+    def test_backslash_paths_treated_as_single_component(self):
+        """Windows-style backslash paths must not defeat disambiguation.
+
+        git ls-files always outputs forward slashes, but if a backslash path
+        somehow sneaks in (e.g. via str(Path) on Windows), PurePosixPath
+        treats the whole thing as one component and returns it unchanged.
+        This test locks in the expectation: forward-slash paths work,
+        backslash paths degrade to the full string (not silently wrong).
+        """
+        # Forward slashes: proper disambiguation
+        posix = ["src/tui/helpers.py", "src/utils/helpers.py"]
+        assert shortest_unique_names(posix) == ["tui/helpers.py", "utils/helpers.py"]
+
+        # Backslash paths: each is an opaque blob, both "filenames" differ,
+        # so they come back as-is at depth 1 — no silent truncation
+        win = ["src\\tui\\helpers.py", "src\\utils\\helpers.py"]
+        assert shortest_unique_names(win) == [
+            "src\\tui\\helpers.py",
+            "src\\utils\\helpers.py",
+        ]
+
     def test_heavy_overlap(self):
         paths = [
             "a/b/c/d/e/f.py",
@@ -72,3 +100,104 @@ class TestShortestUniqueNames:
             "X/c/d/e/g.py",     # "e/g.py" collides with b/c/d/e/g.py
             "f.txt",            # unique filename
         ]
+
+
+class TestFormatAge:
+
+    def test_just_now(self):
+        assert format_age(0) == "just now"
+        assert format_age(30) == "just now"
+        assert format_age(59) == "just now"
+
+    def test_minutes(self):
+        assert format_age(60) == "1m"
+        assert format_age(120) == "2m"
+        assert format_age(3599) == "59m"
+
+    def test_hours_and_minutes(self):
+        assert format_age(3600) == "1h"
+        assert format_age(3660) == "1h 1m"
+        assert format_age(7380) == "2h 3m"
+
+    def test_days(self):
+        assert format_age(86400) == "1d"
+        assert format_age(172800) == "2d"
+
+
+class TestBuildFileTreeViews:
+
+    def test_empty_raw(self):
+        raw = RecentFilesRaw()
+        views = build_file_tree_views(raw)
+        assert len(views) == 3
+        assert all(len(v.entries) == 0 for v in views)
+
+    def test_modified_files_appear_in_recently_modified(self):
+        now = time.time()
+        raw = RecentFilesRaw(modified=[
+            RecentFileEntry(path="src/app.py", worktree="main", mtime=now - 30, additions=3, deletions=1),
+            RecentFileEntry(path="src/store.py", worktree="main", mtime=now - 120, additions=1, deletions=0),
+        ])
+        views = build_file_tree_views(raw)
+        modified = views[1]  # index 1 = Recently Modified
+        assert modified.label == "Recently Modified"
+        assert len(modified.entries) == 2
+        assert modified.entries[0].display_path == "app.py"
+        assert modified.entries[1].display_path == "store.py"
+
+    def test_deleted_files_appear_in_deleted(self):
+        raw = RecentFilesRaw(deleted=[
+            RecentFileEntry(path="old.py", worktree="main", status=FileStatus.DELETED, deletions=20),
+        ])
+        views = build_file_tree_views(raw)
+        deleted = views[2]  # index 2 = Deleted
+        assert deleted.label == "Deleted"
+        assert len(deleted.entries) == 1
+        assert deleted.entries[0].display_path == "old.py"
+        assert deleted.entries[0].age_display == ""  # no mtime for deleted
+
+    def test_conflicted_files_appear_first(self):
+        now = time.time()
+        raw = RecentFilesRaw(
+            conflicted=[
+                RecentFileEntry(path="merge.py", worktree="main", mtime=now, status=FileStatus.CONFLICTED),
+            ],
+            modified=[
+                RecentFileEntry(path="app.py", worktree="main", mtime=now, additions=1, deletions=0),
+            ],
+        )
+        views = build_file_tree_views(raw)
+        assert views[0].label == "Conflicted"
+        assert len(views[0].entries) == 1
+        assert views[1].label == "Recently Modified"
+        assert len(views[1].entries) == 1
+
+    def test_worktree_filter(self):
+        now = time.time()
+        raw = RecentFilesRaw(modified=[
+            RecentFileEntry(path="src/app.py", worktree="main", mtime=now, additions=1, deletions=0),
+            RecentFileEntry(path="src/app.py", worktree="feature", mtime=now, additions=2, deletions=0),
+        ])
+        views = build_file_tree_views(raw, worktree="main")
+        modified = views[1]
+        assert len(modified.entries) == 1
+        assert modified.entries[0].worktree == "main"
+
+    def test_age_display_on_modified(self):
+        now = time.time()
+        raw = RecentFilesRaw(modified=[
+            RecentFileEntry(path="a.py", worktree="main", mtime=now - 30, additions=1, deletions=0),
+        ])
+        views = build_file_tree_views(raw)
+        assert views[1].entries[0].age_display == "just now"
+
+    def test_diff_display_formatting(self):
+        now = time.time()
+        raw = RecentFilesRaw(modified=[
+            RecentFileEntry(path="a.py", worktree="main", mtime=now, additions=5, deletions=2),
+        ])
+        views = build_file_tree_views(raw)
+        entry = views[1].entries[0]
+        assert "+5" in entry.diff_display
+        assert "-2" in entry.diff_display
+        assert entry.diff_style == "green"  # more additions than deletions

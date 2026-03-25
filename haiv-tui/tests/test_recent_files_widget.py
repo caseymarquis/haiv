@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import time
 from collections import deque
 from pathlib import Path
 
 import pytest
 
-from textual.widgets import OptionList
+from textual.widgets import Tree
 
-from haiv.helpers.tui.TuiModel import RecentFilesRaw, RecentFileEntry, TuiModel
+from haiv.helpers.tui.TuiModel import FileStatus, RecentFilesRaw, RecentFileEntry, TuiModel
 from haiv.settings import HaivSettings
 from haiv_tui.store import TuiStore
 from haiv_tui.widgets.recent_files import RecentFilesWidget
@@ -40,22 +41,51 @@ class TestRecentFilesWidget:
         store = TuiStore()
         widget = _make_widget(store=store)
         app = WidgetTestApp(widget)
+        now = time.time()
 
         async with app.run_test() as pilot:
-            files = RecentFilesRaw(files=[
-                RecentFileEntry(path="src/app.py", worktree="main", mtime=1000.0),
-                RecentFileEntry(path="src/store.py", worktree="main", mtime=999.0),
+            files = RecentFilesRaw(modified=[
+                RecentFileEntry(path="src/app.py", worktree="main", mtime=now - 10, additions=3, deletions=1),
+                RecentFileEntry(path="src/store.py", worktree="main", mtime=now - 60, additions=1, deletions=0),
             ])
             store.update(TuiModel(recent_files=files), frozenset({"recent_files"}))
             await pilot.pause()
 
-            option_list = widget.query_one(OptionList)
-            assert option_list.option_count == 2
+            tree = widget.query_one(Tree)
+            # Should have one category node (Recently Modified) with 2 children
+            children = list(tree.root.children)
+            assert len(children) == 1
+            assert len(list(children[0].children)) == 2
+
+    @pytest.mark.asyncio
+    async def test_categories_shown_only_when_populated(self):
+        store = TuiStore()
+        widget = _make_widget(store=store)
+        app = WidgetTestApp(widget)
+        now = time.time()
+
+        async with app.run_test() as pilot:
+            files = RecentFilesRaw(
+                modified=[
+                    RecentFileEntry(path="app.py", worktree="main", mtime=now, additions=1, deletions=0),
+                ],
+                deleted=[
+                    RecentFileEntry(path="old.py", worktree="main", status=FileStatus.DELETED, deletions=10),
+                ],
+            )
+            store.update(TuiModel(recent_files=files), frozenset({"recent_files"}))
+            await pilot.pause()
+
+            tree = widget.query_one(Tree)
+            children = list(tree.root.children)
+            # 2 categories: Recently Modified and Deleted (no Conflicted)
+            assert len(children) == 2
 
     @pytest.mark.asyncio
     async def test_enter_opens_file(self, tmp_path):
         """Enter on a highlighted file calls open_in_editor."""
         store = TuiStore()
+        now = time.time()
         # Create a real file so is_file() passes
         wt = tmp_path / "worktrees" / "main" / "src"
         wt.mkdir(parents=True)
@@ -71,15 +101,18 @@ class TestRecentFilesWidget:
         app = WidgetTestApp(widget)
 
         async with app.run_test() as pilot:
-            files = RecentFilesRaw(files=[
-                RecentFileEntry(path="src/app.py", worktree="main", mtime=1000.0),
+            files = RecentFilesRaw(modified=[
+                RecentFileEntry(path="src/app.py", worktree="main", mtime=now, additions=1, deletions=0),
             ])
             store.update(TuiModel(recent_files=files), frozenset({"recent_files"}))
             await pilot.pause()
 
-            option_list = widget.query_one(OptionList)
-            option_list.focus()
+            tree = widget.query_one(Tree)
+            tree.focus()
             await pilot.pause()
+            # Navigate into the category and to the file
+            await pilot.press("down")  # category node
+            await pilot.press("down")  # first file
             await pilot.press("enter")
             await pilot.pause()
 

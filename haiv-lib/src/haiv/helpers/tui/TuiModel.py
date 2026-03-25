@@ -16,6 +16,7 @@ Publishing (future):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Protocol, runtime_checkable
 
 from haiv.wrappers.git import BranchStats
@@ -70,22 +71,34 @@ class ActiveMindRaw:
     mind: str = ""
 
 
+class FileStatus(Enum):
+    MODIFIED = "modified"
+    DELETED = "deleted"
+    CONFLICTED = "conflicted"
+
+
 @dataclass
 class RecentFileEntry:
-    """A recently modified file with optional diff stats."""
+    """A file with pending changes (modified, deleted, or conflicted)."""
 
-    path: str = ""  # relative to worktrees dir
-    worktree: str = ""  # branch/worktree name
-    mtime: float = 0.0
+    path: str = ""          # relative to worktree root, forward-slash always
+    worktree: str = ""      # branch/worktree name
+    mtime: float = 0.0      # filesystem mtime (0 if file doesn't exist)
     additions: int = 0
     deletions: int = 0
+    status: FileStatus = FileStatus.MODIFIED
 
 
 @dataclass
 class RecentFilesRaw:
-    """Recently modified files across all worktrees."""
+    """Pending file changes across all worktrees.
 
-    files: list[RecentFileEntry] = field(default_factory=list)
+    Files are split by status so the assembly layer doesn't need to filter.
+    """
+
+    modified: list[RecentFileEntry] = field(default_factory=list)
+    deleted: list[RecentFileEntry] = field(default_factory=list)
+    conflicted: list[RecentFileEntry] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
