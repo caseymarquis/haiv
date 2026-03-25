@@ -62,6 +62,7 @@ def sessions_refresh(
             short_id=s.short_id, status=s.status,
             description=s.description, parent_id=s.parent_id,
             branch=s.branch, base_branch=s.base_branch,
+            bounce=s.bounce,
         )
         for s in sessions
     ]

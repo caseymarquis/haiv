@@ -40,6 +40,7 @@ class SessionEntry:
     parent_id: str = ""
     branch: str = ""
     base_branch: str = ""
+    bounce: bool = False  # included in hv tui bounce rotation
 
 
 # ---------------------------------------------------------------------------

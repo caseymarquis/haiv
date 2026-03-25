@@ -43,6 +43,7 @@ class Session:
     autonomous: bool = False  # Running without human supervision
     has_worktree: bool = True  # Whether this session has a worktree
     allowed_paths: list[str] = field(default_factory=list)  # Paths the mind can edit (autonomous mode)
+    bounce: bool = True  # Eligible for hv tui bounce cycling
 
     _MAX_FILENAME_LENGTH = 50
 
@@ -99,6 +100,7 @@ def load_sessions(sessions_file: Path) -> list[Session]:
                 autonomous=entry.get("autonomous", False),
                 has_worktree=entry.get("has_worktree", True),
                 allowed_paths=entry.get("allowed_paths", []),
+                bounce=entry.get("bounce", True),
             )
         )
     return sessions
@@ -132,33 +134,24 @@ def save_session(sessions_file: Path, session: Session) -> None:
 
 def _session_to_dict(s: Session) -> dict[str, object]:
     """Convert a Session to a TOML-serializable dict."""
-    d: dict[str, object] = {
+    return {
         "id": s.id,
         "task": s.task,
         "started": s.started,
         "mind": s.mind,
         "short_id": s.short_id,
         "status": s.status,
+        "parent": s.parent_id,
+        "branch": s.branch,
+        "base_branch": s.base_branch,
+        "description": s.description,
+        "claude_session_id": s.claude_session_id,
+        "old_claude_session_ids": s.old_claude_session_ids,
+        "autonomous": s.autonomous,
+        "has_worktree": s.has_worktree,
+        "allowed_paths": s.allowed_paths,
+        "bounce": s.bounce,
     }
-    if s.parent_id:
-        d["parent"] = s.parent_id
-    if s.branch:
-        d["branch"] = s.branch
-    if s.base_branch:
-        d["base_branch"] = s.base_branch
-    if s.description:
-        d["description"] = s.description
-    if s.claude_session_id:
-        d["claude_session_id"] = s.claude_session_id
-    if s.old_claude_session_ids:
-        d["old_claude_session_ids"] = s.old_claude_session_ids
-    if s.autonomous is not None:
-        d["autonomous"] = s.autonomous
-    if s.has_worktree is not None:
-        d["has_worktree"] = s.has_worktree
-    if s.allowed_paths:
-        d["allowed_paths"] = s.allowed_paths
-    return d
 
 
 def create_session(
