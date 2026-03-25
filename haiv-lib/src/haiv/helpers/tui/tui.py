@@ -23,6 +23,7 @@ from pathlib import Path
 
 from haiv.helpers.sessions import Session
 from haiv.helpers.tui import helpers
+from haiv.helpers.tui.commands import tui_bounce, tui_restart
 from haiv.helpers.tui.TuiClient import TuiClient
 from haiv.helpers.tui.TuiModel import TuiModel
 from haiv.helpers.tui.terminal import TerminalManager
@@ -80,6 +81,14 @@ class Tui:
     def mind_close_pane(self, mind_name: str) -> None:
         """Close a parked mind's pane."""
         helpers.mind_close_pane(self._terminal, mind_name)
+
+    def restart(self) -> None:
+        """Send a restart command to the TUI."""
+        tui_restart(self._require_client())
+
+    def bounce(self) -> None:
+        """Send a bounce command to the TUI."""
+        tui_bounce(self._require_client())
 
     def mind_launch(
         self,

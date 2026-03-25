@@ -17,10 +17,12 @@ from __future__ import annotations
 from multiprocessing.connection import Client
 
 from haiv._infrastructure.TuiServer import (
+    CommandRequest,
     ErrorResponse,
     OkResponse,
     ReadRequest,
     Response,
+    TuiCommand,
     WriteRequest,
     freeze_model,
     pipe_address,
@@ -76,7 +78,20 @@ class TuiClient:
         if isinstance(write_response, ErrorResponse):
             raise ConnectionError(f"Server error: {write_response.message}")
 
-    def _request(self, request: ReadRequest | WriteRequest) -> Response:
+    def send_command(self, command: TuiCommand) -> None:
+        """Send a UI control command to the TUI.
+
+        Raises:
+            ConnectionError: Cannot reach the TUI server.
+        """
+        response: Response = self._request(CommandRequest(command=command))
+
+        if isinstance(response, OkResponse):
+            return
+        if isinstance(response, ErrorResponse):
+            raise ConnectionError(f"Server error: {response.message}")
+
+    def _request(self, request: ReadRequest | WriteRequest | CommandRequest) -> Response:
         """Send a request and return the response.
 
         Opens a short-lived connection for each request/response cycle.

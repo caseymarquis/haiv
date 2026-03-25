@@ -7,8 +7,10 @@ internal detail of the IPC transport.
 
 from __future__ import annotations
 
+import enum
 import platform
 from dataclasses import dataclass
+from typing import Any
 
 from haiv.helpers.tui.TuiModel import TuiModel
 
@@ -38,6 +40,30 @@ def pipe_address(project: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Command envelope
+# ---------------------------------------------------------------------------
+
+
+class TuiCommandType(enum.Enum):
+    """Command types for TUI control requests."""
+
+    RESTART = "restart"
+    BOUNCE = "bounce"
+
+
+@dataclass(frozen=True)
+class TuiCommand:
+    """Typed envelope for a UI control request.
+
+    type: routing key for dispatch
+    payload: command-specific data (typed at both ends, Any in transit)
+    """
+
+    type: TuiCommandType
+    payload: Any
+
+
+# ---------------------------------------------------------------------------
 # Request messages
 # ---------------------------------------------------------------------------
 
@@ -51,12 +77,19 @@ class ReadRequest:
 
 @dataclass(frozen=True)
 class WriteRequest:
-    """Request to apply a modified model via version-checked merge."""
+    """Request to overwrite model sections with incoming data."""
 
     model: TuiModel
 
 
-Request = ReadRequest | WriteRequest
+@dataclass(frozen=True)
+class CommandRequest:
+    """Request to enqueue a UI control command."""
+
+    command: TuiCommand
+
+
+Request = ReadRequest | WriteRequest | CommandRequest
 
 
 # ---------------------------------------------------------------------------
@@ -75,19 +108,8 @@ class OkResponse:
 class ErrorResponse:
     """Failed response with an error category and message."""
 
-    kind: str  # "concurrency", "internal"
+    kind: str  # "internal"
     message: str
 
 
 Response = OkResponse | ErrorResponse
-
-
-# ---------------------------------------------------------------------------
-# Errors
-# ---------------------------------------------------------------------------
-
-
-class ConcurrencyError(Exception):
-    """Raised when a write fails due to a version mismatch."""
-
-    pass

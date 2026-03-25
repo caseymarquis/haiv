@@ -49,6 +49,7 @@ from haiv.helpers.tui import helpers
 from haiv.helpers.tui.terminal import TUI_PANE_TITLE
 from haiv.helpers.utils.file_watcher import FileWatcher
 from haiv.wrappers.git import Git
+from haiv_tui.command_dispatcher import CommandDispatcher
 from haiv_tui.init import HaivDeps
 from haiv_tui.store import TuiStore
 from haiv_tui.widgets.errors import ErrorsWidget
@@ -118,6 +119,10 @@ class HaivApp(App):
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = server
         self.tui_client = client
+        self._dispatcher = CommandDispatcher(
+            on_restart=lambda _: self.action_restart(),
+            on_bounce=lambda _: self._handle_bounce(),
+        )
         self._bg_workers: _Workers | None = None
 
     def on_mount(self) -> None:
@@ -145,9 +150,20 @@ class HaivApp(App):
         self.set_interval(POLL_INTERVAL, self._poll_model)
 
     def _poll_model(self) -> None:
-        """Drain dirty sections and push through store for dispatch."""
+        """Drain dirty sections and commands from the server."""
+        # Commands — independent of model updates
+        commands = self._server.drain_commands()
+        if commands:
+            try:
+                self._dispatcher.dispatch(commands)
+            except Exception as e:
+                self.internal_errors.append(f"command: {e}")
+
+        # Model updates — dirty tracking + store signals
         dirty = self._server.drain_dirty()
         if not dirty:
+            if commands:
+                self._update_errors()
             return
 
         try:
@@ -214,6 +230,44 @@ class HaivApp(App):
             if child.can_focus:
                 child.focus()
                 return
+
+    def _handle_bounce(self) -> None:
+        """Switch to the next session in ID order."""
+        try:
+            snapshot = self.tui_client.read()
+            if not snapshot.sessions or not snapshot.sessions.entries:
+                return
+
+            # TODO: filter to entries where session.bounce is True
+            entries = sorted(snapshot.sessions.entries, key=lambda e: e.mind)
+            if not entries:
+                return
+
+            # Find current active mind, pick next in cycle
+            active = snapshot.active_mind.mind if snapshot.active_mind else None
+            if active is None:
+                target = entries[0]
+            else:
+                active_idx = next(
+                    (i for i, e in enumerate(entries) if e.mind == active),
+                    None,
+                )
+                if active_idx is None:
+                    target = entries[0]
+                else:
+                    target = entries[(active_idx + 1) % len(entries)]
+
+            if self.terminal is not None and self.paths is not None:
+                helpers.mind_launch(
+                    self.terminal,
+                    self.tui_client,
+                    self.paths.user.sessions_file,
+                    target.mind,
+                    self.paths.root,
+                    git=self.git,
+                )
+        except Exception as e:
+            self.internal_errors.append(f"bounce: {e}")
 
     def action_restart(self) -> None:
         """Exit with restart code — main() handles cleanup and relaunch."""

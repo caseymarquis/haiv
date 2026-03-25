@@ -11,7 +11,7 @@ import pytest
 # on the same xdist worker to avoid address conflicts.
 pytestmark = pytest.mark.xdist_group("tui_server")
 
-from haiv._infrastructure.TuiServer import TuiLocalClient, TuiServer
+from haiv._infrastructure.TuiServer import TuiCommand, TuiCommandType, TuiLocalClient, TuiServer
 from haiv.helpers.tui.TuiClient import TuiClient
 from haiv.helpers.tui.TuiModel import SessionsRaw, SessionEntry, TuiModel
 
@@ -122,3 +122,37 @@ class TestLocalClientWriteRaw:
         local_client.write_raw(git=None)
         model = local_client.read()
         assert len(model.sessions.entries) == 1
+
+
+class TestLocalClientSendCommand:
+    """TuiLocalClient.send_command() via in-process queue."""
+
+    def test_send_command_buffers_on_server(self, local_client, server):
+        """send_command() enqueues a command that drain_commands() returns."""
+        cmd = TuiCommand(type=TuiCommandType.RESTART, payload=None)
+        local_client.send_command(cmd)
+
+        commands = server.drain_commands()
+        assert len(commands) == 1
+        assert commands[0].type == TuiCommandType.RESTART
+
+    def test_send_command_does_not_dirty_model(self, local_client, server):
+        """send_command() does not mark any model sections dirty."""
+        cmd = TuiCommand(type=TuiCommandType.BOUNCE, payload=None)
+        local_client.send_command(cmd)
+
+        dirty = server.drain_dirty()
+        assert len(dirty) == 0
+
+
+class TestRemoteClientSendCommand:
+    """TuiClient.send_command() over IPC."""
+
+    def test_send_command_buffers_on_server(self, remote_client, server):
+        """send_command() over IPC enqueues a command."""
+        cmd = TuiCommand(type=TuiCommandType.RESTART, payload=None)
+        remote_client.send_command(cmd)
+
+        commands = server.drain_commands()
+        assert len(commands) == 1
+        assert commands[0].type == TuiCommandType.RESTART
