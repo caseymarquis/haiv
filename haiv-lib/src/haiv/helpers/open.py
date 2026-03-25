@@ -34,3 +34,24 @@ def open_in_explorer(path: Path, command: list[str]) -> None:
 def open_in_editor(path: Path, command: list[str]) -> None:
     """Open a file or directory in an editor."""
     _open(command, path)
+
+
+def open_with_os(path: Path) -> None:
+    """Open a file with the OS default handler."""
+    if _WINDOWS:
+        import os
+        os.startfile(path)
+    elif sys.platform == "darwin":
+        subprocess.Popen(
+            ["open", str(path)],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        subprocess.Popen(
+            ["xdg-open", str(path)],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )

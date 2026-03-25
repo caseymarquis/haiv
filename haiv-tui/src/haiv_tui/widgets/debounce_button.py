@@ -37,9 +37,9 @@ class DebounceButton(Widget):
         *,
         debounce_seconds: float = 0.5,
         disabled: bool = False,
-        **kwargs,
+        id: str | None = None,
     ) -> None:
-        super().__init__(disabled=disabled, **kwargs)
+        super().__init__(disabled=disabled, id=id)
         self._label = label
         self._debounce_seconds = debounce_seconds
         self._cooling_down = False

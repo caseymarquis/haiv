@@ -25,7 +25,7 @@ from textual.events import Click
 from textual.widgets import Static, Tree
 from textual.widgets.tree import TreeNode
 
-from haiv.helpers.open import open_in_editor
+from haiv.helpers.open import open_with_os
 from haiv.helpers.tui.TuiModel import (
     ActiveMindRaw,
     CommitEntry,
@@ -35,8 +35,6 @@ from haiv.helpers.tui.TuiModel import (
     RecentFilesRaw,
     SessionsRaw,
 )
-from haiv.settings import HaivSettings
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -83,14 +81,12 @@ class RecentFilesWidget(Vertical):
         *,
         store: TuiStore,
         worktrees_dir: Path | None,
-        settings: HaivSettings,
         errors: deque[str],
-        **kwargs,
+        id: str | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(id=id)
         self._store = store
         self._worktrees_dir = worktrees_dir
-        self._settings = settings
         self._errors = errors
         self._recent_files: RecentFilesRaw | None = None
         self._recent_commits: RecentCommitsRaw | None = None
@@ -233,7 +229,7 @@ class RecentFilesWidget(Vertical):
                 node.set_label(Text("Opening...", style="bold yellow"))
                 self.set_timer(2, lambda: node.set_label(original_label))
             try:
-                open_in_editor(full_path, self._settings.editor_command)
+                open_with_os(full_path)
             except Exception as e:
                 self._errors.append(f"open_file: {e}")
 

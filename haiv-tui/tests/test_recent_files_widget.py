@@ -11,7 +11,6 @@ import pytest
 from textual.widgets import Tree
 
 from haiv.helpers.tui.TuiModel import FileStatus, RecentFilesRaw, RecentFileEntry, TuiModel
-from haiv.settings import HaivSettings
 from haiv_tui.store import TuiStore
 from haiv_tui.widgets.recent_files import RecentFilesWidget
 
@@ -22,7 +21,6 @@ def _make_widget(store=None, tmp_path=None):
     return RecentFilesWidget(
         store=store or TuiStore(),
         worktrees_dir=tmp_path or Path("/tmp/fake"),
-        settings=HaivSettings(_editor_command=["echo"]),
         errors=deque(maxlen=5),
         id="recent-files",
     )
@@ -82,8 +80,14 @@ class TestRecentFilesWidget:
             assert len(children) == 2
 
     @pytest.mark.asyncio
-    async def test_enter_opens_file(self, tmp_path):
-        """Enter on a highlighted file calls open_in_editor."""
+    async def test_enter_opens_file(self, tmp_path, monkeypatch):
+        """Enter on a highlighted file calls open_with_os."""
+        opened_paths: list[Path] = []
+        monkeypatch.setattr(
+            "haiv_tui.widgets.recent_files.open_with_os",
+            lambda p: opened_paths.append(p),
+        )
+
         store = TuiStore()
         now = time.time()
         # Create a real file so is_file() passes
@@ -94,7 +98,6 @@ class TestRecentFilesWidget:
         widget = RecentFilesWidget(
             store=store,
             worktrees_dir=tmp_path / "worktrees",
-            settings=HaivSettings(_editor_command=["echo"]),
             errors=deque(maxlen=5),
             id="recent-files",
         )
@@ -116,6 +119,6 @@ class TestRecentFilesWidget:
             await pilot.press("enter")
             await pilot.pause()
 
-            # No errors means open_in_editor succeeded
-            errors = widget._errors
-            assert len(errors) == 0
+            assert len(widget._errors) == 0
+            assert len(opened_paths) == 1
+            assert opened_paths[0] == tmp_path / "worktrees" / "main" / "src" / "app.py"

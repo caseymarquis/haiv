@@ -53,10 +53,10 @@ class MarkdownFileWidget(MarkdownViewer):
             super().__init__()
             self.content = content
 
-    def __init__(self, file_path: Path, **kwargs) -> None:
+    def __init__(self, file_path: Path, *, id: str | None = None) -> None:
         self.file_path = file_path.resolve()
         content = self._read_file()
-        super().__init__(content, show_table_of_contents=False, **kwargs)
+        super().__init__(content, show_table_of_contents=False, id=id)
         self._observer: BaseObserver | None = None
 
     def on_mount(self) -> None:

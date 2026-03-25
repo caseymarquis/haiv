@@ -60,8 +60,8 @@ class SessionActionBar(Vertical):
     }
     """
 
-    def __init__(self, *, settings: HaivSettings, errors: deque[str], **kwargs) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, *, settings: HaivSettings, errors: deque[str], id: str | None = None) -> None:
+        super().__init__(id=id)
         self._settings = settings
         self._errors = errors
         self._path: Path | None = None
@@ -137,9 +137,9 @@ class SessionsWidget(Vertical):
         haiv_root: Path,
         settings: HaivSettings,
         errors: deque[str],
-        **kwargs,
+        id: str | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(id=id)
         self._store = store
         self._terminal = terminal
         self._tui_client = tui_client

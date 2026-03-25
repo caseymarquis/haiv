@@ -55,9 +55,9 @@ class HudWidget(Horizontal):
         worktrees_dir: Path | None,
         settings: HaivSettings,
         errors: deque[str],
-        **kwargs,
+        id: str | None = None,
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(id=id)
         self._store = store
         self._worktrees_dir = worktrees_dir
         self._settings = settings
@@ -75,7 +75,6 @@ class HudWidget(Horizontal):
             yield RecentFilesWidget(
                 store=self._store,
                 worktrees_dir=self._worktrees_dir,
-                settings=self._settings,
                 errors=self._errors,
                 id="recent-files",
             )
