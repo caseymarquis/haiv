@@ -240,8 +240,10 @@ class _Workers:
         self._git = git
         self._file_watcher: FileWatcher | None = None
         self._recent_files: RecentFilesWorker | None = None
+        self._recent_commits: RecentCommitsWorker | None = None
 
     def start(self) -> None:
+        from haiv_tui.recent_commits_worker import RecentCommitsWorker
         from haiv_tui.recent_files_worker import RecentFilesWorker
 
         # Watch sessions file for external edits
@@ -263,8 +265,16 @@ class _Workers:
             worktrees_dir=self._paths.worktrees_dir,
         ).start()
 
+        # Recent commits gatherer
+        self._recent_commits = RecentCommitsWorker(
+            client=self._client,
+            worktrees_dir=self._paths.worktrees_dir,
+        ).start()
+
     def stop(self) -> None:
         if self._file_watcher is not None:
             self._file_watcher.stop()
         if self._recent_files is not None:
             self._recent_files.stop()
+        if self._recent_commits is not None:
+            self._recent_commits.stop()

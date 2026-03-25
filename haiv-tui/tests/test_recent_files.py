@@ -2,8 +2,16 @@
 
 import time
 
-from haiv.helpers.tui.TuiModel import FileStatus, RecentFileEntry, RecentFilesRaw
+from haiv.helpers.tui.TuiModel import (
+    CommitEntry,
+    CommitFileEntry,
+    FileStatus,
+    RecentCommitsRaw,
+    RecentFileEntry,
+    RecentFilesRaw,
+)
 from haiv_tui.widgets.recent_files import (
+    build_commit_views,
     build_file_tree_views,
     format_age,
     shortest_unique_names,
@@ -201,3 +209,67 @@ class TestBuildFileTreeViews:
         assert "+5" in entry.diff_display
         assert "-2" in entry.diff_display
         assert entry.diff_style == "green"  # more additions than deletions
+
+
+class TestBuildCommitViews:
+
+    def test_empty_raw(self):
+        raw = RecentCommitsRaw()
+        views = build_commit_views(raw)
+        assert views == []
+
+    def test_commit_with_files(self):
+        now = time.time()
+        raw = RecentCommitsRaw(commits=[
+            CommitEntry(
+                hash="abc123def456",
+                short_hash="abc123d",
+                subject="fix recent files on Windows",
+                author="Casey",
+                timestamp=now - 120,
+                worktree="main",
+                files=[
+                    CommitFileEntry(path="src/widget.py", additions=5, deletions=2),
+                    CommitFileEntry(path="src/model.py", additions=1, deletions=0),
+                ],
+            ),
+        ])
+        views = build_commit_views(raw)
+        assert len(views) == 1
+        cv = views[0]
+        assert cv.short_hash == "abc123d"
+        assert cv.subject == "fix recent files on Windows"
+        assert cv.worktree == "main"
+        assert cv.age_display == "2m"
+        assert len(cv.files) == 2
+        assert cv.files[0].display_path == "widget.py"
+        assert cv.files[1].display_path == "model.py"
+        assert "+5" in cv.files[0].diff_display
+
+    def test_worktree_filter(self):
+        now = time.time()
+        raw = RecentCommitsRaw(commits=[
+            CommitEntry(short_hash="aaa", subject="on main", timestamp=now, worktree="main"),
+            CommitEntry(short_hash="bbb", subject="on feature", timestamp=now, worktree="feature"),
+        ])
+        views = build_commit_views(raw, worktree="main")
+        assert len(views) == 1
+        assert views[0].short_hash == "aaa"
+
+    def test_file_disambiguation_within_commit(self):
+        now = time.time()
+        raw = RecentCommitsRaw(commits=[
+            CommitEntry(
+                short_hash="abc",
+                subject="refactor",
+                timestamp=now,
+                worktree="main",
+                files=[
+                    CommitFileEntry(path="src/tui/helpers.py", additions=1, deletions=0),
+                    CommitFileEntry(path="src/utils/helpers.py", additions=2, deletions=0),
+                ],
+            ),
+        ])
+        views = build_commit_views(raw)
+        assert views[0].files[0].display_path == "tui/helpers.py"
+        assert views[0].files[1].display_path == "utils/helpers.py"

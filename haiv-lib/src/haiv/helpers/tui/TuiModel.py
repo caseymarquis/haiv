@@ -101,6 +101,35 @@ class RecentFilesRaw:
     conflicted: list[RecentFileEntry] = field(default_factory=list)
 
 
+@dataclass
+class CommitFileEntry:
+    """A file changed in a commit, with diff stats."""
+
+    path: str = ""
+    additions: int = 0
+    deletions: int = 0
+
+
+@dataclass
+class CommitEntry:
+    """A single git commit with denormalized file list."""
+
+    hash: str = ""
+    short_hash: str = ""
+    subject: str = ""
+    author: str = ""
+    timestamp: float = 0.0
+    worktree: str = ""
+    files: list[CommitFileEntry] = field(default_factory=list)
+
+
+@dataclass
+class RecentCommitsRaw:
+    """Recent commits across all worktrees."""
+
+    commits: list[CommitEntry] = field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Top-level model
 # ---------------------------------------------------------------------------
@@ -120,3 +149,4 @@ class TuiModel:
     git: GitRaw | None = field(default_factory=GitRaw)
     active_mind: ActiveMindRaw | None = field(default_factory=ActiveMindRaw)
     recent_files: RecentFilesRaw | None = field(default_factory=RecentFilesRaw)
+    recent_commits: RecentCommitsRaw | None = field(default_factory=RecentCommitsRaw)

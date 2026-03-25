@@ -1,13 +1,14 @@
-"""Pending changes widget — tree view of modified, deleted, and conflicted files.
+"""Pending changes widget — tree view of file changes and recent commits.
 
-Subscribes to recent_files_changed signal. Files are colored on a gradient
-from bright green (just modified) to faded gray (older edits). Double-click
-or Enter opens the file in the configured editor.
+Subscribes to recent_files_changed and recent_commits_changed signals.
+Files are colored on a gradient from bright green (just modified) to faded
+gray (older edits). Double-click or Enter opens a file in the configured editor.
 
 Tree categories:
   - Conflicted (hidden when empty)
   - Recently Modified
   - Deleted
+  - Recent Commits (collapsed by default, expand to see files)
 """
 
 from __future__ import annotations
@@ -26,7 +27,9 @@ from textual.widgets.tree import TreeNode
 from haiv.helpers.open import open_in_editor
 from haiv.helpers.tui.TuiModel import (
     ActiveMindRaw,
+    CommitEntry,
     FileStatus,
+    RecentCommitsRaw,
     RecentFileEntry,
     RecentFilesRaw,
     SessionsRaw,
@@ -89,6 +92,7 @@ class RecentFilesWidget(Vertical):
         self._settings = settings
         self._errors = errors
         self._recent_files: RecentFilesRaw | None = None
+        self._recent_commits: RecentCommitsRaw | None = None
         self._active_mind: ActiveMindRaw | None = None
         self._sessions: SessionsRaw | None = None
 
@@ -103,16 +107,22 @@ class RecentFilesWidget(Vertical):
         tree.guide_depth = 2
 
         self._store.recent_files_changed.connect(self._on_recent_files_changed)
+        self._store.recent_commits_changed.connect(self._on_recent_commits_changed)
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
         self._store.sessions_changed.connect(self._on_sessions_changed)
         if self._store.snapshot is not None:
             self._recent_files = self._store.snapshot.recent_files
+            self._recent_commits = self._store.snapshot.recent_commits
             self._active_mind = self._store.snapshot.active_mind
             self._sessions = self._store.snapshot.sessions
             self._refresh_content()
 
     def _on_recent_files_changed(self, sender) -> None:
         self._recent_files = sender
+        self._refresh_content()
+
+    def _on_recent_commits_changed(self, sender) -> None:
+        self._recent_commits = sender
         self._refresh_content()
 
     def _on_active_mind_changed(self, sender) -> None:
@@ -137,33 +147,66 @@ class RecentFilesWidget(Vertical):
         tree = self.query_one("#recent-files-tree", Tree)
         tree.clear()
 
-        if not self._recent_files:
-            return
-
         worktree = self._active_worktree()
-        views = build_file_tree_views(self._recent_files, worktree=worktree)
 
-        for category in views:
-            if not category.entries:
-                continue
-            cat_label = Text(f"{category.label} ({len(category.entries)})", style="bold")
-            cat_node = tree.root.add(cat_label)
+        # File categories
+        if self._recent_files:
+            views = build_file_tree_views(self._recent_files, worktree=worktree)
+            for category in views:
+                if not category.entries:
+                    continue
+                cat_label = Text(f"{category.label} ({len(category.entries)})", style="bold")
+                cat_node = tree.root.add(cat_label)
 
-            for v in category.entries:
-                line = Text()
-                line.append(v.diff_display, style=v.diff_style)
-                line.append(" ")
-                line.append(v.display_path, style=v.age_style)
-                if not worktree:
-                    line.append(f"  ({v.worktree})", style="dim")
-                if v.age_display:
-                    line.append(f"  {v.age_display}", style="dim italic")
-                cat_node.add_leaf(
-                    line,
-                    data=FileNodeData(worktree=v.worktree, path=v.full_path),
-                )
+                for v in category.entries:
+                    line = Text()
+                    line.append(v.diff_display, style=v.diff_style)
+                    line.append(" ")
+                    line.append(v.display_path, style=v.age_style)
+                    if not worktree:
+                        line.append(f"  ({v.worktree})", style="dim")
+                    if v.age_display:
+                        line.append(f"  {v.age_display}", style="dim italic")
+                    cat_node.add_leaf(
+                        line,
+                        data=FileNodeData(worktree=v.worktree, path=v.full_path),
+                    )
 
-            cat_node.expand()
+                cat_node.expand()
+
+        # Recent commits
+        if self._recent_commits:
+            commit_views = build_commit_views(self._recent_commits, worktree=worktree)
+            if commit_views:
+                cat_label = Text(f"Recent Commits ({len(commit_views)})", style="bold")
+                cat_node = tree.root.add(cat_label)
+
+                for cv in commit_views:
+                    # Commit node: short hash + subject + age
+                    commit_label = Text()
+                    commit_label.append(cv.short_hash, style="cyan")
+                    commit_label.append(" ")
+                    commit_label.append(cv.subject, style=cv.age_style)
+                    if not worktree:
+                        commit_label.append(f"  ({cv.worktree})", style="dim")
+                    if cv.age_display:
+                        commit_label.append(f"  {cv.age_display}", style="dim italic")
+
+                    commit_node = cat_node.add(commit_label)
+
+                    # File children
+                    for fv in cv.files:
+                        file_label = Text()
+                        file_label.append(fv.diff_display, style=fv.diff_style)
+                        file_label.append(" ")
+                        file_label.append(fv.display_path, style="dim")
+                        commit_node.add_leaf(
+                            file_label,
+                            data=FileNodeData(worktree=cv.worktree, path=fv.full_path),
+                        )
+
+                # Collapsed by default — user expands to see commits
+                cat_node.collapse()
 
     def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
         """Show full path at bottom when highlighted."""
@@ -376,3 +419,83 @@ def build_file_tree_views(
             entries=_build_views(raw.deleted, now, worktree),
         ),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Commit DTOs
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class CommitFileView:
+    """A file within a commit."""
+
+    display_path: str
+    full_path: str
+    diff_display: str
+    diff_style: str
+
+
+@dataclass
+class CommitView:
+    """What the widget needs to render one commit."""
+
+    short_hash: str
+    subject: str
+    worktree: str
+    age_style: str
+    age_display: str
+    files: list[CommitFileView]
+
+
+# ---------------------------------------------------------------------------
+# Commit assembly
+# ---------------------------------------------------------------------------
+
+
+def build_commit_views(
+    raw: RecentCommitsRaw,
+    *,
+    worktree: str | None = None,
+) -> list[CommitView]:
+    """Assemble commit views from raw data.
+
+    Pure function — raw data in, DTOs out. Testable without Textual.
+    """
+    now = time.time()
+    filtered = [c for c in raw.commits if not worktree or c.worktree == worktree]
+    views = []
+    for commit in filtered:
+        age_seconds = (now - commit.timestamp) if commit.timestamp > 0 else 0
+        age_display = format_age(age_seconds) if commit.timestamp > 0 else ""
+
+        # Build file views with shortest unique names within this commit
+        if commit.files:
+            short_names = shortest_unique_names([f.path for f in commit.files])
+        else:
+            short_names = []
+
+        file_views = []
+        for f, short_name in zip(commit.files, short_names):
+            if f.additions or f.deletions:
+                diff_display = f"+{f.additions} -{f.deletions}"
+                diff_style = "green" if f.additions >= f.deletions else "red"
+            else:
+                diff_display = "     "
+                diff_style = ""
+            file_views.append(CommitFileView(
+                display_path=short_name,
+                full_path=f.path,
+                diff_display=f"{diff_display:>10}",
+                diff_style=diff_style,
+            ))
+
+        views.append(CommitView(
+            short_hash=commit.short_hash,
+            subject=commit.subject,
+            worktree=commit.worktree,
+            age_style=_age_color(commit.timestamp, now),
+            age_display=age_display,
+            files=file_views,
+        ))
+    return views

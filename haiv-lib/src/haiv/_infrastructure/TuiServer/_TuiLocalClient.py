@@ -24,7 +24,7 @@ from typing import Callable
 
 from ._freeze import freeze_model
 from ._TuiIpc import ReadRequest, Request, WriteRequest
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentFilesRaw, SessionsRaw, TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentCommitsRaw, RecentFilesRaw, SessionsRaw, TuiModel
 
 
 class TuiLocalClient:
@@ -54,12 +54,13 @@ class TuiLocalClient:
         git: GitRaw | None = None,
         active_mind: ActiveMindRaw | None = None,
         recent_files: RecentFilesRaw | None = None,
+        recent_commits: RecentCommitsRaw | None = None,
     ) -> None:
         """Push raw data into the TUI model.
 
         Only the sections you provide are replaced on the server.
         Sections you omit are left untouched.
         """
-        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind, recent_files=recent_files)
+        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind, recent_files=recent_files, recent_commits=recent_commits)
         future = self._submit(WriteRequest(model=model))
         future.result()

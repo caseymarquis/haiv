@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentFilesRaw, SessionsRaw, TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentCommitsRaw, RecentFilesRaw, SessionsRaw, TuiModel
 
 
 @runtime_checkable
@@ -23,4 +23,5 @@ class ModelClient(Protocol):
         git: GitRaw | None = None,
         active_mind: ActiveMindRaw | None = None,
         recent_files: RecentFilesRaw | None = None,
+        recent_commits: RecentCommitsRaw | None = None,
     ) -> None: ...
