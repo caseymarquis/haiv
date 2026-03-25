@@ -72,8 +72,9 @@ def gather_recent_files(
             else:
                 modified.append(entry)
 
-    def _sort_key(e: RecentFileEntry) -> tuple[str, str]:
-        return (e.worktree.lower(), e.path.lower().replace("_", ""))
+    def _sort_key(e: RecentFileEntry) -> tuple[str, str, str]:
+        leaf = e.path.rsplit("/", 1)[-1].lower().replace("_", "")
+        return (e.worktree.lower(), leaf, e.path.lower())
 
     modified.sort(key=_sort_key)
     deleted.sort(key=_sort_key)
