@@ -27,7 +27,7 @@ from haiv._infrastructure.TuiServer import (
     freeze_model,
     pipe_address,
 )
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionsRaw, TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, ClaudeHookEventsRaw, GitRaw, SessionsRaw, TuiModel
 
 __all__ = ["TuiClient"]
 
@@ -60,6 +60,7 @@ class TuiClient:
         sessions: SessionsRaw | None = None,
         git: GitRaw | None = None,
         active_mind: ActiveMindRaw | None = None,
+        claude_hook_events: ClaudeHookEventsRaw | None = None,
     ) -> None:
         """Push raw data into the TUI model.
 
@@ -69,7 +70,7 @@ class TuiClient:
         Raises:
             ConnectionError: Cannot reach the TUI server.
         """
-        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind)
+        model = TuiModel(sessions=sessions, git=git, active_mind=active_mind, claude_hook_events=claude_hook_events)
 
         write_response: Response = self._request(WriteRequest(model=model))
 

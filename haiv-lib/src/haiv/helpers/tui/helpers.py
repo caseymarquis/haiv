@@ -262,12 +262,14 @@ def build_claude_command(
 
 def build_env(mind_name: str, session_id: str, haiv_root: Path) -> dict[str, str]:
     """Build environment variables for a mind pane."""
-    from haiv._infrastructure.env import HV_MIND, HV_ROOT, HV_SESSION
+    from haiv._infrastructure.env import HV_CLAUDE_HOOK_DISPATCH, HV_MIND, HV_ROOT, HV_SESSION
+    from haiv._infrastructure.TuiServer._TuiIpc import pipe_address
 
     return {
         HV_MIND: mind_name,
         HV_SESSION: session_id,
         HV_ROOT: str(haiv_root),
+        HV_CLAUDE_HOOK_DISPATCH: pipe_address(haiv_root.name),
     }
 
 

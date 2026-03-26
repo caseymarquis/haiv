@@ -297,6 +297,12 @@ def main():
         print(f"Run '{prog} help' for available commands")
         return
 
+    # Claude Code hooks: hv --claude-hook <hook_name> [args...]
+    if args[0] == "--claude-hook":
+        from haiv_cli.claude_hooks_dispatch import dispatch
+        dispatch(args[1:])
+        return
+
     command_string = shlex.join(args)
 
     route, haiv_root, sources = _find_command(command_string)

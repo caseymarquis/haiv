@@ -52,6 +52,9 @@ from haiv.wrappers.git import Git
 from haiv_tui.command_dispatcher import CommandDispatcher
 from haiv_tui.init import HaivDeps
 from haiv_tui.store import TuiStore
+from haiv_tui.bounce_worker import BounceWorker
+from haiv_tui.claude_hooks_worker import ClaudeHooksWorker
+from haiv_tui.widgets.claude_hooks import ClaudeHooksWidget
 from haiv_tui.widgets.errors import ErrorsWidget
 from haiv_tui.widgets.hud import HudWidget
 from haiv_tui.widgets.markdown_file import MarkdownFileWidget
@@ -119,9 +122,18 @@ class HaivApp(App):
         self.store = TuiStore(error_sink=self.internal_errors.append)
         self._server = server
         self.tui_client = client
+        self._claude_hooks = ClaudeHooksWorker(client)
+        self._bounce = BounceWorker(
+            client=client,
+            terminal=deps.terminal,
+            sessions_file=deps.paths.user.sessions_file if deps.paths else Path("/dev/null"),
+            haiv_root=deps.paths.root if deps.paths else Path("/dev/null"),
+            git=self.git,
+        )
         self._dispatcher = CommandDispatcher(
             on_restart=lambda _: self.action_restart(),
-            on_bounce=lambda _: self._handle_bounce(),
+            on_bounce=lambda _: self._bounce.handle(),
+            on_claude_hook_event=lambda req: self._claude_hooks.handle(req),
         )
         self._bg_workers: _Workers | None = None
 
@@ -204,6 +216,8 @@ class HaivApp(App):
                         errors=self.internal_errors,
                         id="session-tree",
                     )
+                with TabPane("Hooks", id="hooks"):
+                    yield ClaudeHooksWidget(store=self.store, id="claude-hooks")
                 with TabPane("Plans", id="plans"):
                     yield self._plans_widget()
         yield ErrorsWidget(id="errors")
@@ -230,46 +244,6 @@ class HaivApp(App):
             if child.can_focus:
                 child.focus()
                 return
-
-    def _handle_bounce(self) -> None:
-        """Switch to the next session in ID order."""
-        try:
-            snapshot = self.tui_client.read()
-            if not snapshot.sessions or not snapshot.sessions.entries:
-                return
-
-            entries = sorted(
-                [e for e in snapshot.sessions.entries if e.bounce],
-                key=lambda e: e.mind,
-            )
-            if not entries:
-                return
-
-            # Find current active mind, pick next in cycle
-            active = snapshot.active_mind.mind if snapshot.active_mind else None
-            if active is None:
-                target = entries[0]
-            else:
-                active_idx = next(
-                    (i for i, e in enumerate(entries) if e.mind == active),
-                    None,
-                )
-                if active_idx is None:
-                    target = entries[0]
-                else:
-                    target = entries[(active_idx + 1) % len(entries)]
-
-            if self.terminal is not None and self.paths is not None:
-                helpers.mind_launch(
-                    self.terminal,
-                    self.tui_client,
-                    self.paths.user.sessions_file,
-                    target.mind,
-                    self.paths.root,
-                    git=self.git,
-                )
-        except Exception as e:
-            self.internal_errors.append(f"bounce: {e}")
 
     def action_restart(self) -> None:
         """Exit with restart code — main() handles cleanup and relaunch."""

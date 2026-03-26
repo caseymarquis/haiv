@@ -49,6 +49,7 @@ class TuiCommandType(enum.Enum):
 
     RESTART = "restart"
     BOUNCE = "bounce"
+    CLAUDE_HOOK_EVENT = "claude_hook_event"
 
 
 @dataclass(frozen=True)

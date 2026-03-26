@@ -14,6 +14,7 @@ class TestCommandDispatcher:
         dispatcher = CommandDispatcher(
             on_restart=lambda req: received.append(req),
             on_bounce=lambda req: None,
+            on_claude_hook_event=lambda req: None,
         )
 
         cmd = TuiCommand(type=TuiCommandType.RESTART, payload=RestartRequest())
@@ -28,6 +29,7 @@ class TestCommandDispatcher:
         dispatcher = CommandDispatcher(
             on_restart=lambda req: None,
             on_bounce=lambda req: received.append(req),
+            on_claude_hook_event=lambda req: None,
         )
 
         cmd = TuiCommand(type=TuiCommandType.BOUNCE, payload=BounceRequest())
@@ -42,6 +44,7 @@ class TestCommandDispatcher:
         dispatcher = CommandDispatcher(
             on_restart=lambda req: order.append("restart"),
             on_bounce=lambda req: order.append("bounce"),
+            on_claude_hook_event=lambda req: None,
         )
 
         commands = [
@@ -58,5 +61,6 @@ class TestCommandDispatcher:
         dispatcher = CommandDispatcher(
             on_restart=lambda req: None,
             on_bounce=lambda req: None,
+            on_claude_hook_event=lambda req: None,
         )
         dispatcher.dispatch([])  # Should not raise

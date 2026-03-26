@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from haiv._infrastructure.TuiServer._TuiIpc import TuiCommand
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, RecentCommitsRaw, RecentFilesRaw, SessionsRaw, TuiModel
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, ClaudeHookEventsRaw, GitRaw, RecentCommitsRaw, RecentFilesRaw, SessionsRaw, TuiModel
 
 
 @runtime_checkable
@@ -25,5 +25,6 @@ class ModelClient(Protocol):
         active_mind: ActiveMindRaw | None = None,
         recent_files: RecentFilesRaw | None = None,
         recent_commits: RecentCommitsRaw | None = None,
+        claude_hook_events: ClaudeHookEventsRaw | None = None,
     ) -> None: ...
     def send_command(self, command: TuiCommand) -> None: ...

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from haiv.wrappers.git import BranchStats
 
@@ -131,6 +131,24 @@ class RecentCommitsRaw:
     commits: list[CommitEntry] = field(default_factory=list)
 
 
+@dataclass
+class ClaudeHookEntry:
+    """A single Claude Code hook event."""
+
+    id: int = 0
+    ts: float = 0.0
+    hook: str = ""
+    session_id: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ClaudeHookEventsRaw:
+    """Recent Claude Code hook events."""
+
+    events: list[ClaudeHookEntry] = field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Top-level model
 # ---------------------------------------------------------------------------
@@ -151,3 +169,4 @@ class TuiModel:
     active_mind: ActiveMindRaw | None = field(default_factory=ActiveMindRaw)
     recent_files: RecentFilesRaw | None = field(default_factory=RecentFilesRaw)
     recent_commits: RecentCommitsRaw | None = field(default_factory=RecentCommitsRaw)
+    claude_hook_events: ClaudeHookEventsRaw | None = field(default_factory=ClaudeHookEventsRaw)

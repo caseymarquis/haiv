@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING
 from haiv.helpers.open import open_in_editor, open_in_explorer
 from haiv.helpers.tui import helpers
 from haiv_tui.widgets.debounce_button import DebounceButton
-from haiv.helpers.tui.TuiModel import ActiveMindRaw, GitRaw, SessionEntry, SessionsRaw
+from haiv.helpers.tui.TuiModel import ActiveMindRaw, ClaudeHookEntry, ClaudeHookEventsRaw, GitRaw, SessionEntry, SessionsRaw
 from haiv.helpers.tui.terminal import TerminalManager
 from haiv.helpers.utils.trees import TreeNode, build_tree
 from haiv.paths import Paths
@@ -151,6 +151,7 @@ class SessionsWidget(Vertical):
         self._sessions: SessionsRaw | None = None
         self._git: GitRaw | None = None
         self._active_mind: ActiveMindRaw | None = None
+        self._hook_events: ClaudeHookEventsRaw | None = None
 
     def action_cursor_down(self) -> None:
         self.query_one(Tree).action_cursor_down()
@@ -168,10 +169,12 @@ class SessionsWidget(Vertical):
         self._store.sessions_changed.connect(self._on_sessions_changed)
         self._store.git_changed.connect(self._on_git_changed)
         self._store.active_mind_changed.connect(self._on_active_mind_changed)
+        self._store.claude_hook_events_changed.connect(self._on_hook_events_changed)
         if self._store.snapshot is not None:
             self._sessions = self._store.snapshot.sessions
             self._git = self._store.snapshot.git
             self._active_mind = self._store.snapshot.active_mind
+            self._hook_events = self._store.snapshot.claude_hook_events
             self._refresh_tree()
 
     def _on_sessions_changed(self, sender) -> None:
@@ -186,10 +189,14 @@ class SessionsWidget(Vertical):
         self._active_mind = sender
         self._refresh_tree()
 
+    def _on_hook_events_changed(self, sender) -> None:
+        self._hook_events = sender
+        self._refresh_tree()
+
     def _refresh_tree(self) -> None:
         tree = self.query_one(Tree)
         tree.root.remove_children()
-        views = build_session_tree(self._sessions, self._git, self._active_mind, self._paths.worktrees_dir)
+        views = build_session_tree(self._sessions, self._git, self._active_mind, self._paths.worktrees_dir, self._hook_events)
 
         def _add_nodes(parent, nodes: list[SessionNodeView]) -> None:
             for view in nodes:
@@ -237,10 +244,16 @@ class SessionsWidget(Vertical):
 
     @staticmethod
     def _build_label(view: SessionNodeView) -> Text:
-        base = f"[{view.short_id}] {view.mind}: {view.task}"
-        suffix = f"  {view.git_stats}"
-        style = "bold on dark_green" if view.is_active else ""
-        return Text(f"{base}{suffix}", style=style)
+        base_style = "bold on dark_green" if view.is_active else ""
+        parts: list[tuple[str, str]] = [
+            (f"[{view.short_id}] {view.mind}: {view.task}", base_style),
+        ]
+        if view.hook_label:
+            parts.append(("  ", ""))
+            parts.append((view.hook_label, view.hook_style))
+        if view.git_stats:
+            parts.append((f"  {view.git_stats}", "dim"))
+        return Text.assemble(*parts)
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +272,8 @@ class SessionNodeView:
     status: str
     git_stats: str
     is_active: bool
+    hook_label: str = ""
+    hook_style: str = ""
     worktree_path: Path | None = None
     children: list[SessionNodeView] = field(default_factory=list)
 
@@ -273,6 +288,7 @@ def build_session_tree(
     git: GitRaw | None,
     active_mind: ActiveMindRaw | None,
     worktrees_dir: Path | None = None,
+    hook_events: ClaudeHookEventsRaw | None = None,
 ) -> list[SessionNodeView]:
     """Assemble a list of session tree nodes from raw data.
 
@@ -287,11 +303,13 @@ def build_session_tree(
     roots = build_tree(pairs)
     active = active_mind.mind if active_mind else None
     git_branches = git.branches if git else {}
+    latest_hooks = _latest_hook_per_session(hook_events)
 
     def _to_view(node: TreeNode[SessionEntry]) -> SessionNodeView:
         entry = node.item
         stats = git_branches.get(entry.branch, BranchStats())
         wt_path = worktrees_dir / entry.branch if worktrees_dir and entry.branch else None
+        hook_label, hook_style = latest_hooks.get(entry.id, ("", ""))
         return SessionNodeView(
             short_id=entry.short_id,
             mind=entry.mind,
@@ -300,8 +318,55 @@ def build_session_tree(
             status=entry.status,
             git_stats=stats.format(),
             is_active=entry.mind == active,
+            hook_label=hook_label,
+            hook_style=hook_style,
             worktree_path=wt_path,
             children=[_to_view(c) for c in node.child_nodes],
         )
 
     return [_to_view(r) for r in roots]
+
+
+def _latest_hook_per_session(
+    hook_events: ClaudeHookEventsRaw | None,
+) -> dict[str, tuple[str, str]]:
+    """Find the most recent hook event per session, return (label, style)."""
+    if not hook_events or not hook_events.events:
+        return {}
+
+    latest: dict[str, ClaudeHookEntry] = {}
+    for event in hook_events.events:
+        if event.session_id:
+            latest[event.session_id] = event
+
+    result: dict[str, tuple[str, str]] = {}
+    for session_id, event in latest.items():
+        label, style = _hook_status(event)
+        result[session_id] = (label, style)
+    return result
+
+
+def _hook_status(event: ClaudeHookEntry) -> tuple[str, str]:
+    """Classify a hook event into a status label and style."""
+    p = event.payload
+
+    if event.hook == "Notification":
+        ntype = p.get("notification_type", "")
+        if ntype == "permission_prompt":
+            tool = p.get("message", "").rsplit("use ", 1)[-1] if "use " in p.get("message", "") else ""
+            return f"BLOCKED ({tool})" if tool else "BLOCKED", "bold red"
+        return ntype, "yellow"
+
+    if event.hook == "UserPromptSubmit":
+        return "working", "bold cyan"
+
+    if event.hook == "Stop":
+        return "idle", "green"
+
+    if event.hook == "SessionStart":
+        return "started", "blue"
+
+    if event.hook == "SessionEnd":
+        return "ended", "dim"
+
+    return event.hook, ""

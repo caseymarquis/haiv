@@ -19,3 +19,7 @@ HV_MIND = "HV_MIND"
 # Current haiv session ID, set by `hv start {mind}`.
 # Used to track delegation chains (parent session).
 HV_SESSION = "HV_SESSION"
+
+# IPC address for Claude Code hook dispatch.
+# Set by build_env() so hook commands can route events to the TUI.
+HV_CLAUDE_HOOK_DISPATCH = "HV_CLAUDE_HOOK_DISPATCH"

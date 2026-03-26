@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Callable
 
 from haiv._infrastructure.TuiServer import TuiCommand, TuiCommandType
-from haiv.helpers.tui.commands import BounceRequest, RestartRequest
+from haiv.helpers.tui.commands import BounceRequest, ClaudeHookEventRequest, RestartRequest
 
 
 class CommandDispatcher:
@@ -31,9 +31,11 @@ class CommandDispatcher:
         *,
         on_restart: Callable[[RestartRequest], None],
         on_bounce: Callable[[BounceRequest], None],
+        on_claude_hook_event: Callable[[ClaudeHookEventRequest], None],
     ) -> None:
         self._on_restart = on_restart
         self._on_bounce = on_bounce
+        self._on_claude_hook_event = on_claude_hook_event
 
     def dispatch(self, commands: list[TuiCommand]) -> None:
         """Dispatch a batch of commands from the poll loop."""
@@ -49,3 +51,6 @@ class CommandDispatcher:
             case TuiCommandType.BOUNCE:
                 request: BounceRequest = command.payload
                 self._on_bounce(request)
+            case TuiCommandType.CLAUDE_HOOK_EVENT:
+                request: ClaudeHookEventRequest = command.payload
+                self._on_claude_hook_event(request)
