@@ -1,12 +1,12 @@
 # Immediate Plan
 
-**Updated:** 2026-03-24
+**Updated:** 2026-03-25
 
 ---
 
-## Current Focus: TUI Activity Tree + Command Queue
+## Current Focus: Claude Code Hooks Integration
 
-Major session. The HUD's file list became a categorized Tree widget showing pending changes and recent commits. Luna delivered a TUI command queue in parallel — `hv tui restart` and `hv tui bounce` are live. Session bounce eligibility is persisted.
+Built end-to-end Claude Code hooks pipeline. Hook events (Stop, Notification, UserPromptSubmit, SessionStart, SessionEnd) flow from Claude through `hv --claude-hook` → IPC → TUI. Session tree shows live mind status (idle/working/BLOCKED). File and commit workers refresh on Stop events via dispatcher listeners.
 
 Run `hv sessions` to see current active work.
 
@@ -14,7 +14,8 @@ Run `hv sessions` to see current active work.
 
 ## Active Initiatives
 
-- **TUI feature buildout** — activity tree live (modified/deleted/conflicted/commits), command queue wired, bounce/restart commands working.
+- **TUI feature buildout** — activity tree, command queue, bounce/restart, claude hooks integration all live.
+- **Claude hooks pipeline** — events flow over IPC, buffered in ClaudeHooksWorker, displayed in Hooks tab and session tree. Dispatcher listener pattern enables any worker to react to hook events.
 - **Relay infrastructure** — unbuilt. Required for haiv to manage external projects (e.g., dnd at `/home/casey/code/dnd/`). The problem: `hv` always runs in haiv-cli's venv, but project/user commands need the project's own venv and dependencies.
 
 ---
@@ -24,7 +25,10 @@ Run `hv sessions` to see current active work.
 - **Bounce toggle command** — `hv tui bounce-toggle` or similar, to mark sessions as bounce-eligible/ineligible from the CLI
 - **File openers per extension** — `[file_openers]` in `haiv.toml`, default to `code`, per-extension overrides (e.g., `".md" = "typora"`)
 - **Type-safe signal subscriptions** — derive signal names from TuiModel fields via reflection, not raw strings
-- **Live mind status via Claude Code hooks** — spark's research (temp-aar/claude-hook-integration.md) mapped all lifecycle events. Now that `ActiveMindRaw` exists, hook integration has a natural target.
+- **User-configurable hook file routing** — long-term vision: let users define custom files that pipe into the TUI event stream. Shape will clarify with more internal hook use.
+- **Auto-bounce from hooks** — Stop on mind A + idle mind B = bounce signal. Infrastructure is in place, logic not built.
+- **Permission queue via hooks** — PermissionRequest hooks could block, route decisions to TUI, centralize approval across minds. Explored but not built.
+- **`--settings` for automatic hook setup** — Claude's `--settings` flag replaces (doesn't merge), so `hv claude_hooks setup` remains the path for now.
 - **CLAUDE.md clarification** — command search order is user → project → core (highest precedence first), but CLAUDE.md describes it as "haiv_core → haiv_project → haiv_user". Luna flagged this in her AAR. Should be clarified.
 - **Clean up stale sessions** — echo [7] and spark [4] are 26+ commits behind main (pre-rename). Close out rather than merge.
 - **mind_launch quiet mode** — Luna noted mind_launch prints user-facing messages that are noise for command-driven invocations. Add a `quiet` parameter.
@@ -37,6 +41,7 @@ Run `hv sessions` to see current active work.
 
 ## Recently Completed
 
+- **Claude Code hooks integration** (2026-03-25) — End-to-end hook pipeline: `hv --claude-hook` in CLI, IPC dispatch to TUI, `ClaudeHooksWorker` buffers last 20 events, `ClaudeHookEventsRaw` model section, Hooks tab in TUI, live session tree status (idle/working/BLOCKED). Commands: `hv claude_hooks`, `hv claude_hooks <id>`, `hv claude_hooks setup`. Extracted `BounceWorker` from app.py. Dispatcher listener pattern for workers to react to hook events. File/commit workers refresh on Stop.
 - **TUI command queue** (2026-03-24) — Luna built typed command channel alongside write_raw data flow. `TuiCommand` envelope with `TuiCommandType` enum, `CommandDispatcher` with injected handlers, `send_command()` on both local and IPC clients. `hv tui restart` and `hv tui bounce` wired end-to-end.
 - **Activity tree redesign** (2026-03-24) — Replaced flat OptionList with Tree widget. Three file categories (conflicted hidden when empty, recently modified, deleted) plus recent commits (collapsed by default, expand for files). Gatherer rewritten: `git status --porcelain` + `git diff HEAD --numstat` instead of scanning all files by mtime. `FileStatus` enum. Age display ("just now", "3m", "1h 2m"). Alphabetical sort, case-insensitive, underscore-ignored.
 - **Recent commits section** (2026-03-24) — New `RecentCommitsRaw` model section with `CommitEntry` holding denormalized file lists. Single `git log --numstat` call with null-byte delimiter for reliable parsing. Separate `RecentCommitsWorker` (5s debounce).
@@ -128,9 +133,14 @@ TUI app:      helpers.mind_launch(term, ...)          # app passes deps directly
 | `haiv-lib/src/haiv/_infrastructure/TuiServer/` | Server, IPC, dirty tracking, command buffer, freeze |
 | `haiv-core/src/haiv_core/commands/tui/bounce.py` | hv tui bounce — cycle sessions |
 | `haiv-core/src/haiv_core/commands/tui/restart.py` | hv tui restart — restart TUI process |
+| `haiv-core/src/haiv_core/commands/claude_hooks/` | hv claude_hooks, hv claude_hooks <id>, hv claude_hooks setup |
+| `haiv-cli/src/haiv_cli/claude_hooks_dispatch.py` | CLI entry point for `hv --claude-hook`, sends over IPC |
 | `haiv-tui/src/haiv_tui/_runner.py` | Entry point — os.execv restart, crash logging |
 | `haiv-tui/src/haiv_tui/app.py` | HaivApp + _Workers + CommandDispatcher wiring |
-| `haiv-tui/src/haiv_tui/command_dispatcher.py` | Route commands to typed handlers |
+| `haiv-tui/src/haiv_tui/command_dispatcher.py` | Route commands to typed handlers + listener broadcast |
+| `haiv-tui/src/haiv_tui/command_filters.py` | Helpers for filtering dispatched commands |
+| `haiv-tui/src/haiv_tui/claude_hooks_worker.py` | Buffer hook events, push to model |
+| `haiv-tui/src/haiv_tui/bounce_worker.py` | Handle bounce commands |
 | `haiv-tui/src/haiv_tui/recent_files_worker.py` | Background: watches worktrees/, gathers on change |
 | `haiv-tui/src/haiv_tui/recent_commits_worker.py` | Background: watches worktrees/, gathers commits |
 | `haiv-tui/src/haiv_tui/store.py` | Signal dispatch from dirty set |
