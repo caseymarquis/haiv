@@ -244,13 +244,13 @@ class SessionsWidget(Vertical):
 
     @staticmethod
     def _build_label(view: SessionNodeView) -> Text:
-        base_style = "bold on dark_green" if view.is_active else ""
-        parts: list[tuple[str, str]] = [
-            (f"[{view.short_id}] {view.mind}: {view.task}", base_style),
-        ]
+        active_bg = " on dark_green" if view.is_active else ""
+        parts: list[tuple[str, str]] = []
         if view.hook_label:
-            parts.append(("  ", ""))
-            parts.append((view.hook_label, view.hook_style))
+            parts.append((f"{view.hook_label:<10} ", view.hook_style))
+        parts.append((view.mind, f"bold{active_bg}"))
+        parts.append((f": {view.task}", active_bg))
+        parts.append((f"  [{view.short_id}]", "dim"))
         if view.git_stats:
             parts.append((f"  {view.git_stats}", "dim"))
         return Text.assemble(*parts)

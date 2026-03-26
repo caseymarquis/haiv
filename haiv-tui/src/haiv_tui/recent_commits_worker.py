@@ -12,6 +12,7 @@ from pathlib import Path
 from haiv._infrastructure.TuiServer import TuiLocalClient
 from haiv.helpers.tui.recent_commits import gather_recent_commits
 from haiv.helpers.utils.file_watcher import FileWatcher
+from haiv_tui.command_filters import is_claude_hook_stop
 
 
 class RecentCommitsWorker:
@@ -43,6 +44,18 @@ class RecentCommitsWorker:
             )
 
         return self
+
+    def request_gather(self) -> None:
+        """Request a re-gather from an external trigger."""
+        self._gather_requested.set()
+
+    def register_with(self, dispatcher) -> None:
+        """Listen for Stop hook events to trigger a refresh."""
+        def _on_command(command_type, payload) -> None:
+            if is_claude_hook_stop(command_type, payload):
+                self.request_gather()
+
+        dispatcher.add_listener(_on_command)
 
     def stop(self) -> None:
         self._stop.set()

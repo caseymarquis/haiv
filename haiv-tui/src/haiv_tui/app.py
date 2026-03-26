@@ -134,6 +134,7 @@ class HaivApp(App):
             on_restart=lambda _: self.action_restart(),
             on_bounce=lambda _: self._bounce.handle(),
             on_claude_hook_event=lambda req: self._claude_hooks.handle(req),
+            error_sink=self.internal_errors.append,
         )
         self._bg_workers: _Workers | None = None
 
@@ -156,6 +157,7 @@ class HaivApp(App):
                     helpers.active_mind_set(self.tui_client, mind)
             self._bg_workers = _Workers(self.paths, self.tui_client, self.git)
             self._bg_workers.start()
+            self._bg_workers.register_with(self._dispatcher)
 
         # Immediate first read, then start polling
         self._poll_model()
@@ -300,6 +302,13 @@ class _Workers:
             client=self._client,
             worktrees_dir=self._paths.worktrees_dir,
         ).start()
+
+    def register_with(self, dispatcher: CommandDispatcher) -> None:
+        """Let workers register themselves as command listeners."""
+        if self._recent_files is not None:
+            self._recent_files.register_with(dispatcher)
+        if self._recent_commits is not None:
+            self._recent_commits.register_with(dispatcher)
 
     def stop(self) -> None:
         if self._file_watcher is not None:
