@@ -43,6 +43,9 @@ if TYPE_CHECKING:
 # Valid name pattern: starts with letter, then alphanumeric/hyphen/underscore
 _NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_-]*$")
 
+# Names granted by exception — valid despite not matching the pattern
+_HONORED_NAMES = {"仁"}
+
 
 class MindNotFoundError(Exception):
     """Raised when a mind cannot be found."""
@@ -334,6 +337,9 @@ def validate_mind_name(name: str) -> None:
     """
     if not name:
         raise InvalidMindNameError(name, "Name cannot be empty")
+
+    if name in _HONORED_NAMES:
+        return
 
     if name != name.lower():
         raise InvalidMindNameError(name, "Name must be lowercase")

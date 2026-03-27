@@ -20,6 +20,7 @@ a dependency but should not leak WezTerm details to their own callers.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable, TypeVar
 
 from haiv.helpers.sessions import Session
 from haiv.helpers.tui import helpers
@@ -30,6 +31,8 @@ from haiv.helpers.tui.terminal import TerminalManager
 from haiv.settings import HaivSettings
 from haiv.wrappers.git import Git
 from haiv.wrappers.wezterm import WezTerm
+
+T = TypeVar("T")
 
 
 class Tui:
@@ -58,6 +61,18 @@ class Tui:
             raise RuntimeError("Tui client is required but was not provided")
         return self._client
 
+    def try_with_client(self, fn: Callable[[TuiClient], T]) -> T | None:
+        """Run fn with the TUI client if the server is reachable.
+
+        Returns the result of fn, or None if the server is unavailable.
+        """
+        if self._client is None:
+            return None
+        try:
+            return fn(self._client)
+        except ConnectionError:
+            return None
+
     def start(self) -> None:
         """Ensure the haiv workspace exists."""
         helpers.workspace_start(self._terminal)
@@ -67,8 +82,11 @@ class Tui:
         return self._require_client().read()
 
     def sessions_refresh(self) -> None:
-        """Read sessions from disk and push into the TUI model."""
-        helpers.sessions_refresh(self._require_client(), self._sessions_file, git=self._git)
+        """Read sessions from disk and push into the TUI model.
+
+        No-op if the TUI server is not running.
+        """
+        self.try_with_client(lambda c: helpers.sessions_refresh(c, self._sessions_file, git=self._git))
 
     def mind_try_send_text(self, mind_name: str, text: str, *, submit: bool = False) -> bool:
         """Send text to a mind's pane, returning whether it was found."""

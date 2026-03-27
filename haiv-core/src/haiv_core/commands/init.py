@@ -65,9 +65,6 @@ def _write_haiv_state_files(root: Path, ctx: cmd.Ctx) -> None:
     claude_dir = root / ".claude"
     ctx.templates.write("init/.claude/.gitkeep.j2", claude_dir / ".gitkeep")
 
-    import subprocess
-    subprocess.run(["hv", "claude_hooks", "setup", "--json"], stdout=open(claude_dir / "settings.json", "w"), cwd=root)
-
     haiv_project = root / "src" / "haiv_project"
     ctx.templates.write("init/src/haiv_project/__init__.py.j2", haiv_project / "__init__.py")
 
@@ -105,12 +102,32 @@ def _create_orphan_worktree(git: Git, branch: str) -> Path:
     return git.path / "worktrees" / branch
 
 def _post_init(root: Path, quiet: bool) -> None:
-    """Run post-init setup: create user."""
+    """Run post-init setup: create user, configure hooks."""
     import subprocess
+    env = _clean_env(root)
+
+    # Claude Code hooks
+    claude_dir = root / ".claude"
+    claude_dir.mkdir(exist_ok=True)
+    with open(claude_dir / "settings.json", "w") as f:
+        subprocess.run(["hv", "claude_hooks", "setup", "--json"], stdout=f, cwd=root, env=env)
+
+    # User
     args = ["hv", "users", "new", "--name", _detect_username()]
     if quiet:
         args.append("--quiet")
-    subprocess.run(args, cwd=root)
+    subprocess.run(args, cwd=root, env=env)
+
+
+def _clean_env(root: Path) -> dict[str, str]:
+    """Build an environment pointing at the new colony, not the caller's."""
+    import os
+    env = os.environ.copy()
+    env["HV_ROOT"] = str(root)
+    env.pop("HV_SESSION", None)
+    env.pop("HV_MIND", None)
+    env.pop("HV_CLAUDE_HOOK_DISPATCH", None)
+    return env
 
 
 def _detect_username() -> str:
