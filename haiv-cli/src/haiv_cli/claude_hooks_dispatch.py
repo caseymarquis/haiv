@@ -2,6 +2,9 @@
 
 Receives hook events from Claude Code and forwards them
 to the TUI over IPC.
+
+Set HV_CLAUDE_HOOK_TRACE=1 to log dispatch activity to
+~/.cache/haiv/claude-hooks-trace.log
 """
 
 from __future__ import annotations
@@ -10,6 +13,22 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
+
+_TRACE = os.environ.get("HV_CLAUDE_HOOK_TRACE", "") == "1"
+_TRACE_FILE = Path.home() / ".cache" / "haiv" / "claude-hooks-trace.log"
+
+
+def _trace(msg: str) -> None:
+    if not _TRACE:
+        return
+    try:
+        _TRACE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(_TRACE_FILE, "a") as f:
+            ts = time.strftime("%H:%M:%S")
+            f.write(f"{ts}  {msg}\n")
+    except Exception:
+        pass
 
 
 def dispatch(args: list[str]) -> None:
@@ -19,7 +38,10 @@ def dispatch(args: list[str]) -> None:
     session_id = os.environ.get("HV_SESSION", "")
     ipc_address = os.environ.get("HV_CLAUDE_HOOK_DISPATCH", "")
 
+    _trace(f"hook={hook_name} session={session_id[:8]} ipc={ipc_address or '(none)'}")
+
     if not ipc_address:
+        _trace("no IPC address, skipping")
         return
 
     stdin_data = None
@@ -36,8 +58,7 @@ def dispatch(args: list[str]) -> None:
         except json.JSONDecodeError:
             payload = {"raw": stdin_data}
 
-    from haiv.helpers.tui.commands import ClaudeHookEventRequest, tui_claude_hook_event
-    from haiv.helpers.tui.TuiClient import TuiClient
+    from haiv.helpers.tui.commands import ClaudeHookEventRequest
 
     event = ClaudeHookEventRequest(
         ts=ts,
@@ -60,7 +81,8 @@ def dispatch(args: list[str]) -> None:
                 payload=event,
             )))
             conn.recv()
+            _trace(f"sent ok")
         finally:
             conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        _trace(f"error: {e}")
