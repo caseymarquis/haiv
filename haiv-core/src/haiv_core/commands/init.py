@@ -65,6 +65,9 @@ def _write_haiv_state_files(root: Path, ctx: cmd.Ctx) -> None:
     claude_dir = root / ".claude"
     ctx.templates.write("init/.claude/.gitkeep.j2", claude_dir / ".gitkeep")
 
+    import subprocess
+    subprocess.run(["hv", "claude_hooks", "setup", "--json"], stdout=open(claude_dir / "settings.json", "w"), cwd=root)
+
     haiv_project = root / "src" / "haiv_project"
     ctx.templates.write("init/src/haiv_project/__init__.py.j2", haiv_project / "__init__.py")
 
@@ -100,6 +103,21 @@ def _create_orphan_worktree(git: Git, branch: str) -> Path:
         intent=f"create worktree for {branch}",
     )
     return git.path / "worktrees" / branch
+
+def _post_init(root: Path, quiet: bool) -> None:
+    """Run post-init setup: create user."""
+    import subprocess
+    args = ["hv", "users", "new", "--name", _detect_username()]
+    if quiet:
+        args.append("--quiet")
+    subprocess.run(args, cwd=root)
+
+
+def _detect_username() -> str:
+    """Detect a username from the environment."""
+    import getpass
+    return getpass.getuser().lower().replace(" ", "-")
+
 
 def _print_next_steps(ctx: cmd.Ctx, *, branch: str, quiet: bool) -> None:
     """Print next steps after initialization."""
@@ -166,6 +184,7 @@ def _init_fresh_empty(
         worktree_git.run(["add", "README.md"], intent="stage README")
         worktree_git.run(["commit", "-m", "Initial commit"], intent="create initial commit")
 
+    _post_init(root, quiet)
     _print_next_steps(ctx, branch=branch, quiet=quiet)
 
 
@@ -197,6 +216,7 @@ def _init_fresh_nonempty(
     worktree_git.run(["add", "."], intent="stage moved files")
     worktree_git.run(["commit", "-m", "Initial commit"], intent="commit moved files")
 
+    _post_init(root, quiet)
     _print_next_steps(ctx, branch=branch, quiet=quiet)
 
 
@@ -291,6 +311,7 @@ def _init_peer_mode(
         intent=f"create worktree for {target_branch}",
     )
 
+    _post_init(peer_dir, quiet)
     _print_next_steps(ctx, branch=target_branch, quiet=quiet)
 
 
