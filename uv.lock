@@ -22,7 +22,7 @@ wheels = [
 
 [[package]]
 name = "haiv"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "worktrees/main/haiv" }
 dependencies = [
     { name = "haiv-cli" },
@@ -37,14 +37,18 @@ requires-dist = [
 
 [[package]]
 name = "haiv-cli"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "worktrees/main/haiv-cli" }
 dependencies = [
     { name = "haiv-core" },
+    { name = "haiv-mail" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "haiv-core", editable = "worktrees/main/haiv-core" }]
+requires-dist = [
+    { name = "haiv-core", editable = "worktrees/main/haiv-core" },
+    { name = "haiv-mail", specifier = ">=0.1.0,<1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -55,7 +59,7 @@ dev = [
 
 [[package]]
 name = "haiv-core"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "worktrees/main/haiv-core" }
 dependencies = [
     { name = "haiv-lib" },
@@ -73,7 +77,7 @@ dev = [
 
 [[package]]
 name = "haiv-lib"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "worktrees/main/haiv-lib" }
 dependencies = [
     { name = "jinja2" },
@@ -98,12 +102,25 @@ dev = [
 ]
 
 [[package]]
+name = "haiv-mail"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "haiv-lib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/45/7d689be8f850f490703f6adbb5b962e301225d74bfd822caf23592ffd1a6/haiv_mail-0.3.0.tar.gz", hash = "sha256:59d910d16862a087f55c83721aa3fa393df619b1d3ed018f76994417d7bfe467", size = 29408, upload-time = "2026-03-29T05:06:06.428Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/d7/2de91fa8153d56ffeffc57266715694a5c8e4b6a65bd343603fed4a47215/haiv_mail-0.3.0-py3-none-any.whl", hash = "sha256:6fb10876b62e1aa28b80709bdf6c9e602f7baa65d12831ebd4618d23cbcc6b90", size = 23174, upload-time = "2026-03-29T05:06:07.5Z" },
+]
+
+[[package]]
 name = "haiv-project"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "haiv" },
     { name = "haiv-cli" },
+    { name = "haiv-mail" },
     { name = "haiv-tui" },
 ]
 
@@ -116,6 +133,7 @@ dev = [
 requires-dist = [
     { name = "haiv", editable = "worktrees/main/haiv" },
     { name = "haiv-cli", editable = "worktrees/main/haiv-cli" },
+    { name = "haiv-mail" },
     { name = "haiv-tui", editable = "worktrees/main/haiv-tui" },
 ]
 
@@ -124,7 +142,7 @@ dev = [{ name = "pytest", specifier = ">=8.0" }]
 
 [[package]]
 name = "haiv-tui"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "worktrees/main/haiv-tui" }
 dependencies = [
     { name = "blinker" },
