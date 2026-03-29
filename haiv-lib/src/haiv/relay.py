@@ -34,8 +34,17 @@ def _run(route: RouteMatch, *, haiv_root: Path | None, haiv_username: str | None
     from haiv._infrastructure.resolvers import make_resolver
     from haiv._infrastructure.haiv_hooks import configure_haiv_hooks
 
+    from haiv.paths import Paths
+
+    paths = Paths(
+        _called_from=None,
+        _pkg_root=route.pkg_root,
+        _haiv_root=haiv_root,
+        _user_name=haiv_username,
+    )
+
     command = load_command(route.file)
-    resolve = make_resolver([route.pkg_root], paths=None, has_user=haiv_username is not None)
+    resolve = make_resolver([route.pkg_root], paths=paths, has_user=haiv_username is not None)
 
     definition = command.define()
     haiv_hook_registry = None
