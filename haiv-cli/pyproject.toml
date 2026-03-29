@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "haiv-core",
-    "haiv-mail>=0.1.0,<1",
+    "haiv-mail>=0.3.0,<1",
 ]
 
 [project.scripts]

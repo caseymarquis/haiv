@@ -73,7 +73,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "haiv-core", editable = "haiv-core" },
-    { name = "haiv-mail", specifier = ">=0.1.0,<1" },
+    { name = "haiv-mail", specifier = ">=0.3.0,<1" },
 ]
 
 [package.metadata.requires-dev]
@@ -143,14 +143,14 @@ dev = [
 
 [[package]]
 name = "haiv-mail"
-version = "0.2.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "haiv-lib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/da/21bf6b757bd6731bba75b26cf307d4f8e0997d7cd4603d32f4acfe3fb86c/haiv_mail-0.2.0.tar.gz", hash = "sha256:a4b5002eac6e2b7bb13a7e6cbf960416392169f1cab97e55cc4a0d71baca195e", size = 28556, upload-time = "2026-03-29T04:37:19.193Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/ca/188e3c5c4823deb758591b8241bf57f144836dbfbfcdd5e358731d38bbee/haiv_mail-0.3.1.tar.gz", hash = "sha256:edca380f2f69df596fe65389c6fea6c4c9b536bddd27a93348b6124067ab70a1", size = 29623, upload-time = "2026-03-29T15:49:51.469Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/a2/a05e5969dacf58c157074782ee8fcc50ff9c443316be79ff8f78a07e1d36/haiv_mail-0.2.0-py3-none-any.whl", hash = "sha256:8b59fd1810c1a8cb3ddf1f81d7f75a3fe568316dd0f038131cd6e9f0fccdc7b8", size = 22035, upload-time = "2026-03-29T04:37:17.987Z" },
+    { url = "https://files.pythonhosted.org/packages/61/a5/a5f647fe941636e3756b3e878d52437aaea7cfc57de8cb947a63597d1645/haiv_mail-0.3.1-py3-none-any.whl", hash = "sha256:6889a3fc8cc2cb6bdd72ad57ee5662db3f92070f9733de3e3998a6f008537587", size = 23830, upload-time = "2026-03-29T15:49:50.53Z" },
 ]
 
 [[package]]

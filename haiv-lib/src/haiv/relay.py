@@ -51,6 +51,8 @@ def _run(route: RouteMatch, *, haiv_root: Path | None, haiv_username: str | None
     if definition.enable_haiv_hooks:
         haiv_hook_registry = configure_haiv_hooks([route.pkg_root])
 
+    from haiv.errors import handle_error
+
     ctx = build_ctx(
         route,
         command,
@@ -59,7 +61,10 @@ def _run(route: RouteMatch, *, haiv_root: Path | None, haiv_username: str | None
         resolve=resolve,
         haiv_hook_registry=haiv_hook_registry,
     )
-    run_command(command, ctx)
+    try:
+        run_command(command, ctx)
+    except Exception as exc:
+        handle_error(exc)
 
 
 def run_route(
