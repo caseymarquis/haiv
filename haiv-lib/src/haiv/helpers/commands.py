@@ -110,24 +110,33 @@ def path_to_command_name(path: Path) -> str:
 def commands_for_package(package: PackageInfo) -> list[CommandInfo]:
     """Discover all commands in a package.
 
+    Follows symlinks so external packages can symlink their commands
+    into a project or user commands directory.
+
     Args:
         package: The package to scan.
 
     Returns:
         List of commands sorted by name.
     """
+    import os
+
     commands_dir = package.paths.commands_dir
     commands: list[CommandInfo] = []
 
-    for py_file in commands_dir.rglob("*.py"):
-        relative = py_file.relative_to(commands_dir)
+    for dirpath, _, filenames in os.walk(commands_dir, followlinks=True):
+        for filename in filenames:
+            if not filename.endswith(".py"):
+                continue
+            py_file = Path(dirpath) / filename
+            relative = py_file.relative_to(commands_dir)
 
-        # Skip any path containing dunder segments (e.g., __init__.py, __pycache__/)
-        if any("__" in part for part in relative.parts):
-            continue
+            # Skip any path containing dunder segments (e.g., __init__.py, __pycache__/)
+            if any("__" in part for part in relative.parts):
+                continue
 
-        name = path_to_command_name(relative)
-        commands.append(CommandInfo(name=name, file=py_file))
+            name = path_to_command_name(relative)
+            commands.append(CommandInfo(name=name, file=py_file))
 
     return sorted(commands, key=lambda c: c.name)
 

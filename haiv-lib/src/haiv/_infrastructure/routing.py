@@ -154,14 +154,23 @@ def require_route(command_string: str, commands: ModuleType) -> Route:
 def paths_from_module(commands: ModuleType) -> list[Path]:
     """Extract all .py file paths from a commands module directory.
 
+    Follows symlinks so external packages can symlink their commands
+    into a project or user commands directory.
+
     Returns paths relative to the module directory.
     """
+    import os
+
     commands_dir = module_to_folder(commands)
     paths = []
 
-    for py_file in commands_dir.rglob("*.py"):
-        relative = py_file.relative_to(commands_dir)
-        paths.append(relative)
+    for dirpath, _, filenames in os.walk(commands_dir, followlinks=True):
+        for filename in filenames:
+            if not filename.endswith(".py"):
+                continue
+            py_file = Path(dirpath) / filename
+            relative = py_file.relative_to(commands_dir)
+            paths.append(relative)
 
     return paths
 

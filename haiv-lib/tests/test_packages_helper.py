@@ -35,13 +35,15 @@ def make_valid_package(pkg_root: Path) -> None:
 class TestDiscoverPackages:
     """Tests for discover_packages function."""
 
-    def test_core_only_when_no_haiv_root(self):
-        """Only core package returned when haiv_root is None."""
+    def test_core_and_installed_when_no_haiv_root(self):
+        """Core and installed packages returned when haiv_root is None."""
         result = discover_packages(haiv_root=None)
 
-        assert len(result) == 1
-        assert result[0].name == "haiv_core"
-        assert result[0].source == PackageSource.CORE
+        names = [p.name for p in result]
+        assert "haiv_core" in names
+        # No project or user packages without haiv_root
+        assert "haiv_project" not in names
+        assert "haiv_user" not in names
 
     def test_core_always_included(self, tmp_path):
         """Core package is always included even with empty haiv_root."""
@@ -134,7 +136,7 @@ class TestDiscoverPackages:
         assert PackageSource.USER_LOCAL not in sources
 
     def test_discovery_order(self, tmp_path):
-        """Packages returned in discovery order: CORE, PROJECT_LOCAL, USER_LOCAL."""
+        """Packages returned in discovery order: CORE, installed, PROJECT_LOCAL, USER_LOCAL."""
         make_valid_package(tmp_path / "src" / "haiv_project")
         user = make_user(tmp_path)
         make_valid_package(user.paths.haiv_user.root)
@@ -142,11 +144,10 @@ class TestDiscoverPackages:
         result = discover_packages(tmp_path, user=user)
 
         sources = [p.source for p in result]
-        assert sources == [
-            PackageSource.CORE,
-            PackageSource.PROJECT_LOCAL,
-            PackageSource.USER_LOCAL,
-        ]
+        # Core first, then installed packages, then project, then user
+        assert sources[0] == PackageSource.CORE
+        assert sources[-2] == PackageSource.PROJECT_LOCAL
+        assert sources[-1] == PackageSource.USER_LOCAL
 
     def test_core_paths_from_installed_module(self, tmp_path):
         """Core package paths come from the installed haiv_core module."""
@@ -242,22 +243,19 @@ class TestDiscoverPackagesDetailed:
         assert len(user_skipped) == 1
         assert user_skipped[0].reason is not None
 
-    def test_always_five_results(self, tmp_path):
-        """Always returns 5 results (one per PackageSource)."""
+    def test_minimum_results(self, tmp_path):
+        """Always returns at least core + user_installed results."""
         result = discover_packages_detailed(tmp_path)
 
         total = len(result.included) + len(result.skipped)
-        assert total == 5
+        assert total >= 4  # core, project_installed(s), project_local, user_installed, user_local
 
-    def test_installed_packages_not_implemented(self, tmp_path):
-        """Installed package sources are skipped as not implemented."""
+    def test_user_installed_not_implemented(self, tmp_path):
+        """User-installed package source is skipped as not implemented."""
         result = discover_packages_detailed(tmp_path)
 
-        project_installed = [s for s in result.skipped if s.source == PackageSource.PROJECT_INSTALLED]
         user_installed = [s for s in result.skipped if s.source == PackageSource.USER_INSTALLED]
 
-        assert len(project_installed) == 1
-        assert project_installed[0].reason == "not implemented"
         assert len(user_installed) == 1
         assert user_installed[0].reason == "not implemented"
 

@@ -161,9 +161,20 @@ def discover_packages_detailed(
         packages, included, skipped
     )
 
-    # PROJECT_INSTALLED - not yet implemented
+    # PROJECT_INSTALLED - Python packages installed alongside haiv
+    try:
+        haiv_mail = importlib.import_module("haiv_mail")
+        mail_paths = PkgPaths.from_module(haiv_mail)
+        mail_skip = _check_package(mail_paths)
+    except ImportError:
+        mail_paths = None
+        mail_skip = "not installed"
+    except Exception as e:
+        mail_paths = None
+        mail_skip = f"unexpected error: {e}"
+
     _add_result(
-        PackageSource.PROJECT_INSTALLED, "project_installed", None, "not implemented",
+        PackageSource.PROJECT_INSTALLED, "haiv_mail", mail_paths, mail_skip,
         packages, included, skipped
     )
 

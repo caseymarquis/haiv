@@ -13,6 +13,8 @@ from typing import cast
 
 import haiv_core
 import haiv_core.commands
+import haiv_mail
+import haiv_mail.commands
 
 from haiv._infrastructure import env
 from haiv.paths import get_haiv_root, Paths
@@ -27,8 +29,9 @@ from haiv.util import module_to_folder
 
 __version__ = "0.1.0"
 
-# Core package root (computed once at import)
+# Package roots (computed once at import)
 _core_root = module_to_folder(haiv_core)
+_mail_root = module_to_folder(haiv_mail)
 
 # Cached haiv_root lookup
 _haiv_root: Path | None = None
@@ -200,6 +203,17 @@ def _find_command(
     if route is not None:
         return route, _haiv_root, sources
 
+    # Try haiv_mail (installed infrastructure)
+    route, source = _try_source(
+        command_string,
+        "haiv_mail",
+        "(installed)",
+        lambda: haiv_mail.commands,
+    )
+    sources.append(source)
+    if route is not None:
+        return route, _haiv_root, sources
+
     # Fall back to haiv_core (always available)
     route, source = _try_source(
         command_string,
@@ -336,8 +350,9 @@ def main():
         # Order: haiv_core, haiv_project, haiv_user (later overrides earlier)
         pkg_roots: list[Path] = []
 
-        # haiv_core
+        # haiv_core + haiv_mail
         pkg_roots.append(_core_root)
+        pkg_roots.append(_mail_root)
 
         # haiv_project and haiv_user via Paths
         paths = None

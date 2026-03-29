@@ -1,6 +1,6 @@
 [project]
 name = "haiv-cli"
-version = "0.2.1"
+version = "0.2.2"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
 license = "MIT"
@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "haiv-core",
+    "haiv-mail>=0.1.0,<1",
 ]
 
 [project.scripts]
