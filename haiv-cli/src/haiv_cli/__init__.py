@@ -19,12 +19,8 @@ import haiv_mail.commands
 from haiv._infrastructure import env
 from haiv.paths import get_haiv_root, Paths
 from haiv._infrastructure.routing import find_route, RouteMatch
-from haiv._infrastructure.loader import load_command, load_commands_module
-from haiv._infrastructure.args import build_ctx
-from haiv._infrastructure.runner import run_command
+from haiv._infrastructure.loader import load_commands_module
 from haiv._infrastructure.identity import detect_user, Identity, AmbiguousIdentityError
-from haiv._infrastructure.resolvers import make_resolver
-from haiv._infrastructure.haiv_hooks import configure_haiv_hooks
 from haiv.util import module_to_folder
 
 __version__ = "0.1.0"
@@ -246,60 +242,15 @@ def _print_not_found(command_string: str, sources: list[CommandSource]) -> None:
                 print(f"    {s.error}", file=sys.stderr)
 
 
-def _maybe_relaunch_in_project() -> None:
-    """Relaunch hv in the project's venv if it has haiv-cli installed.
-
-    When hv is installed globally (via `hv dev install`), it runs in haiv-cli's
-    own venv. But projects may have their own venv with additional dependencies
-    (e.g., pymssql for database commands). If the project has haiv-cli installed,
-    we relaunch in that context so project-level imports and dependencies work.
-    """
-    try:
-        haiv_root = get_haiv_root(cwd=Path.cwd())
-    except Exception:
-        return  # Not in a haiv project
-
-    # Check if project has a venv with haiv-cli installed
-    venv = haiv_root / ".venv"
-    if not venv.exists():
-        return
-
-    if sys.platform == "win32":
-        hv_script = venv / "Scripts" / "hv.exe"
-    else:
-        hv_script = venv / "bin" / "hv"
-
-    if not hv_script.exists():
-        return  # Project venv doesn't have haiv-cli
-
-    # Skip relaunch if we're already running in this project's venv
-    if Path(sys.prefix).resolve() == venv.resolve():
-        return
-
-    import subprocess
-
-    relaunch_env = os.environ.copy()
-    relaunch_env.pop("VIRTUAL_ENV", None)
-
-    result = subprocess.run(
-        ["uv", "run", "--project", str(haiv_root), "hv"] + sys.argv[1:],
-        env=relaunch_env,
-    )
-    sys.exit(result.returncode)
-
-
 def main():
     """Entry point for haiv CLI.
 
-    Load order (later takes precedence over earlier):
-    1. Core package (haiv_core) - always available
-    2. Project package (haiv_project) - if in haiv-managed repo
-    3. User package (haiv_user) - deferred until user identity exists
+    Routes commands to the correct venv for execution:
+    - Core/mail commands run in-process (already in the right venv)
+    - Project/user commands relay to their own venv via subprocess
     """
     cast(io.TextIOWrapper, sys.stdout).reconfigure(encoding="utf-8")
     cast(io.TextIOWrapper, sys.stderr).reconfigure(encoding="utf-8")
-
-    _maybe_relaunch_in_project()
 
     # HV_PROG allows the wrapper script to pass its name (e.g., when using python -c)
     prog = os.environ.get(env.HV_PROG) or Path(sys.argv[0]).name
@@ -334,8 +285,6 @@ def main():
         )
 
     try:
-        command = load_command(route.file)
-
         # Always surface ambiguous identity — it's a config problem the user must fix.
         # Other detection failures (no user) are fine; some commands don't need one.
         try:
@@ -346,44 +295,22 @@ def main():
         except Exception:
             haiv_username = None
 
-        # Build resolver callback from discovered resolvers
-        # Order: haiv_core, haiv_project, haiv_user (later overrides earlier)
-        pkg_roots: list[Path] = []
+        # Check if command needs a different venv
+        from haiv._infrastructure.venv_resolver import PyprojectVenvResolver
+        from haiv.relay import run_route, subprocess_relay
 
-        # haiv_core + haiv_mail
-        pkg_roots.append(_core_root)
-        pkg_roots.append(_mail_root)
+        venv_match = PyprojectVenvResolver().resolve(route.file)
 
-        # haiv_project and haiv_user via Paths
-        paths = None
-        if haiv_root is not None:
-            paths = Paths(
-                _called_from=None,
-                _pkg_root=None,
-                _haiv_root=haiv_root,
-                _user_name=haiv_username,
-                _core_root=_core_root,
+        if venv_match is not None:
+            exit_code = subprocess_relay(
+                venv_match.project_root,
+                route,
+                haiv_root=haiv_root,
+                haiv_username=haiv_username,
             )
-            if paths.pkgs.project.root.exists():
-                pkg_roots.append(paths.pkgs.project.root)
-            if haiv_username is not None and paths.pkgs.user.root.exists():
-                pkg_roots.append(paths.pkgs.user.root)
+            sys.exit(exit_code)
 
-        resolve = make_resolver(pkg_roots, paths=paths, has_user=haiv_username is not None)
-
-        definition = command.define()
-        haiv_hook_registry = None
-        if definition.enable_haiv_hooks:
-            haiv_hook_registry = configure_haiv_hooks(pkg_roots)
-
-        ctx = build_ctx(
-            route, command,
-            haiv_root=haiv_root,
-            haiv_username=haiv_username,
-            resolve=resolve,
-            haiv_hook_registry=haiv_hook_registry,
-        )
-        run_command(command, ctx)
+        run_route(route, haiv_root=haiv_root, haiv_username=haiv_username)
     except Exception as exc:
         _handle_error(exc)
 

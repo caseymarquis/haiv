@@ -31,8 +31,5 @@ def test_main_runs(monkeypatch):
     # Mock sys.argv to avoid picking up pytest args
     monkeypatch.setattr(sys, "argv", ["hv"])
 
-    # Skip venv relaunch — this test only checks that main() runs
-    monkeypatch.setattr(haiv_cli, "_maybe_relaunch_in_project", lambda: None)
-
     # Should not raise - prints usage and returns
     main()

@@ -26,6 +26,8 @@ from haiv.errors import CommandError
 from haiv.wrappers.git import Git
 from haiv.test import SandboxConfig, Sandbox
 
+pytestmark = pytest.mark.integration
+
 
 # =============================================================================
 # Test Types

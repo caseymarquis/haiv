@@ -47,3 +47,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: slow tests requiring real git operations (run explicitly)",
+]
+addopts = "-m 'not integration'"

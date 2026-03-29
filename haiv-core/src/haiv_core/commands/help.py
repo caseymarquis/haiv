@@ -48,8 +48,36 @@ def _show_command_detail(ctx: cmd.Ctx, info, pkg_name: str, commands_dir) -> Non
     ctx.print(f"  Full path:   {info.file.as_posix()}")
 
 
+def _load_external_definitions(package_commands: list) -> None:
+    """Pre-load definitions for commands in external venvs via relay."""
+    from haiv._infrastructure.venv_resolver import PyprojectVenvResolver
+    from haiv.relay import subprocess_define_all, _define_all
+
+    resolver = PyprojectVenvResolver()
+
+    for pkg_cmds in package_commands:
+        if not pkg_cmds.commands:
+            continue
+
+        # Check if this package is in a different venv (use first command as probe)
+        venv_match = resolver.resolve(pkg_cmds.commands[0].file)
+
+        files = [str(info.file) for info in pkg_cmds.commands]
+
+        if venv_match is not None:
+            definitions = subprocess_define_all(venv_match.project_root, files)
+        else:
+            definitions = _define_all(files)
+
+        for info in pkg_cmds.commands:
+            defn = definitions.get(str(info.file))
+            if defn is not None and not isinstance(defn, str):
+                info._definition = defn
+
+
 def execute(ctx: cmd.Ctx) -> None:
     package_commands = discover_commands(ctx.paths.root_or_none)
+    _load_external_definitions(package_commands)
 
     # Handle --for flag
     if ctx.args.has("for"):
