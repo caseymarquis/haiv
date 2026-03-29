@@ -5,11 +5,11 @@ version = "0.1.0"
 description = "User-level haiv commands and configuration"
 requires-python = ">=3.12"
 dependencies = [
-    "haiv",
+    "haiv-lib",
 ]
 
 [tool.uv.sources]
-haiv = { path = "../../worktrees/main/haiv", editable = true }
+haiv-lib = { path = "../../worktrees/main/haiv-lib", editable = true }
 
 [build-system]
 requires = ["hatchling"]

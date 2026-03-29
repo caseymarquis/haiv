@@ -5,10 +5,7 @@ version = "0.1.0"
 description = "Project-level haiv commands and configuration"
 requires-python = ">=3.12"
 dependencies = [
-    "haiv",
-    "haiv-cli",
-    "haiv-mail",
-    "haiv-tui",
+    "haiv-lib",
 ]
 
 [build-system]
@@ -16,9 +13,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-haiv = { path = "worktrees/main/haiv", editable = true }
-haiv-cli = { path = "worktrees/main/haiv-cli", editable = true }
-haiv-tui = { path = "worktrees/main/haiv-tui", editable = true }
+haiv-lib = { path = "worktrees/main/haiv-lib", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/haiv_project"]

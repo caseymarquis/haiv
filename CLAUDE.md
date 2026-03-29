@@ -61,7 +61,7 @@ haiv commands are tools that help automate complex tasks. Run them with `hv <com
 **Creating minds:**
 - `hv minds stage` - prep a mind for a new task
 
-**Resolution order:** haiv_core → haiv_project → haiv_user (each level can extend or override)
+**Resolution order:** Commands are discovered across all levels (haiv_core → haiv_project → haiv_user). When multiple levels define the same command, the outermost level wins — user overrides project, project overrides core. This lets each level extend or replace commands from the level below.
 
 **File-based routing:**
 - `commands/become.py` → `hv become`

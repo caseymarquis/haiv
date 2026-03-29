@@ -12,9 +12,9 @@ wheels = [
 ]
 
 [[package]]
-name = "haiv"
-version = "0.1.0"
-source = { editable = "../../worktrees/main/haiv" }
+name = "haiv-lib"
+version = "0.2.2"
+source = { editable = "../../worktrees/main/haiv-lib" }
 dependencies = [
     { name = "jinja2" },
     { name = "punq" },
@@ -27,7 +27,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "punq", specifier = ">=0.7.0" },
     { name = "tomli-w", specifier = ">=1.0.0" },
-    { name = "watchdog", specifier = ">=4.0.0" },
+    { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -42,7 +42,7 @@ name = "haiv-user"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "haiv" },
+    { name = "haiv-lib" },
 ]
 
 [package.dev-dependencies]
@@ -51,7 +51,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "haiv", editable = "../../worktrees/main/haiv" }]
+requires-dist = [{ name = "haiv-lib", editable = "../../worktrees/main/haiv-lib" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
