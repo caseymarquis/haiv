@@ -24,6 +24,9 @@ Run `hv sessions` to see current active work.
 
 ## Next Up
 
+- **[P1] Dependency audit** — we're on PyPI now but the dependency graph was built for git-clone + dev-install. Two venvs (project root vs worktrees/main), `uv.toml` sources overriding PyPI with local editables, lock files pinning stale versions, `_maybe_relaunch_in_project` syncing to a different venv than the workspace. Analyze all deps across haiv, haiv-lib, haiv-core, haiv-cli, haiv-tui, and the project-level pyproject.toml. Goal: `uv sync --upgrade-package haiv-mail` just works, no cache cleaning or manual pip installs.
+- **[P2] Correct venv per command** — wire VenvResolver into the CLI so every command launches in the right venv automatically. The protocol and integration tests exist. Need the intercept in `_find_command` → `load_command` path.
+- **[P3] `uv tool install` workflow** — evaluate whether end users can install haiv via `uv tool install haiv` for a clean single-command setup on new systems. May require rethinking the meta-package and entry points.
 - **Bounce toggle command** — `hv tui bounce-toggle` or similar, to mark sessions as bounce-eligible/ineligible from the CLI
 - **File openers per extension** — `[file_openers]` in `haiv.toml`, default to `code`, per-extension overrides (e.g., `".md" = "typora"`)
 - **Type-safe signal subscriptions** — derive signal names from TuiModel fields via reflection, not raw strings
@@ -31,7 +34,7 @@ Run `hv sessions` to see current active work.
 - **Auto-bounce from hooks** — Stop on mind A + idle mind B = bounce signal. Infrastructure is in place, logic not built.
 - **Permission queue via hooks** — PermissionRequest hooks could block, route decisions to TUI, centralize approval across minds. Explored but not built.
 - **`--settings` for automatic hook setup** — Claude's `--settings` flag replaces (doesn't merge), so `hv claude_hooks setup` remains the path for now.
-- **Package upgrade UX** — uv caches aggressively and lock files pin versions. Upgrading haiv-mail required cache clean + lock upgrade + sync. Need a smoother path for end users.
+- **Package upgrade UX** — covered by P1 dependency audit.
 - **haiv.toml package registry** — for project-specific external packages that need venv relay. Not needed yet (haiv-mail is a direct dependency).
 - **Mail in TUI** — haiv-tui should reference haiv-mail to surface message state. Who's waiting, unread counts, etc.
 - **CLAUDE.md clarification** — command search order is user → project → core (highest precedence first), but CLAUDE.md describes it as "haiv_core → haiv_project → haiv_user". Luna flagged this in her AAR. Should be clarified.
