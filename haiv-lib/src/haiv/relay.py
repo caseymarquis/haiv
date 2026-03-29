@@ -83,12 +83,17 @@ def subprocess_relay(
 
     Returns the subprocess exit code.
     """
+    import os
     import subprocess
 
     data = json.dumps(_route_to_dict(route, haiv_root=haiv_root, haiv_username=haiv_username))
 
+    env = os.environ.copy()
+    env.pop("VIRTUAL_ENV", None)
+
     result = subprocess.run(
         ["uv", "run", "--project", str(project_root), "python", "-m", "haiv.relay", data],
+        env=env,
     )
     return result.returncode
 
@@ -161,14 +166,19 @@ def subprocess_define_all(project_root: Path, files: list[str]) -> dict[str, Any
 
     Returns dict mapping file path to cmd.Def or error string.
     """
+    import os
     import pickle
     import subprocess
 
     data = json.dumps({"mode": "define_all", "files": files})
 
+    env = os.environ.copy()
+    env.pop("VIRTUAL_ENV", None)
+
     result = subprocess.run(
         ["uv", "run", "--project", str(project_root), "python", "-m", "haiv.relay", data],
         capture_output=True,
+        env=env,
     )
     if result.returncode != 0:
         error = result.stderr.decode().strip() or "subprocess failed"
