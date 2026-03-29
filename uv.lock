@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "haiv"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "haiv" }
 dependencies = [
     { name = "haiv-cli" },
@@ -56,7 +56,7 @@ requires-dist = [
 
 [[package]]
 name = "haiv-cli"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "haiv-cli" }
 dependencies = [
     { name = "haiv-core" },
@@ -85,7 +85,7 @@ dev = [
 
 [[package]]
 name = "haiv-core"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "haiv-core" }
 dependencies = [
     { name = "haiv-lib" },
@@ -110,7 +110,7 @@ dev = [
 
 [[package]]
 name = "haiv-lib"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "haiv-lib" }
 dependencies = [
     { name = "jinja2" },
@@ -143,19 +143,19 @@ dev = [
 
 [[package]]
 name = "haiv-mail"
-version = "0.3.1"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "haiv-lib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/28/ca/188e3c5c4823deb758591b8241bf57f144836dbfbfcdd5e358731d38bbee/haiv_mail-0.3.1.tar.gz", hash = "sha256:edca380f2f69df596fe65389c6fea6c4c9b536bddd27a93348b6124067ab70a1", size = 29623, upload-time = "2026-03-29T15:49:51.469Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/6e/68036b767f2fe2960e00256a8c8b46e07b8fdad41879eb5bd114bd205fa6/haiv_mail-0.3.2.tar.gz", hash = "sha256:e16f38276bfa30913c6b14d8d3e26844ee35a698d3ba3350e724a71e595ffbbe", size = 33891, upload-time = "2026-03-29T19:18:31.498Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/a5/a5f647fe941636e3756b3e878d52437aaea7cfc57de8cb947a63597d1645/haiv_mail-0.3.1-py3-none-any.whl", hash = "sha256:6889a3fc8cc2cb6bdd72ad57ee5662db3f92070f9733de3e3998a6f008537587", size = 23830, upload-time = "2026-03-29T15:49:50.53Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/dd/936115256a726f831d71e5bcdd9b6fa3a8d6c9a548359cf4c5342be94edf/haiv_mail-0.3.2-py3-none-any.whl", hash = "sha256:f61ff0dc999e052a394d75b5a562b52eab61248e6d04bda4e186e78d266a68f2", size = 25760, upload-time = "2026-03-29T19:18:30.248Z" },
 ]
 
 [[package]]
 name = "haiv-tui"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "haiv-tui" }
 dependencies = [
     { name = "blinker" },
