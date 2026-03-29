@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "haiv"
-version = "0.2.2"
+version = "0.3.0"
 source = { editable = "haiv" }
 dependencies = [
     { name = "haiv-cli" },
@@ -56,7 +56,7 @@ requires-dist = [
 
 [[package]]
 name = "haiv-cli"
-version = "0.2.2"
+version = "0.3.0"
 source = { editable = "haiv-cli" }
 dependencies = [
     { name = "haiv-core" },
@@ -85,7 +85,7 @@ dev = [
 
 [[package]]
 name = "haiv-core"
-version = "0.2.2"
+version = "0.3.0"
 source = { editable = "haiv-core" }
 dependencies = [
     { name = "haiv-lib" },
@@ -110,7 +110,7 @@ dev = [
 
 [[package]]
 name = "haiv-lib"
-version = "0.2.2"
+version = "0.3.0"
 source = { editable = "haiv-lib" }
 dependencies = [
     { name = "jinja2" },
@@ -155,7 +155,7 @@ wheels = [
 
 [[package]]
 name = "haiv-tui"
-version = "0.2.2"
+version = "0.3.0"
 source = { editable = "haiv-tui" }
 dependencies = [
     { name = "blinker" },
