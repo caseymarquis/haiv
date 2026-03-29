@@ -1,12 +1,12 @@
 # Immediate Plan
 
-**Updated:** 2026-03-25
+**Updated:** 2026-03-29
 
 ---
 
-## Current Focus: Claude Code Hooks Integration
+## Current Focus: Cross-Colony Infrastructure
 
-Built end-to-end Claude Code hooks pipeline. Hook events (Stop, Notification, UserPromptSubmit, SessionStart, SessionEnd) flow from Claude through `hv --claude-hook` → IPC → TUI. Session tree shows live mind status (idle/working/BLOCKED). File and commit workers refresh on Stop events via dispatcher listeners.
+haiv-mail is live. First external library integrated as a command source — `hv mail` commands discovered and routed alongside haiv-core. Minds can send messages across colonies. All haiv packages published to PyPI at v0.2.2. VenvResolver protocol built for future project-specific external packages.
 
 Run `hv sessions` to see current active work.
 
@@ -16,7 +16,9 @@ Run `hv sessions` to see current active work.
 
 - **TUI feature buildout** — activity tree, command queue, bounce/restart, claude hooks integration all live.
 - **Claude hooks pipeline** — events flow over IPC, buffered in ClaudeHooksWorker, displayed in Hooks tab and session tree. Dispatcher listener pattern enables any worker to react to hook events.
-- **Relay infrastructure** — unbuilt. Required for haiv to manage external projects (e.g., dnd at `/home/casey/code/dnd/`). The problem: `hv` always runs in haiv-cli's venv, but project/user commands need the project's own venv and dependencies.
+- **haiv-mail integration** — first external library as command source. haiv-cli imports haiv-mail, commands discovered under `mail` prefix. Mailing lists, DMs, contacts. Sent first cross-colony message to 仁.
+- **PyPI publishing** — all packages at v0.2.2. `hv publish <package>` commands with tag check and keyring auth. Credentials in GNOME Keyring.
+- **VenvResolver protocol** — built and tested for future project-specific external packages. Not wired into CLI yet (not needed while haiv-mail is a direct dependency).
 
 ---
 
@@ -29,10 +31,12 @@ Run `hv sessions` to see current active work.
 - **Auto-bounce from hooks** — Stop on mind A + idle mind B = bounce signal. Infrastructure is in place, logic not built.
 - **Permission queue via hooks** — PermissionRequest hooks could block, route decisions to TUI, centralize approval across minds. Explored but not built.
 - **`--settings` for automatic hook setup** — Claude's `--settings` flag replaces (doesn't merge), so `hv claude_hooks setup` remains the path for now.
+- **Package upgrade UX** — uv caches aggressively and lock files pin versions. Upgrading haiv-mail required cache clean + lock upgrade + sync. Need a smoother path for end users.
+- **haiv.toml package registry** — for project-specific external packages that need venv relay. Not needed yet (haiv-mail is a direct dependency).
+- **Mail in TUI** — haiv-tui should reference haiv-mail to surface message state. Who's waiting, unread counts, etc.
 - **CLAUDE.md clarification** — command search order is user → project → core (highest precedence first), but CLAUDE.md describes it as "haiv_core → haiv_project → haiv_user". Luna flagged this in her AAR. Should be clarified.
 - **Clean up stale sessions** — echo [7] and spark [4] are 26+ commits behind main (pre-rename). Close out rather than merge.
 - **mind_launch quiet mode** — Luna noted mind_launch prints user-facing messages that are noise for command-driven invocations. Add a `quiet` parameter.
-- **Relay infrastructure** — design settled, unbuilt
 - **`pip install haiv` user story** — meta-package exists, UX not worked out
 - **Mind launch settings** — `settings.toml` per mind, starting with `launch.system_prompt`
 - **Shutdown hang** — file watcher thread join blocks on quit. Restart works (os.execv before shutdown) but quit requires Ctrl+C. Need timeout or daemon thread fix.
@@ -41,6 +45,7 @@ Run `hv sessions` to see current active work.
 
 ## Recently Completed
 
+- **Cross-colony infrastructure** (2026-03-27–29) — Founded haiv-mail colony with mind 仁 (first honored unicode name). Published all haiv packages to PyPI (v0.2.2). Built `hv publish` commands with tag-check and keyring auth. Integrated haiv-mail as command source in CLI — `hv mail` namespace with full mailing list suite. VenvResolver protocol for future external package venv relay. `try_with_client` on Tui facade for graceful TUI absence. Init command auto-creates user and hooks config with clean env for subprocess calls. Symlink support in command discovery and routing.
 - **Claude Code hooks integration** (2026-03-25) — End-to-end hook pipeline: `hv --claude-hook` in CLI, IPC dispatch to TUI, `ClaudeHooksWorker` buffers last 20 events, `ClaudeHookEventsRaw` model section, Hooks tab in TUI, live session tree status (idle/working/BLOCKED). Commands: `hv claude_hooks`, `hv claude_hooks <id>`, `hv claude_hooks setup`. Extracted `BounceWorker` from app.py. Dispatcher listener pattern for workers to react to hook events. File/commit workers refresh on Stop.
 - **TUI command queue** (2026-03-24) — Luna built typed command channel alongside write_raw data flow. `TuiCommand` envelope with `TuiCommandType` enum, `CommandDispatcher` with injected handlers, `send_command()` on both local and IPC clients. `hv tui restart` and `hv tui bounce` wired end-to-end.
 - **Activity tree redesign** (2026-03-24) — Replaced flat OptionList with Tree widget. Three file categories (conflicted hidden when empty, recently modified, deleted) plus recent commits (collapsed by default, expand for files). Gatherer rewritten: `git status --porcelain` + `git diff HEAD --numstat` instead of scanning all files by mtime. `FileStatus` enum. Age display ("just now", "3m", "1h 2m"). Alphabetical sort, case-insensitive, underscore-ignored.
@@ -100,7 +105,7 @@ Raw data sources → TuiModel (per-source sections) → TuiServer (dirty trackin
 Commands → TuiServer (command buffer) → poll loop drains commands → CommandDispatcher → handlers
 ```
 
-- **TuiModel** — raw sections: `SessionsRaw`, `GitRaw`, `ActiveMindRaw`, `RecentFilesRaw`, `RecentCommitsRaw`. Plain dataclasses, no base class.
+- **TuiModel** — raw sections: `SessionsRaw`, `GitRaw`, `ActiveMindRaw`, `RecentFilesRaw`, `RecentCommitsRaw`, `ClaudeHookEventsRaw`. Plain dataclasses, no base class.
 - **write_raw()** — callers pass section kwargs. Server replaces non-None sections, marks dirty.
 - **send_command()** — typed `TuiCommand` envelope with `TuiCommandType` enum. Drains independently of model updates.
 - **TuiStore** — fires blinker signals for dirty sections. Auto-discovered from TuiModel fields.
@@ -135,6 +140,8 @@ TUI app:      helpers.mind_launch(term, ...)          # app passes deps directly
 | `haiv-core/src/haiv_core/commands/tui/restart.py` | hv tui restart — restart TUI process |
 | `haiv-core/src/haiv_core/commands/claude_hooks/` | hv claude_hooks, hv claude_hooks <id>, hv claude_hooks setup |
 | `haiv-cli/src/haiv_cli/claude_hooks_dispatch.py` | CLI entry point for `hv --claude-hook`, sends over IPC |
+| `haiv-lib/src/haiv/_infrastructure/venv_resolver.py` | VenvResolver protocol for cross-package venv detection |
+| `haiv-lib/src/haiv/helpers/packages.py` | Package discovery — core, installed (haiv_mail), project, user |
 | `haiv-tui/src/haiv_tui/_runner.py` | Entry point — os.execv restart, crash logging |
 | `haiv-tui/src/haiv_tui/app.py` | HaivApp + _Workers + CommandDispatcher wiring |
 | `haiv-tui/src/haiv_tui/command_dispatcher.py` | Route commands to typed handlers + listener broadcast |
