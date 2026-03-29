@@ -58,9 +58,13 @@ def _is_empty_dir(path: Path) -> bool:
 
 def _write_haiv_state_files(root: Path, ctx: cmd.Ctx) -> None:
     """Write all haiv files to root directory."""
+    from importlib.metadata import version
+    haiv_lib_version = version("haiv-lib")
+    haiv_lib_next_major = str(int(haiv_lib_version.split(".")[0]) + 1)
+
     ctx.templates.write("init/CLAUDE.md.j2", root / "CLAUDE.md")
     ctx.templates.write("init/.gitignore.j2", root / ".gitignore")
-    ctx.templates.write("init/pyproject.toml.j2", root / "pyproject.toml")
+    ctx.templates.write("init/pyproject.toml.j2", root / "pyproject.toml", haiv_lib_version=haiv_lib_version, haiv_lib_next_major=haiv_lib_next_major)
 
     claude_dir = root / ".claude"
     ctx.templates.write("init/.claude/.gitkeep.j2", claude_dir / ".gitkeep")

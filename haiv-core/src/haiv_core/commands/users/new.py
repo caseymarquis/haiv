@@ -90,7 +90,11 @@ def _create_user_structure(ctx: cmd.Ctx, user_dir: Path) -> None:
     (user_dir / "state").mkdir(parents=True)
 
     # Write templates
-    ctx.templates.write("users/pyproject.toml.j2", user_dir / "pyproject.toml")
+    from importlib.metadata import version
+    haiv_lib_version = version("haiv-lib")
+    haiv_lib_next_major = str(int(haiv_lib_version.split(".")[0]) + 1)
+
+    ctx.templates.write("users/pyproject.toml.j2", user_dir / "pyproject.toml", haiv_lib_version=haiv_lib_version, haiv_lib_next_major=haiv_lib_next_major)
     ctx.templates.write(
         "users/src/haiv_user/__init__.py.j2",
         user_dir / "src" / "haiv_user" / "__init__.py",

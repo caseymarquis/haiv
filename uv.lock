@@ -41,7 +41,7 @@ wheels = [
 
 [[package]]
 name = "haiv"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "haiv" }
 dependencies = [
     { name = "haiv-cli" },
@@ -56,10 +56,11 @@ requires-dist = [
 
 [[package]]
 name = "haiv-cli"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "haiv-cli" }
 dependencies = [
     { name = "haiv-core" },
+    { name = "haiv-mail" },
 ]
 
 [package.dev-dependencies]
@@ -70,7 +71,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "haiv-core", editable = "haiv-core" }]
+requires-dist = [
+    { name = "haiv-core", editable = "haiv-core" },
+    { name = "haiv-mail", specifier = ">=0.1.0,<1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -81,7 +85,7 @@ dev = [
 
 [[package]]
 name = "haiv-core"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "haiv-core" }
 dependencies = [
     { name = "haiv-lib" },
@@ -106,7 +110,7 @@ dev = [
 
 [[package]]
 name = "haiv-lib"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "haiv-lib" }
 dependencies = [
     { name = "jinja2" },
@@ -127,7 +131,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "punq", specifier = ">=0.7.0" },
     { name = "tomli-w", specifier = ">=1.0.0" },
-    { name = "watchdog", specifier = ">=4.0.0" },
+    { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -138,14 +142,25 @@ dev = [
 ]
 
 [[package]]
+name = "haiv-mail"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "haiv-lib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/da/21bf6b757bd6731bba75b26cf307d4f8e0997d7cd4603d32f4acfe3fb86c/haiv_mail-0.2.0.tar.gz", hash = "sha256:a4b5002eac6e2b7bb13a7e6cbf960416392169f1cab97e55cc4a0d71baca195e", size = 28556, upload-time = "2026-03-29T04:37:19.193Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/a2/a05e5969dacf58c157074782ee8fcc50ff9c443316be79ff8f78a07e1d36/haiv_mail-0.2.0-py3-none-any.whl", hash = "sha256:8b59fd1810c1a8cb3ddf1f81d7f75a3fe568316dd0f038131cd6e9f0fccdc7b8", size = 22035, upload-time = "2026-03-29T04:37:17.987Z" },
+]
+
+[[package]]
 name = "haiv-tui"
-version = "0.1.0"
+version = "0.2.2"
 source = { editable = "haiv-tui" }
 dependencies = [
     { name = "blinker" },
     { name = "haiv-lib" },
     { name = "textual" },
-    { name = "watchdog" },
 ]
 
 [package.dev-dependencies]
@@ -159,7 +174,6 @@ requires-dist = [
     { name = "blinker" },
     { name = "haiv-lib", editable = "haiv-lib" },
     { name = "textual" },
-    { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
 [package.metadata.requires-dev]

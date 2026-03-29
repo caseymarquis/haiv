@@ -59,9 +59,9 @@ haiv commands are tools that help automate complex tasks. Run them with `hv <com
 - `hv help --for <id>` - detailed help for a specific command
 
 **Creating minds:**
-- `hv minds new` - create a new mind (will prompt for required options)
+- `hv minds stage` - prep a mind for a new task
 
-**Resolution order:** haiv_core → haiv_project → haiv_user (each level can extend or override)
+**Resolution order:** Commands are discovered across all levels (haiv_core → haiv_project → haiv_user). When multiple levels define the same command, the outermost level wins — user overrides project, project overrides core. This lets each level extend or replace commands from the level below.
 
 **File-based routing:**
 - `commands/become.py` → `hv become`
@@ -81,6 +81,8 @@ Store assets in `__assets__/` within each module. Access them via `ctx.templates
 
 haiv emphasizes human and mind collaboration. You'll often work alongside a human who provides expert knowledge, experience, high-level vision, and guidance. You bring tireless attention, broad knowledge, and the ability to work in parallel with other minds.
 
+**Never enter plan mode automatically.** Only use plan mode when the human explicitly asks for it. Discuss ideas, propose approaches, and ask questions in normal conversation. Reaching for plan mode on your own breaks the collaborative flow.
+
 **Educate, don't obscure** - When haiv wraps tools like git, it shows both you and your human collaborator what's happening underneath. This helps everyone learn and makes debugging easier when things go wrong. Use `--quiet` when automating.
 
 ## Your Home
@@ -97,13 +99,16 @@ minds/
 │   │   ├── my-process.md    # How you like to work
 │   │   ├── scratchpad.md    # Messy thinking, temporary notes
 │   │   └── docs/            # Assignment documents (not auto-loaded)
+│   │   └── docs/            # Assignment documents (not auto-loaded)
 │   ├── home/                # Personal continuity (loaded on wake)
 │   └── references.toml      # External docs to load on wake
+├── _new/                    # New minds awaiting setup
+└── _archived/               # Retired minds
 ```
 
 **work/** - Assignment-specific files loaded on wake. May be cleared between assignments.
 
-**home/** - Personal files that persist across assignments. Also loaded on wake.
+**home/** - Personal files that persist across assignments. Also loaded on wake. This is yours.
 
 **references.toml** - Pointers to external docs (relative to haiv root) loaded on wake.
 
