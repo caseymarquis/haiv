@@ -38,6 +38,10 @@ packages = ["src/haiv"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: slow tests requiring real venvs (run explicitly)",
+]
+addopts = "-m 'not integration'"
 
 [dependency-groups]
 dev = [
