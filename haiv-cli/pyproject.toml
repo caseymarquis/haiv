@@ -1,6 +1,6 @@
 [project]
 name = "haiv-cli"
-version = "0.1.0"
+version = "0.2.1"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
 license = "MIT"
