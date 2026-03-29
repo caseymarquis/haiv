@@ -1,6 +1,6 @@
 [project]
 name = "haiv-core"
-version = "0.3.0"
+version = "0.3.1"
 description = "Core commands for haiv"
 readme = "README.md"
 license = "MIT"
