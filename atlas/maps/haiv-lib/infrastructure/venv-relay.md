@@ -2,35 +2,37 @@
 
 ## Problem
 
-Commands can live in external packages (e.g., haiv-mail) that have their own venvs and dependencies. The `hv` CLI runs in haiv-cli's venv, which doesn't have those dependencies installed. We need to detect when a command requires a different venv and re-launch with the correct one.
+Commands live in packages with their own venvs — haiv_project, haiv_user, and eventually external packages. The `hv` CLI runs in the workspace venv (haiv-cli), which doesn't have those packages' dependencies. A project command that imports `pandas` will crash if loaded in the workspace venv.
 
 ## Design
 
-A `VenvResolver` protocol abstracts venv detection. Given a command file path, it returns the venv that command should execute in, or `None` if the current venv is correct.
-
-When the CLI routes to a command file and the resolver says "different venv needed," the CLI re-launches the full `hv` invocation using `uv run --project <path>`. The re-launched process re-routes from scratch — zero coupling, zero state transfer across the boundary.
-
-The loop guard is the venv check itself: if you're already in the right venv, proceed normally.
-
-## Integration Tests
-
-There are integration tests in `haiv-lib/tests/integration/` that prove venv detection works end-to-end. These tests:
-
-- Create temporary projects with their own venvs
-- Route commands that land in those projects
-- Verify the resolver detects the venv mismatch
-- Verify re-launch targets the correct project
-
-**These tests are slow and require real venv creation. They do not run as part of the normal test suite.** Run them explicitly:
+The CLI is a pure router. It finds the command file, detects the venv, and relays execution — either in-process or via subprocess.
 
 ```
-uv run pytest tests/integration/test_venv_relay.py -v
+CLI (haiv-cli)
+├── route (filesystem walk across all command sources)
+├── resolve venv (VenvResolver)
+├── same venv? → relay.run_route() directly
+└── different venv? → relay.subprocess_relay() via uv run --project
 ```
+
+The relay module (`haiv-lib/src/haiv/relay.py`) is the single execution path for all commands. It loads the command, builds context with resolvers and hooks from the command's own venv, and runs it. The CLI never loads or executes commands itself.
+
+For subprocess relay, the route data is serialized to JSON and passed as an argument to `python -m haiv.relay`. The relay deserializes, reconstructs the route, and runs — zero state crosses the boundary beyond what's in the JSON.
+
+**Resolver isolation:** Each command gets resolvers from its own package only. If a project command needs the mind resolver from haiv-core, it calls the helper directly — no cross-venv resolver inheritance.
+
+**Error handling:** `haiv.errors.handle_error()` is used by both the CLI and relay. CommandError gets a clean message; unexpected errors get logged to `~/.local/state/haiv/logs/` with a details path printed.
+
+**Help / enumeration:** The relay supports a `define_all` mode — given a list of command files, it loads each, calls `define()`, and returns the definitions as pickled data. The help command uses this to batch-load definitions from external venvs in a single subprocess call.
 
 ## Key Files
 
 | File | Role |
 |------|------|
-| `haiv-lib/src/haiv/_infrastructure/venv_resolver.py` | Protocol + default implementation |
-| `haiv-cli/src/haiv_cli/__init__.py` | Intercept point: check venv after routing, before loading |
-| `haiv-lib/tests/integration/test_venv_relay.py` | Integration tests (run explicitly) |
+| `haiv-lib/src/haiv/relay.py` | Relay: run_route, subprocess_relay, define_all |
+| `haiv-lib/src/haiv/_infrastructure/venv_resolver.py` | VenvResolver protocol + PyprojectVenvResolver |
+| `haiv-lib/src/haiv/errors.py` | Shared error handling (handle_error) |
+| `haiv-cli/src/haiv_cli/__init__.py` | Router: find command, resolve venv, delegate to relay |
+| `haiv-core/src/haiv_core/commands/help.py` | Uses relay define_all for external package enumeration |
+| `haiv-lib/tests/integration/test_venv_relay.py` | Integration tests (run explicitly with `-m integration`) |
