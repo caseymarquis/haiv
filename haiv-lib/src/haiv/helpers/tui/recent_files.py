@@ -100,7 +100,7 @@ def _git_status(worktree: Path) -> list[tuple[str, FileStatus]]:
     """
     try:
         result = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "-uall"],
             cwd=worktree,
             capture_output=True,
             text=True,
