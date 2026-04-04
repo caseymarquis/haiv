@@ -14,31 +14,6 @@ from haiv.wrappers.git import Git
 
 
 # -----------------------------------------------------------------------------
-# Exceptions
-# -----------------------------------------------------------------------------
-
-
-class IdentityLoadError(Exception):
-    """Failed to load or parse identity.toml."""
-
-    pass
-
-
-class AmbiguousIdentityError(Exception):
-    """Multiple users match the current environment."""
-
-    def __init__(self, paths: list[Path]):
-        self.paths = paths
-
-    def __str__(self) -> str:
-        paths_str = "\n  ".join(p.as_posix() for p in self.paths)
-        return (
-            f"Multiple users match the current environment:\n  {paths_str}\n"
-            f"Edit one of the identity.toml files to resolve the conflict."
-        )
-
-
-# -----------------------------------------------------------------------------
 # Data structures
 # -----------------------------------------------------------------------------
 
@@ -54,6 +29,41 @@ class CurrentEnv:
     git_email: str | None = None
     git_name: str | None = None
     system_user: str | None = None
+
+
+# -----------------------------------------------------------------------------
+# Exceptions
+# -----------------------------------------------------------------------------
+
+
+class IdentityLoadError(Exception):
+    """Failed to load or parse identity.toml."""
+
+    pass
+
+
+class AmbiguousIdentityError(Exception):
+    """Multiple users match the current environment."""
+
+    def __init__(
+        self, matches: list[tuple[str, Path, str]], env: CurrentEnv
+    ):
+        self.matches = matches
+        self.env = env
+
+    def __str__(self) -> str:
+        lines = ["Multiple users match the current environment:\n"]
+        for name, path, matched_by in self.matches:
+            env_value = getattr(self.env, matched_by, "?")
+            identity_file = path / "identity.toml"
+            lines.append(
+                f"  {name} ({identity_file.as_posix()})"
+                f"\n    matched on {matched_by} = {env_value!r}"
+            )
+        lines.append(
+            "\nEdit one of the identity.toml files to resolve the conflict."
+        )
+        return "\n".join(lines)
 
 
 @dataclass
@@ -140,28 +150,36 @@ def load_match_config(path: Path) -> MatchConfig:
 def matches(match_config: MatchConfig, env: CurrentEnv) -> str | None:
     """Check if a match config matches the current environment.
 
-    Matching is case-insensitive. Any single field match is sufficient.
-    Iterates over CurrentEnv fields to ensure consistent ordering.
+    Matching is case-insensitive. ALL specified fields must match — identity
+    works like a fingerprint, not a keyword search. Fields present in the
+    config with a non-empty list must match the environment. Fields omitted
+    or set to an empty list are not considered.
 
     Args:
         match_config: Dict of field names to acceptable values
         env: Current environment values
 
     Returns:
-        Name of the field that matched (e.g., "git_email"), or None if no match
+        Name of the last field that matched (for diagnostics), or None
     """
+    matched_field = None
+
     for f in fields(CurrentEnv):
-        env_value = getattr(env, f.name)
-        if env_value is None:
+        match_values = match_config.get(f.name, [])
+        if not match_values:
             continue
 
-        match_values = match_config.get(f.name, [])
+        env_value = getattr(env, f.name)
+        if env_value is None:
+            return None
+
         env_folded = env_value.strip().casefold()
+        if not any(v.strip().casefold() == env_folded for v in match_values):
+            return None
 
-        if any(v.strip().casefold() == env_folded for v in match_values):
-            return f.name
+        matched_field = f.name
 
-    return None
+    return matched_field
 
 
 def detect_user(users_dir: Path) -> Identity | None:
@@ -203,8 +221,7 @@ def detect_user(users_dir: Path) -> Identity | None:
         return None
 
     if len(found) > 1:
-        paths = [entry / "identity.toml" for _, entry, _ in found]
-        raise AmbiguousIdentityError(paths)
+        raise AmbiguousIdentityError(found, env)
 
     name, path, matched_by = found[0]
     return Identity(name=name, path=path, matched_by=matched_by)
