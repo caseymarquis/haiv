@@ -1,6 +1,6 @@
 [project]
 name = "haiv"
-version = "0.3.2"
+version = "0.3.3"
 description = "Seamless management of a collaborative AI team"
 readme = "README.md"
 license = "MIT"

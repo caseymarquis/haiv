@@ -1,6 +1,6 @@
 [project]
 name = "haiv-tui"
-version = "0.3.2"
+version = "0.3.3"
 description = "Terminal UI for haiv"
 readme = "README.md"
 license = "MIT"
