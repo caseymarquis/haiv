@@ -39,6 +39,14 @@ class TuiStore:
     (typically app.internal_errors.append) to avoid crashing the poll loop.
     """
 
+    # Per-section signals, auto-populated from TuiModel fields in __init__.
+    sessions_changed: blinker.Signal
+    git_changed: blinker.Signal
+    active_mind_changed: blinker.Signal
+    recent_files_changed: blinker.Signal
+    recent_commits_changed: blinker.Signal
+    claude_hook_events_changed: blinker.Signal
+
     def __init__(self, error_sink: Callable[[str], None] | None = None) -> None:
         self._snapshot: TuiModel | None = None
         self._signals = _section_signals()

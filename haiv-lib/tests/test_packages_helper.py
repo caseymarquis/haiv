@@ -98,7 +98,7 @@ class TestDiscoverPackages:
         user = make_user(tmp_path)
         make_valid_package(user.paths.haiv_user.root)
 
-        result = discover_packages(tmp_path, user=user)
+        result = discover_packages(tmp_path, user_dir=user.paths.root)
 
         sources = [p.source for p in result]
         assert PackageSource.USER_LOCAL in sources
@@ -108,7 +108,7 @@ class TestDiscoverPackages:
 
     def test_user_local_omitted_when_no_user(self, tmp_path):
         """User package omitted when no user provided."""
-        result = discover_packages(tmp_path, user=None)
+        result = discover_packages(tmp_path, user_dir=None)
 
         sources = [p.source for p in result]
         assert PackageSource.USER_LOCAL not in sources
@@ -119,7 +119,7 @@ class TestDiscoverPackages:
         (user.paths.haiv_user.commands_dir).mkdir(parents=True)
         # No __init__.py
 
-        result = discover_packages(tmp_path, user=user)
+        result = discover_packages(tmp_path, user_dir=user.paths.root)
 
         sources = [p.source for p in result]
         assert PackageSource.USER_LOCAL not in sources
@@ -130,7 +130,7 @@ class TestDiscoverPackages:
         (user.paths.haiv_user.root).mkdir(parents=True)
         # No commands/ directory
 
-        result = discover_packages(tmp_path, user=user)
+        result = discover_packages(tmp_path, user_dir=user.paths.root)
 
         sources = [p.source for p in result]
         assert PackageSource.USER_LOCAL not in sources
@@ -141,7 +141,7 @@ class TestDiscoverPackages:
         user = make_user(tmp_path)
         make_valid_package(user.paths.haiv_user.root)
 
-        result = discover_packages(tmp_path, user=user)
+        result = discover_packages(tmp_path, user_dir=user.paths.root)
 
         sources = [p.source for p in result]
         # Core first, then installed packages, then project, then user
@@ -226,7 +226,7 @@ class TestDiscoverPackagesDetailed:
 
     def test_user_skipped_when_no_user(self, tmp_path):
         """User package skipped with reason when no user provided."""
-        result = discover_packages_detailed(tmp_path, user=None)
+        result = discover_packages_detailed(tmp_path, user_dir=None)
 
         user_entries = [s for s in result.skipped if s.source == PackageSource.USER_LOCAL]
         assert len(user_entries) == 1
@@ -237,7 +237,7 @@ class TestDiscoverPackagesDetailed:
         user = make_user(tmp_path)
         # Don't create valid package structure
 
-        result = discover_packages_detailed(tmp_path, user=user)
+        result = discover_packages_detailed(tmp_path, user_dir=user.paths.root)
 
         user_skipped = [s for s in result.skipped if s.source == PackageSource.USER_LOCAL]
         assert len(user_skipped) == 1

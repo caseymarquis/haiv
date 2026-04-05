@@ -51,9 +51,9 @@ class DebounceButton(Widget):
     def button(self) -> Button:
         return self.query_one("#inner", Button)
 
-    def watch_disabled(self, value: bool) -> None:
+    def watch_disabled(self, disabled: bool) -> None:
         try:
-            self.button.disabled = value
+            self.button.disabled = disabled
         except Exception:
             pass  # compose hasn't run yet
 

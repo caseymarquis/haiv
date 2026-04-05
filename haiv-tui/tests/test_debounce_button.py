@@ -19,7 +19,7 @@ class TestDebounceButton:
 
         async with app.run_test() as pilot:
             await pilot.pause()
-            assert btn.button.label.plain == "Open"
+            assert str(btn.button.label) == "Open"
 
     @pytest.mark.asyncio
     async def test_starts_enabled_by_default(self):

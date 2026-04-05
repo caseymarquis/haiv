@@ -76,7 +76,7 @@ def _load_external_definitions(package_commands: list) -> None:
 
 
 def execute(ctx: cmd.Ctx) -> None:
-    package_commands = discover_commands(ctx.paths.root_or_none)
+    package_commands = discover_commands(ctx.paths.root_or_none, user_dir=ctx.paths.user_dir_or_none)
     _load_external_definitions(package_commands)
 
     # Handle --for flag

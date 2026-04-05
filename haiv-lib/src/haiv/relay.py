@@ -43,6 +43,7 @@ def _run(route: RouteMatch, *, haiv_root: Path | None, haiv_username: str | None
         _user_name=haiv_username,
     )
 
+    assert route.file is not None, "relay requires a resolved route with a file"
     command = load_command(route.file)
     resolve = make_resolver([route.pkg_root], paths=paths, has_user=haiv_username is not None)
 

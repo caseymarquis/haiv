@@ -1,14 +1,30 @@
 """Tests for hv chart explore command."""
 
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
 
 from haiv import test
 from haiv.errors import CommandError
-from haiv.helpers.sessions import create_session
+from haiv.helpers.sessions import Session, create_session
 from haiv.paths import MindPaths
 from haiv.test import Sandbox
+
+
+@dataclass
+class ExploreSandbox:
+    """Sandbox bundled with a session for chart explore tests."""
+
+    sb: Sandbox
+    session: Session
+
+    @property
+    def ctx(self):
+        return self.sb.ctx
+
+    def run(self, command: str):
+        return self.sb.run(command)
 
 
 # =============================================================================
@@ -37,20 +53,19 @@ def sandbox():
     atlas.journeys_dir.mkdir(parents=True)
     atlas.maps_dir.mkdir(parents=True)
 
-    sb._session = session
-    return sb
+    return ExploreSandbox(sb=sb, session=session)
 
 
-def _run(sandbox, command, capsys=None):
+def _run(sandbox: ExploreSandbox, command, capsys=None):
     """Run a chart explore command within the test session."""
-    with patch.dict("os.environ", {"HV_SESSION": sandbox._session.id}):
+    with patch.dict("os.environ", {"HV_SESSION": sandbox.session.id}):
         ctx = sandbox.run(command)
     if capsys:
         return capsys.readouterr().out
     return ctx
 
 
-def _mind_paths(sandbox: Sandbox) -> MindPaths:
+def _mind_paths(sandbox: ExploreSandbox) -> MindPaths:
     return MindPaths(
         root=sandbox.ctx.paths.user.minds_dir / "pixel",
         haiv_root=sandbox.ctx.paths.root,
@@ -74,21 +89,21 @@ class TestRouting:
 
 
 class TestStart:
-    def test_prompts_for_name_when_none_given(self, sandbox: Sandbox, capsys):
+    def test_prompts_for_name_when_none_given(self, sandbox: ExploreSandbox, capsys):
         output = _run(sandbox, "chart explore", capsys)
         assert "--name" in output
 
-    def test_prompts_for_name_preserving_goal(self, sandbox: Sandbox, capsys):
+    def test_prompts_for_name_preserving_goal(self, sandbox: ExploreSandbox, capsys):
         output = _run(sandbox, 'chart explore --goal "understand hooks"', capsys)
         assert "--name" in output
         assert "understand hooks" in output
 
-    def test_creates_journey_directory(self, sandbox: Sandbox):
+    def test_creates_journey_directory(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
         atlas = sandbox.ctx.paths.atlas
         assert (atlas.journeys_dir / "test-journey").is_dir()
 
-    def test_creates_research_log(self, sandbox: Sandbox):
+    def test_creates_research_log(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
         atlas = sandbox.ctx.paths.atlas
         log = atlas.journeys_dir / "test-journey" / "001-research-log.md"
@@ -97,30 +112,30 @@ class TestStart:
         assert "pixel" in content
         assert "Research Log" in content
 
-    def test_creates_exploration_state(self, sandbox: Sandbox):
+    def test_creates_exploration_state(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey --goal "test"')
         mind = _mind_paths(sandbox)
         assert mind.work.exploration_file.exists()
 
-    def test_errors_if_journey_exists(self, sandbox: Sandbox):
+    def test_errors_if_journey_exists(self, sandbox: ExploreSandbox):
         atlas = sandbox.ctx.paths.atlas
         (atlas.journeys_dir / "existing").mkdir(parents=True)
         with pytest.raises(CommandError, match="already exists"):
             _run(sandbox, "chart explore --name existing")
 
-    def test_shows_example_journey(self, sandbox: Sandbox, capsys):
+    def test_shows_example_journey(self, sandbox: ExploreSandbox, capsys):
         output = _run(sandbox, 'chart explore --name test-journey', capsys)
         assert "examples" in output
         assert "001-research-log.md" in output
 
-    def test_populates_examples_from_bundled_assets(self, sandbox: Sandbox):
+    def test_populates_examples_from_bundled_assets(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey')
         atlas = sandbox.ctx.paths.atlas
         assert atlas.examples_dir.is_dir()
         example_files = list(atlas.examples_dir.glob("*.md"))
         assert len(example_files) > 0
 
-    def test_preserves_existing_examples(self, sandbox: Sandbox, capsys):
+    def test_preserves_existing_examples(self, sandbox: ExploreSandbox, capsys):
         atlas = sandbox.ctx.paths.atlas
         atlas.examples_dir.mkdir(parents=True)
         custom = atlas.examples_dir / "custom-example.md"
@@ -138,31 +153,31 @@ class TestStart:
 
 
 class TestLog:
-    def test_advances_to_research_logged(self, sandbox: Sandbox, capsys):
+    def test_advances_to_research_logged(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         output = _run(sandbox, 'chart explore --log', capsys)
         assert "Research log recorded" in output
 
-    def test_fails_without_active_journey(self, sandbox: Sandbox):
+    def test_fails_without_active_journey(self, sandbox: ExploreSandbox):
         with pytest.raises(CommandError, match="No active journey"):
             _run(sandbox, "chart explore --log")
 
 
 class TestPlan:
-    def test_advances_to_planned(self, sandbox: Sandbox, capsys):
+    def test_advances_to_planned(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         output = _run(sandbox, 'chart explore --plan', capsys)
         assert "--embark" in output
 
-    def test_fails_from_wrong_state(self, sandbox: Sandbox):
+    def test_fails_from_wrong_state(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey')
         with pytest.raises(CommandError, match="Can't plan"):
             _run(sandbox, 'chart explore --plan')
 
 
 class TestEmbark:
-    def test_creates_entry_file(self, sandbox: Sandbox):
+    def test_creates_entry_file(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
@@ -172,7 +187,7 @@ class TestEmbark:
         assert entry.exists()
         assert "cmd.py" in entry.read_text()
 
-    def test_shows_slow_down_guidance(self, sandbox: Sandbox, capsys):
+    def test_shows_slow_down_guidance(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
@@ -182,7 +197,7 @@ class TestEmbark:
 
 
 class TestReflect:
-    def test_advances_to_reflected(self, sandbox: Sandbox, capsys):
+    def test_advances_to_reflected(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
@@ -191,7 +206,7 @@ class TestReflect:
         assert "--plan" in output
         assert "--return" in output
 
-    def test_fails_from_wrong_state(self, sandbox: Sandbox):
+    def test_fails_from_wrong_state(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         with pytest.raises(CommandError, match="Can't reflect"):
@@ -199,7 +214,7 @@ class TestReflect:
 
 
 class TestReturn:
-    def test_clears_exploration_state(self, sandbox: Sandbox):
+    def test_clears_exploration_state(self, sandbox: ExploreSandbox):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
@@ -209,7 +224,7 @@ class TestReturn:
         mind = _mind_paths(sandbox)
         assert not mind.work.exploration_file.exists()
 
-    def test_shows_review_guidance(self, sandbox: Sandbox, capsys):
+    def test_shows_review_guidance(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         _run(sandbox, 'chart explore --plan')
@@ -227,7 +242,7 @@ class TestReturn:
 
 
 class TestStatus:
-    def test_shows_current_state(self, sandbox: Sandbox, capsys):
+    def test_shows_current_state(self, sandbox: ExploreSandbox, capsys):
         _run(sandbox, 'chart explore --name test-journey')
         _run(sandbox, 'chart explore --log')
         output = _run(sandbox, 'chart explore', capsys)

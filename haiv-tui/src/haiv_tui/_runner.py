@@ -51,6 +51,9 @@ def main():
                 # Exit cleanly and let the user restart manually for now.
                 return
             hv_tui = shutil.which("hv-tui")
+            if hv_tui is None:
+                _write_log(EXIT_LOG, "hv-tui not found on PATH, cannot restart\n")
+                return
             os.execv(hv_tui, [hv_tui, project])
 
         app.shutdown()

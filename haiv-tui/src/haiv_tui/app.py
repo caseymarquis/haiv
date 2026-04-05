@@ -54,6 +54,8 @@ from haiv_tui.init import HaivDeps
 from haiv_tui.store import TuiStore
 from haiv_tui.bounce_worker import BounceWorker
 from haiv_tui.claude_hooks_worker import ClaudeHooksWorker
+from haiv_tui.recent_commits_worker import RecentCommitsWorker
+from haiv_tui.recent_files_worker import RecentFilesWorker
 from haiv_tui.widgets.claude_hooks import ClaudeHooksWidget
 from haiv_tui.widgets.errors import ErrorsWidget
 from haiv_tui.widgets.hud import HudWidget
@@ -275,9 +277,6 @@ class _Workers:
         self._recent_commits: RecentCommitsWorker | None = None
 
     def start(self) -> None:
-        from haiv_tui.recent_commits_worker import RecentCommitsWorker
-        from haiv_tui.recent_files_worker import RecentFilesWorker
-
         # Watch sessions file for external edits
         sessions_file = self._paths.user.sessions_file
         sessions_file.parent.mkdir(parents=True, exist_ok=True)

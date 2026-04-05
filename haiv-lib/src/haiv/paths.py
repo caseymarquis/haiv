@@ -443,6 +443,13 @@ class Paths:
         return UserPaths(root=self.users_dir / self._user_name)
 
     @property
+    def user_dir_or_none(self) -> Path | None:
+        """The current user's directory, or None if no user is set."""
+        if self._user_name is None:
+            return None
+        return self.users_dir / self._user_name
+
+    @property
     def atlas(self) -> AtlasPaths:
         """Atlas paths (shared codebase map)."""
         return AtlasPaths(root=self.root / "atlas")

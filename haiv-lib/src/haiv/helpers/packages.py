@@ -14,12 +14,7 @@ import importlib
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 from haiv.paths import Paths, PkgPaths
-
-if TYPE_CHECKING:
-    from haiv.helpers.users import UserInfo
 
 
 class PackageSource(Enum):
@@ -124,7 +119,7 @@ def _add_result(
 
 def discover_packages_detailed(
     haiv_root: Path | None = None,
-    user: UserInfo | None = None,
+    user_dir: Path | None = None,
 ) -> PkgDiscoveryResult:
     """Discover all haiv packages with detailed results.
 
@@ -133,8 +128,8 @@ def discover_packages_detailed(
     Args:
         haiv_root: Root of the haiv-managed repository. If None, project and user
             packages are skipped with "haiv_root not provided".
-        user: Current user info. If None, user-level packages are skipped
-            with "user not provided".
+        user_dir: Path to the user's directory (e.g. users/casey/). If None,
+            user-level packages are skipped with "user not provided".
 
     Returns:
         PkgDiscoveryResult with packages, included, and skipped lists.
@@ -188,7 +183,7 @@ def discover_packages_detailed(
                 _called_from=None,
                 _pkg_root=None,
                 _haiv_root=haiv_root,
-                _user_name=user.name if user else None,
+                _user_name=user_dir.name if user_dir else None,
             )
             project_paths = paths.pkgs.project
             skip_reason = _check_package(project_paths)
@@ -211,7 +206,7 @@ def discover_packages_detailed(
     if haiv_root is None:
         user_paths = None
         skip_reason = "haiv_root not provided"
-    elif user is None:
+    elif user_dir is None:
         user_paths = None
         skip_reason = "user not provided"
     else:
@@ -220,7 +215,7 @@ def discover_packages_detailed(
                 _called_from=None,
                 _pkg_root=None,
                 _haiv_root=haiv_root,
-                _user_name=user.name,
+                _user_name=user_dir.name,
             )
             user_paths = paths.pkgs.user
             skip_reason = _check_package(user_paths)
@@ -238,17 +233,18 @@ def discover_packages_detailed(
 
 def discover_packages(
     haiv_root: Path | None = None,
-    user: UserInfo | None = None,
+    user_dir: Path | None = None,
 ) -> list[PackageInfo]:
     """Discover all haiv packages.
 
     Args:
         haiv_root: Root of the haiv-managed repository. If None, only core packages
             are discovered.
-        user: Current user info. If None, user-level packages are not included.
+        user_dir: Path to the user's directory. If None, user-level packages are
+            not included.
 
     Returns:
         List of packages in discovery order (core first, user_local last).
         Only includes valid packages (have commands/ with __init__.py).
     """
-    return discover_packages_detailed(haiv_root, user).packages
+    return discover_packages_detailed(haiv_root, user_dir).packages

@@ -189,8 +189,8 @@ class TestMatches:
         env = CurrentEnv(git_email="casey@example.com", system_user="casey")
 
         result = matches(config, env)
-        # git_email comes before system_user in CurrentEnv
-        assert result == "git_email"
+        # matches() returns the last matched field
+        assert result == "system_user"
 
 
 class TestDetectUser:
@@ -344,17 +344,25 @@ class TestIdentityDataclass:
 class TestAmbiguousIdentityError:
     """Tests for AmbiguousIdentityError exception."""
 
-    def test_stores_paths(self):
-        """Stores the conflicting paths."""
-        paths = [Path("/a/identity.toml"), Path("/b/identity.toml")]
-        error = AmbiguousIdentityError(paths)
+    def test_stores_matches(self):
+        """Stores the conflicting matches."""
+        env = CurrentEnv(system_user="casey")
+        match_list = [
+            ("alice", Path("/a"), "system_user"),
+            ("bob", Path("/b"), "system_user"),
+        ]
+        error = AmbiguousIdentityError(match_list, env)
 
-        assert error.paths == paths
+        assert error.matches == match_list
 
     def test_str_contains_paths(self):
-        """String representation contains the paths."""
-        paths = [Path("/a/identity.toml"), Path("/b/identity.toml")]
-        error = AmbiguousIdentityError(paths)
+        """String representation contains the identity file paths."""
+        env = CurrentEnv(system_user="casey")
+        match_list = [
+            ("alice", Path("/a"), "system_user"),
+            ("bob", Path("/b"), "system_user"),
+        ]
+        error = AmbiguousIdentityError(match_list, env)
 
         error_str = str(error)
         assert "/a/identity.toml" in error_str

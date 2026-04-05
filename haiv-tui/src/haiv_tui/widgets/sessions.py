@@ -131,7 +131,7 @@ class SessionsWidget(Vertical):
         self,
         *,
         store: TuiStore,
-        terminal: TerminalManager,
+        terminal: TerminalManager | None,
         tui_client: TuiLocalClient,
         sessions_file: Path,
         haiv_root: Path,
@@ -229,6 +229,10 @@ class SessionsWidget(Vertical):
             return
         view: SessionNodeView | None = node.data
         if view is None:
+            return
+
+        if self._terminal is None:
+            self._errors.append("mind_launch: terminal not available")
             return
 
         try:

@@ -141,7 +141,10 @@ def commands_for_package(package: PackageInfo) -> list[CommandInfo]:
     return sorted(commands, key=lambda c: c.name)
 
 
-def discover_commands(haiv_root: Path | None) -> list[PackageCommands]:
+def discover_commands(
+    haiv_root: Path | None,
+    user_dir: Path | None = None,
+) -> list[PackageCommands]:
     """Discover all commands across all packages.
 
     Returns commands grouped by package in discovery order (core first,
@@ -150,11 +153,13 @@ def discover_commands(haiv_root: Path | None) -> list[PackageCommands]:
 
     Args:
         haiv_root: Root of the haiv-managed repository.
+        user_dir: Path to the user's directory. If None, user-level commands
+            are not included.
 
     Returns:
         List of PackageCommands in discovery order.
     """
-    packages = discover_packages(haiv_root)
+    packages = discover_packages(haiv_root, user_dir=user_dir)
     return [
         PackageCommands(package=pkg, commands=commands_for_package(pkg))
         for pkg in packages
