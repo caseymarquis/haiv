@@ -11,7 +11,18 @@
       "Bash(hv help:*)",
       "Bash(hv minds:*)",
       "Bash(hv sessions:*)",
-      "Bash(bash test-all.sh)"
+      "Bash(bash test-all.sh)",
+      "WebSearch",
+      "Bash(python3 -c \"import textual; import os; print\\(os.path.dirname\\(textual.__file__\\)\\)\")",
+      "WebFetch(domain:blog.pecar.me)",
+      "Bash(gh issue:*)",
+      "Bash(gh api:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(find /home/casey/code/haiv/.venv/lib/python3.12/site-packages/textual -name *dev* -o -name *hot* -o -name *reload*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:textual.textualize.io)",
+      "Bash(./test-all.sh)",
+      "Bash(hv mail:*)"
     ]
   }
 }

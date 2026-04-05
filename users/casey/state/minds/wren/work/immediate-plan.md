@@ -1,14 +1,14 @@
 # Immediate Plan
 
-**Updated:** 2026-03-29
+**Updated:** 2026-04-04
 
 ---
 
-## Current Focus: Stabilize for Scale
+## Current Focus: Strategic Pivot
 
-haiv-mail is live — first external library integrated as a command source. All packages on PyPI at v0.2.2. The immediate work is getting the dependency story solid and battle-testing haiv-mail so we have a reliable foundation.
+Foundation is solid — all packages on PyPI at v0.3.3, dependency audit done, venv-per-command wired in, haiv-mail live as first external library. Cross-colony communication is working: haiv/dev mailing list created, first bug report from ember@its-monorepo-hv received and fixed. Type system fully clean across all packages. Casey's work laptop is set up as a dev machine alongside his corporate one — code here, sensitive data there.
 
-After that: the strategic pivot. The 1M context window changes everything about how we manage context. Instead of building elaborate context management infrastructure, we keep work units small enough that context isn't a problem. The interesting questions become architectural: decoupled architectures, context isolation, whether teams should share repos or maximize isolation with separate ones. haiv-mail (cross-colony communication) is the natural testbed for these ideas.
+The 1M context window changes everything about how we manage context. Instead of building elaborate context management infrastructure, we keep work units small enough that context isn't a problem. The interesting questions become architectural: decoupled architectures, context isolation, whether teams should share repos or maximize isolation with separate ones. haiv-mail (cross-colony communication) is the natural testbed for these ideas.
 
 Run `hv sessions` to see current active work.
 
@@ -16,21 +16,19 @@ Run `hv sessions` to see current active work.
 
 ## Active Initiatives
 
-- **haiv-mail integration** — first external library as command source. Commands discovered under `mail` prefix. Mailing lists, DMs, contacts. Needs real-world use to shake out issues.
-- **PyPI publishing** — all packages at v0.2.2. `hv publish <package>` commands with tag check and keyring auth.
+- **haiv-mail integration** — first external library as command source. Commands discovered under `mail` prefix. Mailing lists, DMs, contacts. `haiv/dev` list created for cross-colony bug reports.
+- **PyPI publishing** — all packages at v0.3.3. `hv publish <package>` commands with tag check and keyring auth.
 - **TUI** — activity tree, command queue, bounce/restart, claude hooks integration all live. Stable, not actively developing.
 
 ---
 
 ## Next Up
 
-### Foundation (before the pivot)
+### Near-term
 
-- **[P1] Dependency audit** — dependency graph was built for git-clone + dev-install. Two venvs (project root vs worktrees/main), `uv.toml` sources overriding PyPI with local editables, lock files pinning stale versions. Goal: `uv sync --upgrade-package haiv-mail` just works.
-- **[P2] Correct venv per command** — wire VenvResolver into the CLI so every command launches in the right venv automatically. Protocol and integration tests exist. Need the intercept in `_find_command` → `load_command` path.
-- **[P3] `uv tool install` workflow** — evaluate whether end users can install haiv via `uv tool install haiv` for clean single-command setup.
+- **[P1] `uv tool install` workflow** — evaluate whether end users can install haiv via `uv tool install haiv` for clean single-command setup.
 
-### Strategic direction (after foundation)
+### Strategic direction
 
 - **Context isolation patterns** — how do separate teams work in the same repo? Can they? Should we use separate repos to maximize isolation? haiv-mail is the testbed.
 - **Decoupled architecture** — push toward designs where components can be developed, tested, and deployed independently.
@@ -45,6 +43,8 @@ Run `hv sessions` to see current active work.
 
 ## Recently Completed
 
+- **v0.3.3 published** (2026-04-04) — Fixed TUI recently-modified showing directories instead of files (-uall). Fixed hv help not discovering user commands (user_dir refactor). Fixed stale identity tests. Resolved all type errors across all packages. Created haiv/dev mailing list.
+- **Dependency audit + venv per command** (2026-03-30) — P1 and P2 complete. Dependency graph cleaned up, VenvResolver wired into CLI.
 - **Closed stale sessions** (2026-03-29) — Removed echo [6], spark [4], sage [3]. Echo's hook work was completed by wren. Spark's mind-launch settings weren't needed. Sage's suggestion system deprioritized.
 - **Cross-colony infrastructure** (2026-03-27–29) — Founded haiv-mail colony with mind 仁. Published all haiv packages to PyPI (v0.2.2). Built `hv publish` commands. Integrated haiv-mail as command source in CLI. VenvResolver protocol. `try_with_client` on Tui facade. Init command auto-creates user and hooks config. Symlink support in command discovery.
 - **Claude Code hooks integration** (2026-03-25) — End-to-end hook pipeline: CLI → IPC → TUI. ClaudeHooksWorker, Hooks tab, live session status.
@@ -63,6 +63,7 @@ Run `hv sessions` to see current active work.
 - Research deliverables should go in `temp-aar/`, not `work/` — `work/` gets wiped on pop
 - After folder renames, nuke `.venv/` and `uv sync` fresh — hardlinked venvs point to old paths
 - **Explicit writes, forgiving reads** — always write all fields when serializing. Tolerate missing on read with defaults.
+- **Fix failing tests and type errors when found** — never ignore them, never leave them for someone else. Delegate if needed, but don't ship with a broken suite.
 - **Keep git's forward-slash paths untouched** — don't round-trip through `Path` on Windows.
 - **Never override `_render` on Textual widgets** — it's an internal method.
 - **Watchdog fires on open/close events** — filter to created/modified/moved/deleted.

@@ -1,0 +1,61 @@
+# Task Assignment
+
+**[Brief task title]**
+
+[Describe what this mind should accomplish]
+
+
+**Location:** `worktrees/pulse/`
+
+
+
+---
+
+## Requirements
+
+- [Requirement 1]
+- [Requirement 2]
+
+---
+
+## Success Criteria
+
+- [Criterion 1]
+- [Criterion 2]
+
+---
+
+## Verification
+
+```bash
+[Commands to verify success]
+```
+
+---
+
+## Process
+
+1. [Step 1]
+2. [Step 2]
+
+---
+
+
+## Before You Begin
+
+1. Read the full assignment above.
+2. Run `hv chart` and check the maps for anything relevant to your task.
+3. **Decision point:** Does the Atlas have what you need to understand the codebase for this task?
+   - **Yes** → Continue to step 4.
+   - **No** → Propose an exploration to your human collaborator. What territory do you need to chart? This becomes a journey before you write code.
+
+4. Discuss your approach with your human collaborator.
+
+
+Use `TaskCreate` to track these steps — there may be significant work between them. The task description is a starting point — not a spec. Work collaboratively with your human. Do not use planning tools unless they explicitly request it.
+
+> **IMPORTANT:** When you need to understand the codebase, start with `hv chart` to check what's already mapped. If the Atlas doesn't have enough information, use `hv chart explore` — it will guide you through the exploration process. Do NOT read through code files without it. Exploration that follows the charting process builds the Atlas for future minds. Exploration that doesn't is wasted.
+
+> **When you are finished**, run `hv pop` and follow the checklist. This is how you hand your work back — review, merge, and clean up.
+
+> **cd must always be a separate Bash call.** Do not chain cd with `&&` or `;` (e.g., `Bash(cd ./abc && some-command)`). This will be flagged and require human permission. Instead, run `Bash(cd ./abc)` first, then your command in the next call.
